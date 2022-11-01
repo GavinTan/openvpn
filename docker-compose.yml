@@ -1,0 +1,12 @@
+version: "3.9"
+services:
+  openvpn:
+    image: yyxx/openvpn
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "1194:1194/udp"
+      - "8833:80"
+    volumes:
+      - ./data:/data
+      - /etc/localtime:/etc/localtime:ro

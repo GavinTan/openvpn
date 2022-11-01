@@ -1,0 +1,46 @@
+##OpenVPN安装
+
+#alpine
+apk add g++ linux-headers openssl-dev linux-pam-dev make lzo-dev coreutils
+
+#redhat
+yum install pam-devel lzo-devel openssl-devel gcc-c++ make -y
+
+
+wget https://swupdate.openvpn.org/community/releases/openvpn-2.5.7.tar.gz
+./configure --prefix=/usr/local/openvpn
+make && make install
+
+
+#生成证书
+wget https://github.com/OpenVPN/easy-rsa/releases/download/v3.1.0/EasyRSA-3.1.0.tgz
+
+alias easyrsa='./easy-rsa/easyrsa'
+easyrsa init-pki
+easyrsa build-ca nopass
+easyrsa build-server-full server nopass
+easyrsa gen-dh
+
+/usr/local/openvpn/sbin/openvpn --genkey secret pki/ta.key
+
+
+#生成客户端证书
+easyrsa build-client-full myclient nopass
+
+
+#撤销证书
+easyrsa revoke myclient
+easyrsa gen-crl
+
+
+#恢复撤销证书
+vim pki/index.txt
+在行首将 R 更改为 V，然后删除第三列
+easyrsa gen-crl #更新crl证书
+
+
+
+#添加防火墙转发（vpn能连上ping不通其他ip就是没有添加转发，IP段对应vpn的IP段）
+iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o ens3 -j MASQUERADE
+
+
