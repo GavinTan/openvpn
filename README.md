@@ -1,6 +1,6 @@
 # openvpn
 
-**docker版[openvpn](https://hub.docker.com/repository/docker/yyxx/openvpn)，支持web管理。**
+**docker版[openvpn](https://hub.docker.com/r/yyxx/openvpn)，支持web管理。**
 
 openvpn安全与加密相关配置参考于[openvpn-install](https://github.com/angristan/openvpn-install)。
 
