@@ -448,7 +448,7 @@
     </div>
   </div>
 
-  <footer class="fixed-bottom border-top" style="font-size: 12px;">{{ .server.Version }}</footer>
+  <footer class="fixed-bottom border-top bg-light" style="font-size: 12px;">{{ .server.Version }}</footer>
   <script type="text/javascript" src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/js/bootstrap.bundle.min.js"></script>
   <script type="text/javascript" src="https://cdn.datatables.net/1.12.1/js/jquery.dataTables.js"></script>
@@ -546,7 +546,7 @@
       } else {
         vtable = $('#vtable').DataTable({
           language: {
-            url: 'https://cdn.datatables.net/plug-ins/1.11.5/i18n/zh.json',
+            url: '/static/zh.json',
             loadingRecords: "数据加载中..."
           },
           columnDefs: [{ className: 'dt-center', targets: '_all' }],
@@ -598,7 +598,7 @@
           utable = $('#utable').DataTable({
             order: [[0, "desc"]],
             language: {
-              url: 'https://cdn.datatables.net/plug-ins/1.11.5/i18n/zh.json',
+              url: '/static/zh.json',
               loadingRecords: "数据加载中..."
             },
             columnDefs: [{ className: 'dt-center', targets: '_all' }],
@@ -681,7 +681,7 @@
           ctable = $('#ctable').DataTable({
             order: [[1, "desc"]],
             language: {
-              url: 'https://cdn.datatables.net/plug-ins/1.11.5/i18n/zh.json',
+              url: '/static/zh.json',
               loadingRecords: "数据加载中..."
             },
             columnDefs: [{ className: 'dt-center', targets: '_all' }],

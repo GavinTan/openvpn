@@ -365,6 +365,8 @@ func main() {
 	templ := template.Must(template.New("").ParseFS(FS, "templates/*.tmpl"))
 	r.SetHTMLTemplate(templ)
 
+	r.StaticFileFS("/static/zh.json", "templates/zh.json", http.FS(FS))
+
 	r.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.tmpl", gin.H{
 			"server": ov.getServer(),
