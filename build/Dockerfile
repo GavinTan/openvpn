@@ -1,8 +1,8 @@
-FROM alpine:3.17.2
+FROM alpine:3.18.4
 
 RUN apk add --no-cache easy-rsa openvpn iptables bash supervisor
 RUN ln -s /usr/share/easy-rsa/easyrsa /usr/local/bin
-RUN mkdir /lib64 && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2
+#RUN mkdir /lib64 && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2
 
 COPY docker-entrypoint.sh /usr/bin
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
