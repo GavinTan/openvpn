@@ -1,6 +1,5 @@
 builds:
-  -
-    goos:
+  - goos:
       - linux
       - windows
       - darwin
@@ -10,13 +9,18 @@ builds:
     ignore:
       - goos: windows
         goarch: arm64
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -extldflags "-static"
 archives:
-  -
-    format: binary
-    name_template: "{{ .ProjectName }}-{{ .Os }}-{{ .Arch }}"
-    replacements:
-      amd64: x86_64
-      arm64: aarch64
+  - format: binary
+    name_template: >-
+      {{- .ProjectName }}-
+      {{- .Os }}-
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "arm64" }}aarch64
+      {{- else }}{{ .Arch }}{{ end }}
 checksum:
-  name_template: '{{ .ProjectName }}_sha256_checksums.txt'
+  name_template: "{{ .ProjectName }}_sha256_checksums.txt"
   algorithm: sha256
