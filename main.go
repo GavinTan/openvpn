@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"io/ioutil"
+	"io/fs"
 	"log"
 	"net"
 	"net/http"
@@ -219,7 +219,7 @@ func (ov *ovpn) getServer() ServerData {
 }
 
 func (ov *ovpn) killClient(cid string) {
-	ov.sendCommand(fmt.Sprintf("client-kill %s", cid))
+	ov.sendCommand(fmt.Sprintf("client-kill %s HALT", cid))
 }
 
 func User() *UserObj {
@@ -365,7 +365,8 @@ func main() {
 	templ := template.Must(template.New("").ParseFS(FS, "templates/*.tmpl"))
 	r.SetHTMLTemplate(templ)
 
-	r.StaticFileFS("/static/zh.json", "templates/zh.json", http.FS(FS))
+	f, _ := fs.Sub(FS, "templates/static")
+	r.StaticFS("/static", http.FS(f))
 
 	r.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.tmpl", gin.H{
@@ -473,14 +474,16 @@ func main() {
 	r.GET("/client", func(c *gin.Context) {
 		ccd := make([]ClientConfigData, 0)
 
-		files, _ := ioutil.ReadDir("clients")
+		files, _ := os.ReadDir("clients")
 
 		for _, file := range files {
+			finfo, _ := file.Info()
+
 			f := ClientConfigData{
 				Name:     strings.TrimSuffix(file.Name(), filepath.Ext(file.Name())),
 				FullName: file.Name(),
 				File:     fmt.Sprintf("/download/%s", file.Name()),
-				Date:     file.ModTime().Local().Format("2006-01-02 15:04:05"),
+				Date:     finfo.ModTime().Local().Format("2006-01-02 15:04:05"),
 			}
 			ccd = append(ccd, f)
 		}
