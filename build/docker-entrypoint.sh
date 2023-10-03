@@ -4,26 +4,25 @@ set -e
 
 
 init_env(){
-    [ ! -f "/usr/share/easy-rsa/vars" ] && cat <<EOF > /usr/share/easy-rsa/vars
+    cat <<EOF > $OVPN_DATA/pki/vars
 EASYRSA_PKI=$OVPN_DATA/pki
 EASYRSA_CRL_DAYS=3650
 EASYRSA_ALGO=ec
 EASYRSA_CURVE=prime256v1
-EASYRSA_REQ_CN=ovpn_$(head /dev/urandom | tr -dc A-Za-z0-9 | fold -w 16 | head -n 1)
 EOF
     [ ! -f "$OVPN_DATA/.vars" ] && cat <<EOF > $OVPN_DATA/.vars
 SECRET_KEY=$(head /dev/urandom | tr -dc A-Za-z0-9 | fold -w 50 | head -n 1)
 SERVER_NAME=server_$(head /dev/urandom | tr -dc A-Za-z0-9 | fold -w 16 | head -n 1)
+SERVER_CN=ovpn_$(head /dev/urandom | tr -dc A-Za-z0-9 | fold -w 16 | head -n 1)
 EOF
     source $OVPN_DATA/.vars
 }
 
 init_pki(){
+    cd $OVPN_DATA && /usr/share/easy-rsa/easyrsa init-pki
     init_env
-
-    /usr/share/easy-rsa/easyrsa init-pki
-    /usr/share/easy-rsa/easyrsa --batch build-ca nopass
-    /usr/share/easy-rsa/easyrsa build-server-full $SERVER_NAME nopass
+    /usr/share/easy-rsa/easyrsa --batch --req-cn="$SERVER_CN" build-ca nopass
+    /usr/share/easy-rsa/easyrsa --batch build-server-full "$SERVER_NAME" nopass
     /usr/share/easy-rsa/easyrsa gen-crl
     /usr/sbin/openvpn --genkey secret $OVPN_DATA/pki/tc.key
 }
@@ -32,7 +31,7 @@ init_config(){
     cat <<EOF > $OVPN_DATA/server.conf
 port $OVPN_PORT
 proto $OVPN_PROTO
-dev tun
+dev tuncd 
 persist-key
 persist-tun
 keepalive 10 120
@@ -42,7 +41,7 @@ server $(getsubnet $OVPN_SUBNET)
 #push "dhcp-option DNS 8.8.8.8"
 #push "redirect-gateway def1 bypass-dhcp"
 dh none
-ecdh-curve prime256v1
+tls-groups prime256v1
 tls-crypt $OVPN_DATA/pki/tc.key
 crl-verify $OVPN_DATA/pki/crl.pem
 ca $OVPN_DATA/pki/ca.crt
@@ -103,9 +102,8 @@ getsubnet() {
 }
 
 genclient() {
-    init_env
     if [ ! -f "$EASYRSA_PKI/private/$1.key" ]; then
-        /usr/share/easy-rsa/easyrsa build-client-full $1 nopass > /dev/null
+        /usr/share/easy-rsa/easyrsa --batch build-client-full $1 nopass > /dev/null
     fi
     mkdir -p $OVPN_DATA/clients
     cat <<EOF > $OVPN_DATA/clients/$1.ovpn
