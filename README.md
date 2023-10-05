@@ -6,9 +6,9 @@ openvpn安全与加密相关配置参考于[openvpn-install](https://github.com/
 
 
 
-> 客户端配置文件在web管理客户端里生成支持在线下载，默认启用账号验证可在管理VPN账号选择启用或者关闭。
-
-
+> 提示：web->管理->客户端里生成下载客户端配置文件，web->管理->VPN账号里管理添加账号，默认启用账号验证可在VPN账号里开启或关闭。
+> 
+> 注意：默认生成的server.conf配置文件里push "redirect-gateway def1 bypass-dhcp"是禁用的，如果需要客户端所有流量都走openvpn请把配置文件里push前面注释去掉。
 
 ![20220930173030](https://raw.githubusercontent.com/GavinTan/files/master/picgo/20220930173030.png)
 
