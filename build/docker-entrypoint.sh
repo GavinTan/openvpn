@@ -60,7 +60,10 @@ status $OVPN_DATA/openvpn-status.log
 duplicate-cn
 management 127.0.0.1 $OVPN_MANAGE_PORT
 verb 2
-setenv auth_api ${OVPN_AUTH_API:-http://127.0.0.1/login}
+setenv ovpn_data ${OVPN_DATA:-/data}
+setenv auth_api ${AUTH_API:-http://127.0.0.1/login}
+setenv ovpn_auth_api ${OVPN_AUTH_API:-http://127.0.0.1/ovpn/login}
+setenv auth_token $(echo "$ADMIN_USERNAME:$ADMIN_PASSWORD" | openssl enc -e -aes-256-cbc -a -pbkdf2 -k $SECRET_KEY)
 EOF
 }
 
@@ -75,6 +78,44 @@ run_server(){
     }
 
     /usr/sbin/openvpn $OVPN_DATA/server.conf
+}
+
+checkEnvUpdateConfig(){
+    source $OVPN_DATA/.vars
+
+    config=$OVPN_DATA/server.conf
+    auth_api=$(grep '^setenv auth_api' $config | cut -d' ' -f3)
+    ovpn_auth_api=$(grep '^setenv ovpn_auth_api' $config | cut -d' ' -f3)
+    auth_token=$(grep '^setenv auth_token' $config | cut -d' ' -f3)
+    AUTH_TOKEN=$(echo "$ADMIN_USERNAME:$ADMIN_PASSWORD" | openssl enc -e -aes-256-cbc -a -pbkdf2 -k $SECRET_KEY)
+
+
+    if [ "$auth_api" != "$AUTH_API" ]; then
+        if [ -z "$auth_api" ]; then
+            echo "setenv auth_api $AUTH_API" >> $config
+        else
+            sed -i "s|^setenv auth_api .*|setenv auth_api $AUTH_API|" $config 
+        fi
+    fi
+
+    if [ "$ovpn_auth_api" != "$OVPN_AUTH_API" ]; then
+        if [ -z "$ovpn_auth_api" ]; then
+            echo "setenv ovpn_auth_api $OVPN_AUTH_API" >> $config
+        else
+            sed -i "s|^setenv ovpn_auth_api .*|setenv ovpn_auth_api $OVPN_AUTH_API|" $config
+        fi
+    fi
+
+    set +e
+    decrypt_auth_token=$(echo "$auth_token" | openssl enc -d -aes-256-cbc -a -pbkdf2 -k $SECRET_KEY)
+    if [ "$decrypt_auth_token" != "$ADMIN_USERNAME:$ADMIN_PASSWORD" ]; then
+        if [ -z "$auth_token" ]; then
+            echo "setenv auth_token $AUTH_TOKEN" >> $config
+        else
+            sed -i "s|^setenv auth_token .*|setenv auth_token $AUTH_TOKEN|" $config
+        fi
+    fi
+    set -e
 }
 
 cidr2mask(){
@@ -169,6 +210,7 @@ case $1 in
         exit 0
     ;;
     "/usr/sbin/openvpn")
+        checkEnvUpdateConfig
         run_server
     ;;
     "/usr/bin/supervisord")

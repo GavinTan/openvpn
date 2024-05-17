@@ -1,4 +1,4 @@
-FROM alpine:3.18.4
+FROM alpine:3.19.1
 
 RUN apk add --no-cache easy-rsa openvpn iptables bash supervisor
 RUN ln -s /usr/share/easy-rsa/easyrsa /usr/local/bin
@@ -19,8 +19,11 @@ ENV OVPN_MAXCLIENTS=200
 ENV OVPN_PROTO=udp
 ENV OVPN_PORT=1194
 ENV OVPN_MANAGE_PORT=7505
-ENV OVPN_AUTH_API=http://127.0.0.1/login
+ENV AUTH_API=http://127.0.0.1/login
+ENV OVPN_AUTH_API=http://127.0.0.1/ovpn/login
 ENV GIN_MODE=release
+ENV ADMIN_USERNAME=admin
+ENV ADMIN_PASSWORD=admin
 
 EXPOSE 1194/udp 80
 

@@ -7,6 +7,9 @@ services:
     ports:
       - "1194:1194/udp"
       - "8833:80"
+    environment:
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=admin
     volumes:
       - ./data:/data
       - /etc/localtime:/etc/localtime:ro
