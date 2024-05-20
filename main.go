@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"errors"
 	"fmt"
@@ -20,15 +21,14 @@ import (
 
 	"github.com/gavintan/gopkg/aes"
 	"github.com/gavintan/gopkg/tools"
+	"github.com/gin-contrib/sessions"
+	gormsessions "github.com/gin-contrib/sessions/gorm"
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
 	"github.com/joho/godotenv"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+	gLogger "gorm.io/gorm/logger"
 )
-
-//go:embed templates
-var FS embed.FS
 
 type ClientData struct {
 	ID         string `json:"id"`
@@ -54,17 +54,6 @@ type ServerData struct {
 	Version    string
 }
 
-type UserData struct {
-	ID        uint           `gorm:"primarykey" json:"id"`
-	UserName  string         `gorm:"column:username" json:"username"`
-	Password  string         `form:"password" json:"password"`
-	IsEnable  *bool          `gorm:"default:true" form:"isEnable" json:"isEnable"`
-	Name      string         `json:"name"`
-	CreatedAt time.Time      `json:"createdAt"`
-	UpdatedAt time.Time      `json:"updatedAt"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt"`
-}
-
 type ClientConfigData struct {
 	Name     string `json:"name"`
 	FullName string `json:"fullName"`
@@ -72,18 +61,36 @@ type ClientConfigData struct {
 	Date     string `json:"date"`
 }
 
-type UserObj struct {
-	db *gorm.DB
+type User struct {
+	ID        uint           `gorm:"primarykey" json:"id" form:"id"`
+	Username  string         `gorm:"column:username" json:"username" form:"username"`
+	Password  string         `form:"password" json:"password"`
+	IsEnable  *bool          `gorm:"default:true" form:"isEnable" json:"isEnable"`
+	Name      string         `json:"name" form:"name"`
+	CreatedAt time.Time      `json:"createdAt,omitempty" form:"createdAt,omitempty"`
+	UpdatedAt time.Time      `json:"updatedAt,omitempty" form:"updatedAt,omitempty"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt,omitempty" form:"deletedAt,omitempty"`
 }
 
 type ovpn struct {
 	server string
 }
 
-func Error(err interface{}) {
-	l := log.New(os.Stdout, fmt.Sprintf("[OPENVPN-WEB] %s ", time.Now().Format("2006-01-02 15:04:05.000")), log.Llongfile)
-	l.Printf("\033[31m%s\033[0m", strings.Trim(fmt.Sprintf("%s", err), "\n"))
-}
+var (
+	//go:embed templates
+	FS embed.FS
+
+	db     *gorm.DB
+	logger = gLogger.New(
+		log.New(os.Stdout, "[OPENVPN-WEB] "+time.Now().Format("2006-01-02 15:04:05.000")+" MAIN ", 0),
+		gLogger.Config{
+			SlowThreshold:             time.Second,
+			LogLevel:                  gLogger.Error,
+			IgnoreRecordNotFoundError: true,
+			Colorful:                  true,
+		},
+	)
+)
 
 func (ov *ovpn) sendCommand(command string) (string, error) {
 	var data string
@@ -91,7 +98,7 @@ func (ov *ovpn) sendCommand(command string) (string, error) {
 
 	conn, err := net.DialTimeout("tcp", ov.server, time.Second*10)
 	if err != nil {
-		Error(err)
+		logger.Error(context.Background(), err.Error())
 		return data, err
 	}
 
@@ -222,94 +229,65 @@ func (ov *ovpn) killClient(cid string) {
 	ov.sendCommand(fmt.Sprintf("client-kill %s HALT", cid))
 }
 
-func User() *UserObj {
-	gromLogger := logger.New(
-		log.New(os.Stdout, "[OPENVPN-WEB] "+time.Now().Format("2006-01-02 15:04:05.000")+" GORM ", 0),
-		logger.Config{
-			SlowThreshold:             time.Second,
-			LogLevel:                  logger.Error,
-			IgnoreRecordNotFoundError: true,
-			Colorful:                  true,
-		},
-	)
-	db, err := gorm.Open(sqlite.Open("ovpn.db"), &gorm.Config{
-		Logger: gromLogger,
-	})
+func (u User) All() []User {
+	var users []User
 
-	if err != nil {
-		return &UserObj{db: nil}
+	result := db.WithContext(context.Background()).Find(&users)
+	if result.Error != nil {
+		logger.Error(context.Background(), result.Error.Error())
+		return []User{}
 	}
 
-	db.Table("user").AutoMigrate(&UserData{})
+	for k, v := range users {
+		dp, _ := aes.AesDecrypt(v.Password, os.Getenv("SECRET_KEY"))
+		users[k].Password = dp
+	}
 
-	return &UserObj{db: db.Table("user")}
+	return users
 }
 
-func (u UserObj) All() []UserData {
-	var res []UserData
-
-	if u.db != nil {
-		u.db.Find(&res)
-		defer u.Close()
+func (u User) Create() error {
+	if u.Username == "" || u.Password == "" {
+		return fmt.Errorf("非法请求")
 	}
 
-	for k, v := range res {
-		pass, _ := aes.AesDecrypt(v.Password, os.Getenv("SECRET_KEY"))
-		res[k].Password = pass
-	}
+	ep, _ := aes.AesEncrypt(u.Password, os.Getenv("SECRET_KEY"))
+	u.Password = ep
 
-	return res
+	result := db.WithContext(context.Background()).Create(&u)
+
+	return result.Error
 }
 
-func (u UserObj) Create(data UserData) {
-	if u.db != nil {
-		if data.Password != "" {
-			epassword, _ := aes.AesEncrypt(data.Password, os.Getenv("SECRET_KEY"))
-			data.Password = epassword
-		}
-		u.db.Create(&data)
-		defer u.Close()
+func (u User) Update(id string, data User) error {
+	if data.Password != "" {
+		ep, _ := aes.AesEncrypt(data.Password, os.Getenv("SECRET_KEY"))
+		data.Password = ep
 	}
 
+	result := db.WithContext(context.Background()).Where("id = ?", id).Updates(data)
+	return result.Error
 }
 
-func (u UserObj) Update(id string, data UserData) {
-	if u.db != nil {
-		if data.Password != "" {
-			epassword, _ := aes.AesEncrypt(data.Password, os.Getenv("SECRET_KEY"))
-			data.Password = epassword
-		}
-		u.db.Model(&UserData{}).Where("id = ?", id).Updates(data)
-		defer u.Close()
-	}
+func (u User) Delete(id string) error {
+	result := db.WithContext(context.Background()).Unscoped().Delete(&u, id)
+	return result.Error
 }
 
-func (u UserObj) Delete(id string) {
-	if u.db != nil {
-		u.db.Unscoped().Delete(&UserData{}, id)
-		defer u.Close()
-	}
-}
+func (u User) Login() error {
+	pass := u.Password
+	result := db.WithContext(context.Background()).First(&u, "username = ?", u.Username)
 
-func (u UserObj) Login(username string, password string) error {
-	var loginUser UserData
-
-	if u.db == nil {
-		return fmt.Errorf("读取数据库出错")
-	}
-
-	r := u.db.First(&loginUser, "username = ?", username)
-	defer u.Close()
-	if errors.Is(r.Error, gorm.ErrRecordNotFound) {
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		return fmt.Errorf("用户名不存在")
 	}
 
-	if !*loginUser.IsEnable {
+	if !*u.IsEnable {
 		return fmt.Errorf("账号已禁用")
 	}
 
-	pass, _ := aes.AesDecrypt(loginUser.Password, os.Getenv("SECRET_KEY"))
-	if pass != password {
+	dp, _ := aes.AesDecrypt(u.Password, os.Getenv("SECRET_KEY"))
+	if dp != pass {
 		return fmt.Errorf("密码错误")
 	}
 
@@ -317,9 +295,18 @@ func (u UserObj) Login(username string, password string) error {
 
 }
 
-func (u UserObj) Close() {
-	if db, err := u.db.DB(); err == nil {
-		db.Close()
+func AuthMiddleWare() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		session := sessions.Default(c)
+		user := session.Get("user")
+
+		if user == nil {
+			c.Redirect(302, "/login")
+			c.Abort()
+			return
+		}
+
+		c.Next()
 	}
 }
 
@@ -332,9 +319,29 @@ func main() {
 	if !ok {
 		port = "7505"
 	}
+
+	secretKey, ok := os.LookupEnv("SECRET_KEY")
+	if !ok {
+		secretKey = "openvpn-web"
+	}
+
 	ov := ovpn{
 		server: fmt.Sprintf(":%s", port),
 	}
+
+	var err error
+	db, err = gorm.Open(sqlite.Open("ovpn.db"), &gorm.Config{
+		Logger: logger,
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	store := gormsessions.NewStore(db, true, []byte(secretKey))
+
+	db = db.Table("user")
+	db.AutoMigrate(&User{})
 
 	r := gin.New()
 	r.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
@@ -360,13 +367,56 @@ func main() {
 		)
 	}))
 
+	r.Use(sessions.Sessions("user_session", store))
+
 	// r.Use(gin.Recovery())
 
 	templ := template.Must(template.New("").ParseFS(FS, "templates/*.tmpl"))
 	r.SetHTMLTemplate(templ)
-
 	f, _ := fs.Sub(FS, "templates/static")
 	r.StaticFS("/static", http.FS(f))
+
+	r.GET("/login", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "login.tmpl", gin.H{})
+	})
+
+	r.POST("/login", func(c *gin.Context) {
+		username := c.PostForm("username")
+		password := c.PostForm("password")
+		remember7d := c.PostForm("remember7d")
+
+		if username == os.Getenv("ADMIN_USERNAME") && password == os.Getenv("ADMIN_PASSWORD") {
+			session := sessions.Default(c)
+			session.Set("user", username)
+
+			if remember7d == "on" {
+				session.Options(sessions.Options{
+					MaxAge: 3600 * 24 * 7,
+				})
+			} else {
+				session.Options(sessions.Options{
+					MaxAge: 3600 * 1,
+				})
+			}
+			session.Save()
+
+			c.JSON(200, gin.H{"message": "登录成功"})
+			return
+		}
+
+		c.JSON(401, gin.H{"message": "用户名或密码错误"})
+
+	})
+
+	r.GET("/logout", func(c *gin.Context) {
+		session := sessions.Default(c)
+		session.Clear()
+		session.Options(sessions.Options{MaxAge: -1})
+		session.Save()
+		c.Redirect(302, "/login")
+	})
+
+	r.Use(AuthMiddleWare())
 
 	r.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.tmpl", gin.H{
@@ -374,165 +424,175 @@ func main() {
 		})
 	})
 
-	r.POST("/server", func(c *gin.Context) {
-		a := c.PostForm("action")
+	ovpn := r.Group("/ovpn")
+	{
+		ovpn.StaticFS("/download", http.Dir("clients"))
 
-		if a == "settings" {
-			k := c.PostForm("key")
-			if k == "auth-user" {
-				restartCmd := "supervisorctl stop openvpn && sleep 2 && supervisorctl start openvpn"
-				if v := c.PostForm("value"); v == "true" {
-					cmd := exec.Command("sh", "-c", fmt.Sprintf("sed -i 's/^#auth-user-pass-verify/auth-user-pass-verify/' $OVPN_DATA/server.conf && %s", restartCmd))
+		ovpn.POST("/server", func(c *gin.Context) {
+			a := c.PostForm("action")
 
-					if out, err := cmd.CombinedOutput(); err != nil {
-						if out == nil {
-							out = []byte(err.Error())
+			if a == "settings" {
+				k := c.PostForm("key")
+				if k == "auth-user" {
+					restartCmd := "supervisorctl stop openvpn && sleep 2 && supervisorctl start openvpn"
+					if v := c.PostForm("value"); v == "true" {
+						cmd := exec.Command("sh", "-c", fmt.Sprintf("sed -i 's/^#auth-user-pass-verify/auth-user-pass-verify/' $OVPN_DATA/server.conf && %s", restartCmd))
+
+						if out, err := cmd.CombinedOutput(); err != nil {
+							if out == nil {
+								out = []byte(err.Error())
+							}
+							logger.Error(context.Background(), string(out))
+							c.JSON(http.StatusInternalServerError, gin.H{"message": "启用用户认证失败"})
+						} else {
+							c.JSON(http.StatusOK, gin.H{"message": "启用用户认证成功"})
 						}
-						Error(out)
-						c.JSON(http.StatusInternalServerError, gin.H{"message": "启用用户认证失败"})
 					} else {
-						c.JSON(http.StatusOK, gin.H{"message": "启用用户认证成功"})
-					}
-				} else {
-					cmd := exec.Command("sh", "-c", fmt.Sprintf("sed -i 's/^auth-user-pass-verify/#&/' $OVPN_DATA/server.conf && %s", restartCmd))
-					if out, err := cmd.CombinedOutput(); err != nil {
-						Error(out)
-						c.JSON(http.StatusInternalServerError, gin.H{"message": "停用用户认证失败"})
-					} else {
-						c.JSON(http.StatusOK, gin.H{"message": "停用用户认证成功"})
+						cmd := exec.Command("sh", "-c", fmt.Sprintf("sed -i 's/^auth-user-pass-verify/#&/' $OVPN_DATA/server.conf && %s", restartCmd))
+						if out, err := cmd.CombinedOutput(); err != nil {
+							logger.Error(context.Background(), string(out))
+							c.JSON(http.StatusInternalServerError, gin.H{"message": "停用用户认证失败"})
+						} else {
+							c.JSON(http.StatusOK, gin.H{"message": "停用用户认证成功"})
+						}
 					}
 				}
 			}
-		}
-	})
-
-	r.POST("/kill", func(c *gin.Context) {
-		cid := c.PostForm("cid")
-		ov.killClient(cid)
-		c.JSON(http.StatusOK, gin.H{"code": http.StatusOK})
-	})
-
-	r.POST("/login", func(c *gin.Context) {
-		username := c.PostForm("username")
-		password := c.PostForm("password")
-
-		u := User()
-		err := u.Login(username, password)
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"message": err.Error()})
-		} else {
-			c.JSON(http.StatusOK, gin.H{"message": "登录成功"})
-		}
-	})
-
-	r.GET("/online-client", func(c *gin.Context) {
-		c.JSON(http.StatusOK, ov.getClient())
-	})
-
-	r.GET("/user", func(c *gin.Context) {
-		var auth bool
-
-		cmd := exec.Command("egrep", "^auth-user-pass-verify", path.Join(os.Getenv("OVPN_DATA"), "server.conf"))
-		if err := cmd.Run(); err != nil {
-			auth = false
-		} else {
-			auth = true
-		}
-
-		c.JSON(http.StatusOK, gin.H{"users": User().All(), "authUser": auth})
-	})
-
-	r.POST("/user", func(c *gin.Context) {
-		u := User()
-		u.Create(UserData{
-			Name:     c.PostForm("name"),
-			UserName: c.PostForm("username"),
-			Password: c.PostForm("password"),
 		})
 
-		c.JSON(http.StatusOK, gin.H{"message": "添加用户成功"})
-	})
+		ovpn.POST("/kill", func(c *gin.Context) {
+			cid := c.PostForm("cid")
+			ov.killClient(cid)
+			c.JSON(http.StatusOK, gin.H{"code": http.StatusOK})
+		})
 
-	r.PATCH("/user/:id", func(c *gin.Context) {
-		var data UserData
-		id := c.Param("id")
-		u := User()
-		c.Bind(&data)
-		u.Update(id, data)
-
-		c.JSON(http.StatusOK, gin.H{"message": "用户更新成功"})
-	})
-
-	r.DELETE("/user/:id", func(c *gin.Context) {
-		id := c.Param("id")
-		u := User()
-		u.Delete(id)
-
-		c.JSON(http.StatusOK, gin.H{"message": "删除用户成功"})
-	})
-
-	r.GET("/client", func(c *gin.Context) {
-		ccd := make([]ClientConfigData, 0)
-
-		files, _ := os.ReadDir("clients")
-
-		for _, file := range files {
-			finfo, _ := file.Info()
-
-			f := ClientConfigData{
-				Name:     strings.TrimSuffix(file.Name(), filepath.Ext(file.Name())),
-				FullName: file.Name(),
-				File:     fmt.Sprintf("/download/%s", file.Name()),
-				Date:     finfo.ModTime().Local().Format("2006-01-02 15:04:05"),
+		ovpn.POST("/login", func(c *gin.Context) {
+			var u User
+			c.ShouldBind(&u)
+			err := u.Login()
+			if err != nil {
+				c.JSON(http.StatusUnauthorized, gin.H{"message": err.Error()})
+			} else {
+				c.JSON(http.StatusOK, gin.H{"message": "登录成功"})
 			}
-			ccd = append(ccd, f)
-		}
+		})
 
-		c.JSON(http.StatusOK, ccd)
-	})
+		ovpn.GET("/online-client", func(c *gin.Context) {
+			c.JSON(http.StatusOK, ov.getClient())
+		})
 
-	r.POST("/client", func(c *gin.Context) {
-		name := c.PostForm("name")
-		serverAddr := c.PostForm("serverAddr")
-		config := c.PostForm("config")
+		ovpn.GET("/user", func(c *gin.Context) {
+			var auth bool
+			var u User
 
-		_, err := os.Stat(path.Join("clients", fmt.Sprintf("%s.ovpn", name)))
-		if err != nil {
-			cmd := exec.Command("sh", "-c", fmt.Sprintf("/usr/bin/docker-entrypoint.sh genclient %s %s %#v", name, serverAddr, config))
+			cmd := exec.Command("egrep", "^auth-user-pass-verify", path.Join(os.Getenv("OVPN_DATA"), "server.conf"))
+			if err := cmd.Run(); err != nil {
+				auth = false
+			} else {
+				auth = true
+			}
+
+			c.JSON(http.StatusOK, gin.H{"users": u.All(), "authUser": auth})
+		})
+
+		ovpn.POST("/user", func(c *gin.Context) {
+			var u User
+			c.ShouldBind(&u)
+
+			err := u.Create()
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			} else {
+				c.JSON(http.StatusOK, gin.H{"message": "添加用户成功"})
+			}
+		})
+
+		ovpn.PATCH("/user/:id", func(c *gin.Context) {
+			var u User
+			id := c.Param("id")
+
+			c.ShouldBind(&u)
+
+			err := u.Update(id, u)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			} else {
+				c.JSON(http.StatusOK, gin.H{"message": "用户更新成功"})
+			}
+		})
+
+		ovpn.DELETE("/user/:id", func(c *gin.Context) {
+			var u User
+			id := c.Param("id")
+
+			err := u.Delete(id)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			} else {
+				c.JSON(http.StatusOK, gin.H{"message": "删除用户成功"})
+			}
+		})
+
+		ovpn.GET("/client", func(c *gin.Context) {
+			ccd := make([]ClientConfigData, 0)
+
+			files, _ := os.ReadDir("clients")
+			for _, file := range files {
+				finfo, _ := file.Info()
+
+				f := ClientConfigData{
+					Name:     strings.TrimSuffix(file.Name(), filepath.Ext(file.Name())),
+					FullName: file.Name(),
+					File:     fmt.Sprintf("/ovpn/download/%s", file.Name()),
+					Date:     finfo.ModTime().Local().Format("2006-01-02 15:04:05"),
+				}
+				ccd = append(ccd, f)
+			}
+
+			c.JSON(http.StatusOK, ccd)
+		})
+
+		ovpn.POST("/client", func(c *gin.Context) {
+			name := c.PostForm("name")
+			serverAddr := c.PostForm("serverAddr")
+			config := c.PostForm("config")
+
+			_, err := os.Stat(path.Join("clients", fmt.Sprintf("%s.ovpn", name)))
+			if err != nil {
+				cmd := exec.Command("sh", "-c", fmt.Sprintf("/usr/bin/docker-entrypoint.sh genclient %s %s %#v", name, serverAddr, config))
+				if out, err := cmd.CombinedOutput(); err != nil {
+					if out == nil {
+						out = []byte(err.Error())
+					}
+					logger.Error(context.Background(), string(out))
+					c.JSON(http.StatusInternalServerError, gin.H{"message": "客户端添加失败"})
+					return
+				}
+			} else {
+				c.JSON(http.StatusUnprocessableEntity, gin.H{"message": "客户端已存在"})
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{"message": "客户端添加成功"})
+		})
+
+		ovpn.DELETE("/client/:name", func(c *gin.Context) {
+			name := c.Param("name")
+
+			cmd := exec.Command("sh", "-c", fmt.Sprintf("easyrsa --batch revoke %s && easyrsa gen-crl", name))
 			if out, err := cmd.CombinedOutput(); err != nil {
 				if out == nil {
 					out = []byte(err.Error())
 				}
-				Error(out)
-				c.JSON(http.StatusInternalServerError, gin.H{"message": "客户端添加失败"})
+				logger.Error(context.Background(), string(out))
+				c.JSON(http.StatusInternalServerError, gin.H{"message": "删除客户端失败"})
 				return
 			}
-		} else {
-			c.JSON(http.StatusUnprocessableEntity, gin.H{"message": "客户端已存在"})
-			return
-		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "客户端添加成功"})
-	})
-
-	r.DELETE("/client/:name", func(c *gin.Context) {
-		name := c.Param("name")
-
-		cmd := exec.Command("sh", "-c", fmt.Sprintf("easyrsa --batch revoke %s && easyrsa gen-crl", name))
-		if out, err := cmd.CombinedOutput(); err != nil {
-			if out == nil {
-				out = []byte(err.Error())
-			}
-			Error(out)
-			c.JSON(http.StatusInternalServerError, gin.H{"message": "删除客户端失败"})
-			return
-		}
-
-		os.Remove(path.Join("/data/clients", fmt.Sprintf("%s.ovpn", name)))
-		c.JSON(http.StatusOK, gin.H{"message": "删除客户端成功"})
-	})
-
-	r.StaticFS("/download", http.Dir("clients"))
+			os.Remove(path.Join("/data/clients", fmt.Sprintf("%s.ovpn", name)))
+			c.JSON(http.StatusOK, gin.H{"message": "删除客户端成功"})
+		})
+	}
 
 	r.Run(":80")
 }

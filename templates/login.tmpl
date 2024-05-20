@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OpenVPN-WEB</title>
+    <link rel="icon" href="static/cropped-openvpn-32x32.png" sizes="32x32" />
+    <link
+      rel="icon"
+      href="static/cropped-openvpn-192x192.png"
+      sizes="192x192"
+    />
+    <link rel="apple-touch-icon" href="static/cropped-openvpn-180x180.png" />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="static/css/bootstrap.min.css"
+    />
+    <style>
+      .form-check-label {
+        padding-left: 0.15rem;
+      }
+
+      .form-check-input[type="checkbox"] {
+        border-radius: 0.25rem;
+        margin-top: 0.19em;
+        margin-right: 6px;
+      }
+
+      .form-check-input {
+        --mdb-body-bg: #fff;
+        --mdb-form-control-border-color: #bdbdbd;
+        position: relative;
+        width: 1.125rem;
+        height: 1.125rem;
+        background-color: var(--mdb-body-bg);
+        border: 0.125rem solid var(--mdb-form-control-border-color);
+        cursor: pointer;
+      }
+
+      .message {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        color: rgba(0, 0, 0, 0.85);
+        font-size: 14px;
+        font-variant: tabular-nums;
+        line-height: 1.5715;
+        list-style: none;
+        font-feature-settings: "tnum", "tnum";
+        position: fixed;
+        top: 8px;
+        left: 0;
+        z-index: 1010;
+        width: 100%;
+        pointer-events: none;
+      }
+
+      .message svg {
+        vertical-align: baseline;
+      }
+
+      .message .move-up-enter {
+        -webkit-animation-duration: 0.2s;
+        animation-duration: 0.2s;
+        -webkit-animation-fill-mode: both;
+        animation-fill-mode: both;
+        -webkit-animation-play-state: paused;
+        animation-play-state: paused;
+        opacity: 0;
+        -webkit-animation-timing-function: cubic-bezier(0.08, 0.82, 0.17, 1);
+        animation-timing-function: cubic-bezier(0.08, 0.82, 0.17, 1);
+        -webkit-animation-name: antMoveUpIn;
+        animation-name: antMoveUpIn;
+        -webkit-animation-play-state: running;
+        animation-play-state: running;
+      }
+
+      @-webkit-keyframes antMoveUpIn {
+        0% {
+          -webkit-transform: translateY(-100%);
+          transform: translateY(-100%);
+          -webkit-transform-origin: 0 0;
+          transform-origin: 0 0;
+          opacity: 0;
+        }
+
+        100% {
+          -webkit-transform: translateY(0%);
+          transform: translateY(0%);
+          -webkit-transform-origin: 0 0;
+          transform-origin: 0 0;
+          opacity: 1;
+        }
+      }
+
+      @keyframes antMoveUpIn {
+        0% {
+          -webkit-transform: translateY(-100%);
+          transform: translateY(-100%);
+          -webkit-transform-origin: 0 0;
+          transform-origin: 0 0;
+          opacity: 0;
+        }
+
+        100% {
+          -webkit-transform: translateY(0%);
+          transform: translateY(0%);
+          -webkit-transform-origin: 0 0;
+          transform-origin: 0 0;
+          opacity: 1;
+        }
+      }
+
+      .message .move-up-leave {
+        -webkit-animation-fill-mode: both;
+        animation-fill-mode: both;
+        -webkit-animation-play-state: paused;
+        animation-play-state: paused;
+        -webkit-animation-timing-function: cubic-bezier(0.6, 0.04, 0.98, 0.34);
+        animation-timing-function: cubic-bezier(0.6, 0.04, 0.98, 0.34);
+        -webkit-animation-play-state: running;
+        animation-play-state: running;
+        pointer-events: none;
+        -webkit-animation-name: MessageMoveOut;
+        animation-name: MessageMoveOut;
+        -webkit-animation-duration: 0.3s;
+        animation-duration: 0.3s;
+      }
+
+      @-webkit-keyframes MessageMoveOut {
+        0% {
+          max-height: 150px;
+          padding: 8px;
+          opacity: 1;
+        }
+
+        100% {
+          max-height: 0;
+          padding: 0;
+          opacity: 0;
+        }
+      }
+
+      @keyframes MessageMoveOut {
+        0% {
+          max-height: 150px;
+          padding: 8px;
+          opacity: 1;
+        }
+
+        100% {
+          max-height: 0;
+          padding: 0;
+          opacity: 0;
+        }
+      }
+
+      .message .message-notice {
+        padding: 8px;
+        text-align: center;
+      }
+
+      .message .message-notice:first-child {
+        margin-top: -8px;
+      }
+
+      .message .message-content {
+        display: inline-block;
+        padding: 10px 16px;
+        background: #fff;
+        border-radius: 2px;
+        box-shadow: 0 3px 6px -4px rgb(0 0 0 / 12%),
+          0 6px 16px 0 rgb(0 0 0 / 8%), 0 9px 28px 8px rgb(0 0 0 / 5%);
+        pointer-events: all;
+      }
+
+      .message-anticon {
+        display: inline-block;
+        color: inherit;
+        font-style: normal;
+        line-height: 0;
+        text-align: center;
+        text-transform: none;
+        vertical-align: -0.125em;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      .message .message-anticon {
+        position: relative;
+        top: 1px;
+        margin-right: 8px;
+        font-size: 16px;
+      }
+
+      .message .message-success .message-anticon {
+        color: #52c41a;
+      }
+
+      .message .message-info .message-anticon {
+        color: #1890ff;
+      }
+
+      .message .message-warning .message-anticon {
+        color: #faad14;
+      }
+
+      .message .message-error .message-anticon {
+        color: #ff4d4f;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="vh-100" style="background-color: #508bfc" id="login">
+      <div class="container py-5 h-100">
+        <div class="row d-flex justify-content-center align-items-center h-100">
+          <div class="col-12 col-md-8 col-lg-6 col-xl-5">
+            <div class="card shadow-2-strong" style="border-radius: 1rem">
+              <div class="card-body p-5 text-center">
+                <form>
+                  <h3 class="mb-5">OpenVPN WEB</h3>
+
+                  <div data-mdb-input-init class="form-outline mb-4">
+                    <input
+                      type="text"
+                      name="username"
+                      class="form-control form-control-lg"
+                      autocomplete="username"
+                      placeholder="账号"
+                      required
+                    />
+                  </div>
+
+                  <div data-mdb-input-init class="form-outline mb-4">
+                    <input
+                      type="password"
+                      name="password"
+                      class="form-control form-control-lg"
+                      autocomplete="current-password"
+                      placeholder="密码"
+                      required
+                    />
+                  </div>
+
+                  <div class="form-check d-flex justify-content-start mb-4">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="remember7d"
+                      value=""
+                    />
+                    <label class="form-check-label" for="remember7d">
+                      7天免登录
+                    </label>
+                  </div>
+
+                  <button
+                    data-mdb-button-init
+                    data-mdb-ripple-init
+                    class="btn btn-primary btn-lg btn-block"
+                    type="submit"
+                  >
+                    登录
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </body>
+  <script type="text/javascript" src="static/js/jquery.min.js"></script>
+  <script type="text/javascript" src="static/js/js.cookie.min.js"></script>
+  <script type="text/javascript">
+    $(document).ready(function () {
+      class Message {
+        constructor() {
+          this.div = document.createElement("div");
+          this.div.id = "message";
+          this.div.className = "message";
+
+          if (!document.getElementById("message")) {
+            document.body.appendChild(this.div);
+          }
+        }
+
+        open(type = "info", content, duration, onClose) {
+          duration = duration == 0 ? duration : (duration || 3) * 1000;
+
+          const html = `
+           <div class="message-notice">
+             <div class="message-content message-${type}">
+               <span class="message-anticon">
+                 ${this.icon}
+               </span>
+               <span>${content}</span>
+             </div>
+           </div>
+           `;
+
+          const $msgDiv = $(html).appendTo("#message");
+          $msgDiv.removeClass("move-up-leave").addClass("move-up-enter");
+          setTimeout(() => {
+            $msgDiv.removeClass("move-up-enter");
+          }, 300);
+          if (duration != 0) {
+            setTimeout(function () {
+              $msgDiv.removeClass("move-up-enter").addClass("move-up-leave");
+              setTimeout(() => {
+                $msgDiv.removeClass("move-up-leave").remove();
+              }, 300);
+              if (onClose && typeof onClose === "function") {
+                onClose();
+              }
+            }, duration);
+          }
+        }
+
+        info(content, duration, onClose) {
+          this.icon = `
+           <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16">
+             <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8 4a.905.905 0 0 0-.9.995l.35 3.507a.552.552 0 0 0 1.1 0l.35-3.507A.905.905 0 0 0 8 4zm.002 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
+           </svg>`;
+
+          this.open("info", content, duration, onClose);
+        }
+
+        success(content, duration, onClose) {
+          this.icon = `
+           <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16">
+             <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+           </svg>`;
+
+          this.open("success", content, duration, onClose);
+        }
+
+        warning(content, duration, onClose) {
+          this.icon = `
+           <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16">
+             <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8 4a.905.905 0 0 0-.9.995l.35 3.507a.552.552 0 0 0 1.1 0l.35-3.507A.905.905 0 0 0 8 4zm.002 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
+           </svg>`;
+
+          this.open("warning", content, duration, onClose);
+        }
+
+        error(content, duration, onClose) {
+          this.icon = `
+           <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16">
+             <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/>
+           </svg>
+           `;
+
+          this.open("error", content, duration, onClose);
+        }
+      }
+
+      const message = new Message();
+
+
+      if (Cookies.get('remember7d') == 1) {
+        $("#remember7d").prop('checked', true);
+      };
+
+      $("#remember7d").change(function() { 
+        if ($(this).is(':checked')) {
+          Cookies.set('remember7d', 1, { expires: 7 });
+        } else {
+          Cookies.remove('remember7d');
+        }; 
+      });
+
+
+      $("#login form").submit(function () {
+        const username = $('#login input[name="username"]').val();
+        const password = $('#login input[name="password"]').val();
+        const remember7d = $('#remember7d').is(':checked') ? 'on' : 'off';
+
+        $.post("/login", { username, password, remember7d }, function (data) {
+          location.assign("/");
+          message.success(data.message);
+        }).fail(function (xhr) {
+          message.error(
+            xhr.responseJSON?.message || xhr.responseText || xhr.statusText
+          );
+        });
+
+        return false;
+      });
+    });
+  </script>
+</html>
