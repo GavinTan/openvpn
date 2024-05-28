@@ -3,6 +3,20 @@
 set -e
 
 
+apk_update(){
+    apk update
+}
+
+init_iptables(){
+    if [[ "$IPTABLES_VERSION" == "legacy" ]]; then
+        if [[ `apk info | grep 'iptables-legacy'` == "" ]]; then
+            apk add iptables-legacy
+        fi
+    else
+        IPTABLES_VERSION=nft
+    fi
+}
+
 init_env(){
     cat <<EOF > $OVPN_DATA/pki/vars
 EASYRSA_PKI=$OVPN_DATA/pki
@@ -73,8 +87,8 @@ run_server(){
         mknod /dev/net/tun c 10 200
     fi
 
-    iptables-nft -t nat -C POSTROUTING -s $OVPN_SUBNET -j MASQUERADE > /dev/null 2>&1 || {
-        iptables-nft -t nat -A POSTROUTING -s $OVPN_SUBNET -j MASQUERADE
+    iptables-$IPTABLES_VERSION -t nat -C POSTROUTING -s $OVPN_SUBNET -j MASQUERADE > /dev/null 2>&1 || {
+        iptables-$IPTABLES_VERSION -t nat -A POSTROUTING -s $OVPN_SUBNET -j MASQUERADE
     }
 
     /usr/sbin/openvpn $OVPN_DATA/server.conf
@@ -190,6 +204,8 @@ EOF
 }
 
 if [ "$1" == "--init" ]; then
+    apk_update
+    init_iptables
     init_pki
     init_config
     exit 0
