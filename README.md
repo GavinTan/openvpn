@@ -2,11 +2,20 @@
 
 **docker 版[openvpn](https://hub.docker.com/r/yyxx/openvpn)，支持 web 管理。**
 
-openvpn 安全与加密相关配置参考于[openvpn-install](https://github.com/angristan/openvpn-install)。
+openvpn 安全与加密相关配置参考于[openvpn-install](https://github.com/angristan/openvpn-install)的Security and Encryption部分。
 
-> 提示：web->管理->客户端里生成下载客户端配置文件，web->管理->VPN 账号里管理添加账号，默认启用账号验证可在 VPN 账号里开启或关闭。
+> 提示：
 >
-> 注意：默认生成的 server.conf 配置文件里 push "redirect-gateway def1 bypass-dhcp"是禁用的，如果需要客户端所有流量都走 openvpn 请把配置文件里 push 前面注释去掉。
+> 1.登录账号密码默认`admin:admin`可通过环境变量修改
+> 2.web->管理->客户端里生成下载客户端配置文件
+> 3.web->管理->VPN 账号里管理添加账号，默认启用账号验证可在 VPN 账号里开启或关闭。
+>
+> 注意：
+>
+> 1.默认生成的 server.conf 配置文件里 push "redirect-gateway def1 bypass-dhcp"是禁用的，如果需要客户端所有流量都走 openvpn 请把配置文件里 push 前面注释去掉然后docker-compose restart重启容器。
+> 2.在创建客户端后关闭账号验证客户端的配置文件存在auth-user-pass参数客户端会依旧弹出登录，虽然登录账号信息不做验证有弹窗困扰的建议手动编辑客户端配置文件注释掉参数或重新生成客户端配置文件。
+
+![image-20240529110841439](https://raw.githubusercontent.com/GavinTan/files/master/picgo/image-20240529110841439.png)
 
 ![20220930173030](https://raw.githubusercontent.com/GavinTan/files/master/picgo/20220930173030.png)
 
@@ -41,7 +50,7 @@ openvpn 安全与加密相关配置参考于[openvpn-install](https://github.com
         - /etc/localtime:/etc/localtime:ro
   ```
 
-- 初始化生成证书配置文件
+- 初始化生成证书及配置文件
 
   ```bash
   docker-compose run --rm openvpn --init
@@ -52,3 +61,15 @@ openvpn 安全与加密相关配置参考于[openvpn-install](https://github.com
   ```bash
   docker-compose up -d
   ```
+
+## 环境变量参数
+
+- `OVPN_DATA`：数据目录
+- `OVPN_SUBNET`：vpn子网
+- `OVPN_PROTO`：协议 tcp/udp
+- `OVPN_PORT`：端口
+- `OVPN_MANAGEMENT`：openvpn管理接口监听地址
+- `AUTH_API`：web登录认证api
+- `OVPN_AUTH_API`：vpn账号认证api
+- `ADMIN_USERNAME`：web登录账号
+- `ADMIN_PASSWORD`：web登录密码

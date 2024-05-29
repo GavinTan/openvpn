@@ -1,7 +1,5 @@
 #!/bin/bash
-
 set -e
-
 
 init_env(){
     cat <<EOF > $OVPN_DATA/pki/vars
@@ -31,7 +29,7 @@ init_config(){
     cat <<EOF > $OVPN_DATA/server.conf
 port $OVPN_PORT
 proto $OVPN_PROTO
-dev tuncd 
+dev tun
 persist-key
 persist-tun
 keepalive 10 120
@@ -58,7 +56,8 @@ auth-user-pass-verify /usr/lib/openvpn/plugins/openvpn-auth via-env
 script-security 3
 status $OVPN_DATA/openvpn-status.log
 duplicate-cn
-management 127.0.0.1 $OVPN_MANAGE_PORT
+max-clients $OVPN_MAXCLIENTS
+management ${OVPN_MANAGEMENT/:/ }
 verb 2
 setenv ovpn_data ${OVPN_DATA:-/data}
 setenv auth_api ${AUTH_API:-http://127.0.0.1/login}
@@ -80,15 +79,19 @@ run_server(){
     /usr/sbin/openvpn $OVPN_DATA/server.conf
 }
 
-checkEnvUpdateConfig(){
+update_config(){
     source $OVPN_DATA/.vars
 
     config=$OVPN_DATA/server.conf
     auth_api=$(grep '^setenv auth_api' $config | cut -d' ' -f3)
     ovpn_auth_api=$(grep '^setenv ovpn_auth_api' $config | cut -d' ' -f3)
     auth_token=$(grep '^setenv auth_token' $config | cut -d' ' -f3)
-    AUTH_TOKEN=$(echo "$ADMIN_USERNAME:$ADMIN_PASSWORD" | openssl enc -e -aes-256-cbc -a -pbkdf2 -k $SECRET_KEY)
-
+    ovpn_data=$(grep '^setenv ovpn_data' $config | cut -d' ' -f3)
+    ovpn_subnet=$(grep '^server' $config | cut -d' ' -f2,3)
+    ovpn_maxclients=$(grep '^max-clients' $config | cut -d' ' -f2)
+    ovpn_proto=$(grep '^proto' $config | cut -d' ' -f2)
+    ovpn_port=$(grep '^port' $config | cut -d' ' -f2)
+    ovpn_management=$(grep '^management' $config | cut -d' ' -f2,3)
 
     if [ "$auth_api" != "$AUTH_API" ]; then
         if [ -z "$auth_api" ]; then
@@ -106,40 +109,85 @@ checkEnvUpdateConfig(){
         fi
     fi
 
-    set +e
-    decrypt_auth_token=$(echo "$auth_token" | openssl enc -d -aes-256-cbc -a -pbkdf2 -k $SECRET_KEY)
+    decrypt_auth_token=$(echo "$auth_token" | openssl enc -d -aes-256-cbc -a -pbkdf2 -k $SECRET_KEY 2>/dev/null || true)
     if [ "$decrypt_auth_token" != "$ADMIN_USERNAME:$ADMIN_PASSWORD" ]; then
+        AUTH_TOKEN=$(echo "$ADMIN_USERNAME:$ADMIN_PASSWORD" | openssl enc -e -aes-256-cbc -a -pbkdf2 -k $SECRET_KEY)
         if [ -z "$auth_token" ]; then
             echo "setenv auth_token $AUTH_TOKEN" >> $config
         else
             sed -i "s|^setenv auth_token .*|setenv auth_token $AUTH_TOKEN|" $config
         fi
     fi
-    set -e
-}
 
-cidr2mask(){
-    local i
-    local subnetmask=""
-    local cidr=${1#*/}
-    local full_octets=$(($cidr/8))
-    local partial_octet=$(($cidr%8))
-
-    for ((i=0;i<4;i+=1)); do
-        if [ $i -lt $full_octets ]; then
-            subnetmask+=255
-        elif [ $i -eq $full_octets ]; then
-            subnetmask+=$((256 - 2**(8-$partial_octet)))
+    if [ "$ovpn_data" != "$OVPN_DATA" ]; then
+        if [ -z "$ovpn_data" ]; then
+            echo "setenv ovpn_data $OVPN_DATA" >> $config
         else
-            subnetmask+=0
+            sed -i "s|^setenv ovpn_data .*|setenv ovpn_data $OVPN_DATA|" $config 
         fi
-        [ $i -lt 3 ] && subnetmask+=.
-    done
-    echo $subnetmask
+    fi
+
+
+    if [ "$ovpn_subnet" != "$(getsubnet $OVPN_SUBNET)" ]; then
+        if [ -z "$ovpn_subnet" ]; then
+            echo "server $(getsubnet $OVPN_SUBNET)" >> $config
+        else
+            sed -i "s|^server .*|server $(getsubnet $OVPN_SUBNET)|" $config 
+        fi
+    fi
+
+    if [ "$ovpn_maxclients" != "$OVPN_MAXCLIENTS" ]; then
+        if [ -z "$ovpn_maxclients" ]; then
+            echo "max-clients $OVPN_MAXCLIENTS" >> $config
+        else
+            sed -i "s|^max-clients .*|max-clients $OVPN_MAXCLIENTS|" $config 
+        fi
+    fi
+
+    if [ "$ovpn_proto" != "$OVPN_PROTO" ]; then
+        if [ -z "$ovpn_proto" ]; then
+            echo "proto $OVPN_PROTO" >> $config
+        else
+            sed -i "s|^proto .*|proto $OVPN_PROTO|" $config 
+        fi
+    fi
+
+    if [ "$ovpn_port" != "$OVPN_PORT" ]; then
+        if [ -z "$ovpn_port" ]; then
+            echo "port $OVPN_PORT" >> $config
+        else
+            sed -i "s|^port .*|port $OVPN_PORT|" $config 
+        fi
+    fi
+
+    if [ "$ovpn_management" != "${OVPN_MANAGEMENT/:/ }" ]; then
+        if [ -z "$ovpn_management" ]; then
+            echo "management ${OVPN_MANAGEMENT/:/ }" >> $config
+        else
+            sed -i "s|^management .*|management ${OVPN_MANAGEMENT/:/ }|" $config 
+        fi
+    fi
 }
 
-getsubnet() {
-    echo ${1%/*} $(cidr2mask $1)
+getsubnet(){
+    ip=$(echo $1 | cut -d'/' -f1)
+    prefix=$(echo $1 | cut -d'/' -f2)
+
+    mask=""
+    for i in {1..4}; do
+        if [ $prefix -ge 8 ]; then
+            mask+="255"
+            prefix=$((prefix - 8))
+        else
+            mask+=$((256 - 2**(8 - prefix)))
+            prefix=0
+        fi
+
+        if [ $i -lt 4 ]; then
+            mask+="."
+        fi
+    done
+    echo $ip $mask
 }
 
 genclient() {
@@ -161,13 +209,11 @@ remote-cert-tls server
 verify-x509-name $SERVER_NAME name
 auth SHA256
 auth-nocache
-$(egrep -q '^auth-user-pass-verify' $OVPN_DATA/server.conf && echo 'auth-user-pass' || echo '#auth-user-pass')
+$(grep -q '^auth-user-pass-verify' $OVPN_DATA/server.conf && echo 'auth-user-pass' || echo '#auth-user-pass')
 cipher AES-128-GCM
 tls-client
 tls-version-min 1.2
 tls-cipher TLS-ECDHE-ECDSA-WITH-AES-128-GCM-SHA256
-#ignore-unknown-option block-outside-dns
-#setenv opt block-outside-dns # Prevent Windows 10 DNS leak
 verb 3
 
 ## Custom configuration ##
@@ -210,10 +256,14 @@ case $1 in
         exit 0
     ;;
     "/usr/sbin/openvpn")
-        checkEnvUpdateConfig
+        update_config
         run_server
     ;;
     "/usr/bin/supervisord")
+        if [ ! -e $OVPN_DATA/.vars ]; then
+            echo "请执行命令docker-compose run --rm openvpn --init进行初始化配置！"
+            exit 1
+        fi
         /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
     ;;
 esac
