@@ -25,6 +25,27 @@ openvpn 安全与加密相关配置参考于[openvpn-install](https://github.com
 
 ## Quick Start
 
+初始化生成证书及配置文件
+
+```shell
+docker run -it --rm yyxx/openvpn --init
+```
+
+运行 openvpn
+
+```shell
+docker run -d \
+  --cap-add=NET_ADMIN \
+  -p 1194:1194/udp \
+  -p 8833:8833 \
+  -e ADMIN_USERNAME=admin \
+  -e ADMIN_PASSWORD=admin \
+  -v $(pwd)/data:/data \
+  yyxx/openvpn
+```
+
+### compose
+
 - 安装 docker-compose
 
   ```bash
@@ -43,7 +64,7 @@ openvpn 安全与加密相关配置参考于[openvpn-install](https://github.com
         - NET_ADMIN
       ports:
         - "1194:1194/udp"
-        - "8833:80"
+        - "8833:8833"
       environment:
         - ADMIN_USERNAME=admin
         - ADMIN_PASSWORD=admin
@@ -73,5 +94,6 @@ openvpn 安全与加密相关配置参考于[openvpn-install](https://github.com
 - `OVPN_MANAGEMENT`：openvpn管理接口监听地址
 - `AUTH_API`：web登录认证api
 - `OVPN_AUTH_API`：vpn账号认证api
+- `WEB_PORT`：web端口
 - `ADMIN_USERNAME`：web登录账号
 - `ADMIN_PASSWORD`：web登录密码
