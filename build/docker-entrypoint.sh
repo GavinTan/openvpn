@@ -72,8 +72,13 @@ run_server(){
         mknod /dev/net/tun c 10 200
     fi
 
-    iptables-nft -t nat -C POSTROUTING -s $OVPN_SUBNET -j MASQUERADE > /dev/null 2>&1 || {
-        iptables-nft -t nat -A POSTROUTING -s $OVPN_SUBNET -j MASQUERADE
+    ipt="iptables-nft"
+    if iptables-legacy -L -n -t nat > /dev/null 2>&1; then
+        ipt="iptables-legacy"
+    fi
+
+    $ipt -t nat -C POSTROUTING -s $OVPN_SUBNET -j MASQUERADE > /dev/null 2>&1 || {
+        $ipt -t nat -A POSTROUTING -s $OVPN_SUBNET -j MASQUERADE
     }
 
     /usr/sbin/openvpn $OVPN_DATA/server.conf
