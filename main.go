@@ -320,6 +320,11 @@ func main() {
 		port = "7505"
 	}
 
+	webPort, ok := os.LookupEnv("WEB_PORT")
+	if !ok {
+		webPort = "8833"
+	}
+
 	secretKey, ok := os.LookupEnv("SECRET_KEY")
 	if !ok {
 		secretKey = "openvpn-web"
@@ -594,5 +599,5 @@ func main() {
 		})
 	}
 
-	r.Run(":80")
+	r.Run(fmt.Sprintf(":%s", webPort))
 }
