@@ -28,7 +28,7 @@ openvpn 安全与加密相关配置参考于[openvpn-install](https://github.com
 初始化生成证书及配置文件
 
 ```shell
-docker run -it --rm yyxx/openvpn --init
+docker run -v $(pwd)/data:/data --rm yyxx/openvpn --init
 ```
 
 运行 openvpn
