@@ -436,33 +436,43 @@ func main() {
 		ovpn.POST("/server", func(c *gin.Context) {
 			a := c.PostForm("action")
 
-			if a == "settings" {
+			switch a {
+			case "settings":
 				k := c.PostForm("key")
-				if k == "auth-user" {
-					restartCmd := "supervisorctl stop openvpn && sleep 2 && supervisorctl start openvpn"
-					if v := c.PostForm("value"); v == "true" {
-						cmd := exec.Command("sh", "-c", fmt.Sprintf("sed -i 's/^#auth-user-pass-verify/auth-user-pass-verify/' $OVPN_DATA/server.conf && %s", restartCmd))
+				v := c.PostForm("value")
 
-						if out, err := cmd.CombinedOutput(); err != nil {
-							if out == nil {
-								out = []byte(err.Error())
-							}
-							logger.Error(context.Background(), string(out))
-							c.JSON(http.StatusInternalServerError, gin.H{"message": "启用用户认证失败"})
-						} else {
-							c.JSON(http.StatusOK, gin.H{"message": "启用用户认证成功"})
+				if k == "auth-user" {
+					msg := "停用"
+					if v == "true" {
+						msg = "启用"
+					}
+					cmd := exec.Command("sh", "-c", fmt.Sprintf("/usr/bin/docker-entrypoint.sh auth %s", v))
+					if out, err := cmd.CombinedOutput(); err != nil {
+						if out == nil {
+							out = []byte(err.Error())
 						}
+						logger.Error(context.Background(), string(out))
+						c.JSON(http.StatusInternalServerError, gin.H{"message": fmt.Sprintf("%s用户认证失败", msg)})
 					} else {
-						cmd := exec.Command("sh", "-c", fmt.Sprintf("sed -i 's/^auth-user-pass-verify/#&/' $OVPN_DATA/server.conf && %s", restartCmd))
-						if out, err := cmd.CombinedOutput(); err != nil {
-							logger.Error(context.Background(), string(out))
-							c.JSON(http.StatusInternalServerError, gin.H{"message": "停用用户认证失败"})
-						} else {
-							c.JSON(http.StatusOK, gin.H{"message": "停用用户认证成功"})
-						}
+						c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("%s用户认证成功", msg)})
 					}
 				}
+			case "renewcert":
+				cmd := exec.Command("sh", "-c", "/usr/bin/docker-entrypoint.sh renewcert")
+				if out, err := cmd.CombinedOutput(); err != nil {
+					if out == nil {
+						out = []byte(err.Error())
+					}
+					logger.Error(context.Background(), string(out))
+					c.JSON(http.StatusInternalServerError, gin.H{"message": "更新证书失败"})
+					return
+				}
+
+				c.JSON(http.StatusOK, gin.H{"message": "更新证书成功"})
+			default:
+				c.JSON(http.StatusUnprocessableEntity, gin.H{"message": "未知操作"})
 			}
+
 		})
 
 		ovpn.POST("/kill", func(c *gin.Context) {

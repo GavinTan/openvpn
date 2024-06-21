@@ -14,6 +14,10 @@
   <link rel="stylesheet" type="text/css" href="static/css/buttons.bootstrap5.min.css" />
 
   <style>
+    .dropdown-menu {
+      --bs-dropdown-min-width: 8rem;
+    }
+
     .dataTables_info {
       padding-top: 0 !important;
     }
@@ -236,15 +240,30 @@
               </span>
             </li>
             <li>
-              <hr class="dropdown-divider" />
-            </li>
-            <li>
               <span class="dropdown-item" role="button" id="showClient">
                 <svg width="1em" height="1em" fill="currentColor" class="bi" viewBox="0 0 16 16">
                   <path
                     d="M2.5 13.5A.5.5 0 0 1 3 13h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zM2 2h12s2 0 2 2v6s0 2-2 2H2s-2 0-2-2V4s0-2 2-2z" />
                 </svg>
                 客户端
+              </span>
+            </li>
+            <li>
+              <hr class="dropdown-divider" />
+            </li>
+            <li>
+              <h6 class="dropdown-header">系统</h6>
+            </li>
+            <li>
+              <span class="dropdown-item" role="button" id="renewcert">
+                <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor"
+                  class="bi bi-opencollective" viewBox="0 0 16 16">
+                  <path fill-opacity=".4"
+                    d="M12.995 8.195c0 .937-.312 1.912-.78 2.693l1.99 1.99c.976-1.327 1.6-2.966 1.6-4.683 0-1.795-.624-3.434-1.561-4.76l-2.068 2.028c.468.781.78 1.679.78 2.732z" />
+                  <path
+                    d="M8 13.151a4.995 4.995 0 1 1 0-9.99c1.015 0 1.951.273 2.732.82l1.95-2.03a7.805 7.805 0 1 0 .04 12.449l-1.951-2.03a5.07 5.07 0 0 1-2.732.781z" />
+                </svg>
+                更新证书
               </span>
             </li>
             <li>
@@ -347,7 +366,7 @@
   </div>
 
   <div class="modal fade" tabindex="-1" id="addUserModal" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <form>
           <div class="modal-header">
@@ -387,7 +406,7 @@
   </div>
 
   <div class="modal fade" tabindex="-1" id="addClientModal" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <form>
           <div class="modal-header">
@@ -428,7 +447,7 @@
   </div>
 
   <div class="modal fade" tabindex="-1" id="resetPassModal" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <form>
           <div class="modal-header">
@@ -462,6 +481,32 @@
             </button>
             <button type="submit" class="btn btn-primary" id="resetPassSumbit">
               保存
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" id="renewCertModal"
+    aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form>
+          <div class="modal-header">
+            <h5 class="modal-title">更新证书</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" style="text-align: center;">
+            <h4>确认更新openvpn证书?</h4>
+            <span style="font-size: 14px;color: red;">注: 更新证书会重启服务</span>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              取消
+            </button>
+            <button type="submit" class="btn btn-primary" id="renewcertSumbit">
+              确认
             </button>
           </div>
         </form>
@@ -693,8 +738,11 @@
               "<'d-flex justify-content-between align-items-center'lip>",
             fnInitComplete: function (oSettings, data) {
               $("#user div.toolbar").html(
-                `<div class="form-check form-switch form-check-reverse"><input class="form-check-input" type="checkbox" role="switch" id="authUser" ${data.authUser ? "checked" : ""
-                }><label class="form-check-label" for="authUser">账号启用: </label></div>`
+                `<div class="form-check form-switch form-check-reverse">
+                  <input class="form-check-input" type="checkbox" role="switch" id="authUser" ${data.authUser ? "checked" : ""}>
+                  <label class="form-check-label" for="authUser">账号启用: </label>
+                </div>
+                `
               );
             },
             drawCallback: function () {
@@ -713,7 +761,7 @@
               ],
             },
             ajax: function (data, callback, settings) {
-              request.get("/ovpn/user").then((data) => callback({ data: data?.users }));
+              request.get("/ovpn/user").then((data) => callback({ data: data?.users, authUser: data?.authUser }));
             },
             columns: [
               { data: "id" },
@@ -822,6 +870,19 @@
           });
         }
       });
+
+      $("#renewcert").click(function () {
+        $("#renewCertModal").modal("show");
+      });
+
+      $("#renewCertModal form").submit(function () {
+        $("#renewCertModal").modal("hide");
+        request.post("/ovpn/server", { action: "renewcert" }).then((data) => {
+          message.success(data.message);
+        });
+        return false;
+      });
+
 
       $("#addUserModal form").submit(function () {
         const name = $('#addUserModal input[name="name"]').val();
