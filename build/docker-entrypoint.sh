@@ -4,6 +4,8 @@ set -e
 init_env(){
     cat <<EOF > $OVPN_DATA/pki/vars
 EASYRSA_PKI=$OVPN_DATA/pki
+EASYRSA_CA_EXPIRE=3650
+EASYRSA_CERT_EXPIRE=3650
 EASYRSA_CRL_DAYS=3650
 EASYRSA_ALGO=ec
 EASYRSA_CURVE=prime256v1
@@ -174,6 +176,25 @@ update_config(){
     fi
 }
 
+renew_cert(){
+    source $OVPN_DATA/.vars
+    source $OVPN_DATA/pki/vars
+
+    cd $OVPN_DATA/pki
+    openssl x509 -in ca.crt -days $EASYRSA_CA_EXPIRE -out ca.crt -signkey private/ca.key
+    /usr/share/easy-rsa/easyrsa --batch renew $SERVER_NAME
+    /usr/share/easy-rsa/easyrsa --batch revoke-renewed $SERVER_NAME
+    /usr/share/easy-rsa/easyrsa gen-crl
+}
+
+auth(){
+    if [ "$1" = "true" ]; then
+        sed -i 's/^#auth-user-pass-verify/auth-user-pass-verify/' $OVPN_DATA/server.conf
+    else
+        sed -i 's/^auth-user-pass-verify/#&/' $OVPN_DATA/server.conf
+    fi
+}
+
 getsubnet(){
     ip=$(echo $1 | cut -d'/' -f1)
     prefix=$(echo $1 | cut -d'/' -f2)
@@ -258,6 +279,18 @@ case $1 in
         fi
 
         $(genclient $2 $3 "$4")
+        exit 0
+    ;;
+    "auth")
+        $(auth $2)
+
+        supervisorctl stop openvpn && sleep 1 && supervisorctl start openvpn
+        exit 0
+    ;;
+    "renewcert")
+        renew_cert
+
+        supervisorctl stop openvpn && sleep 1 && supervisorctl start openvpn
         exit 0
     ;;
     "/usr/sbin/openvpn")
