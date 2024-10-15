@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"embed"
-	"errors"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -19,7 +18,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gavintan/gopkg/aes"
 	"github.com/gavintan/gopkg/tools"
 	"github.com/gin-contrib/sessions"
 	gormsessions "github.com/gin-contrib/sessions/gorm"
@@ -61,15 +59,14 @@ type ClientConfigData struct {
 	Date     string `json:"date"`
 }
 
-type User struct {
-	ID        uint           `gorm:"primarykey" json:"id" form:"id"`
-	Username  string         `gorm:"column:username" json:"username" form:"username"`
-	Password  string         `form:"password" json:"password"`
-	IsEnable  *bool          `gorm:"default:true" form:"isEnable" json:"isEnable"`
-	Name      string         `json:"name" form:"name"`
-	CreatedAt time.Time      `json:"createdAt,omitempty" form:"createdAt,omitempty"`
-	UpdatedAt time.Time      `json:"updatedAt,omitempty" form:"updatedAt,omitempty"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt,omitempty" form:"deletedAt,omitempty"`
+type Params struct {
+	Draw        int    `json:"draw" form:"draw"`
+	Offset      int    `json:"offset" form:"offset"`
+	Limit       int    `json:"limit" form:"limit"`
+	OrderColumn string `json:"orderColumn" form:"orderColumn"`
+	Order       string `json:"order" form:"order"`
+	Search      string `json:"search" form:"search"`
+	Qt          string `json:"qt" form:"qt"`
 }
 
 type ovpn struct {
@@ -161,7 +158,7 @@ func (ov *ovpn) getClient() []ClientData {
 				ConnDate:   cdSlice[7],
 				UserName:   username,
 				ID:         cdSlice[10],
-				OnlineTime: time.Since(connDate).String(),
+				OnlineTime: (time.Duration(time.Now().Unix()-connDate.Unix()) * time.Second).String(),
 			}
 
 			clients = append(clients, cd)
@@ -229,72 +226,6 @@ func (ov *ovpn) killClient(cid string) {
 	ov.sendCommand(fmt.Sprintf("client-kill %s HALT", cid))
 }
 
-func (u User) All() []User {
-	var users []User
-
-	result := db.WithContext(context.Background()).Find(&users)
-	if result.Error != nil {
-		logger.Error(context.Background(), result.Error.Error())
-		return []User{}
-	}
-
-	for k, v := range users {
-		dp, _ := aes.AesDecrypt(v.Password, os.Getenv("SECRET_KEY"))
-		users[k].Password = dp
-	}
-
-	return users
-}
-
-func (u User) Create() error {
-	if u.Username == "" || u.Password == "" {
-		return fmt.Errorf("非法请求")
-	}
-
-	ep, _ := aes.AesEncrypt(u.Password, os.Getenv("SECRET_KEY"))
-	u.Password = ep
-
-	result := db.WithContext(context.Background()).Create(&u)
-
-	return result.Error
-}
-
-func (u User) Update(id string, data User) error {
-	if data.Password != "" {
-		ep, _ := aes.AesEncrypt(data.Password, os.Getenv("SECRET_KEY"))
-		data.Password = ep
-	}
-
-	result := db.WithContext(context.Background()).Where("id = ?", id).Updates(data)
-	return result.Error
-}
-
-func (u User) Delete(id string) error {
-	result := db.WithContext(context.Background()).Unscoped().Delete(&u, id)
-	return result.Error
-}
-
-func (u User) Login() error {
-	pass := u.Password
-	result := db.WithContext(context.Background()).First(&u, "username = ?", u.Username)
-
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		return fmt.Errorf("用户名不存在")
-	}
-
-	if !*u.IsEnable {
-		return fmt.Errorf("账号已禁用")
-	}
-
-	dp, _ := aes.AesDecrypt(u.Password, os.Getenv("SECRET_KEY"))
-	if dp != pass {
-		return fmt.Errorf("密码错误")
-	}
-
-	return nil
-
-}
-
 func AuthMiddleWare() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
@@ -345,8 +276,7 @@ func main() {
 
 	store := gormsessions.NewStore(db, true, []byte(secretKey))
 
-	db = db.Table("user")
-	db.AutoMigrate(&User{})
+	db.AutoMigrate(&User{}, &History{})
 
 	r := gin.New()
 	r.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
@@ -606,6 +536,27 @@ func main() {
 
 			os.Remove(path.Join("/data/clients", fmt.Sprintf("%s.ovpn", name)))
 			c.JSON(http.StatusOK, gin.H{"message": "删除客户端成功"})
+		})
+
+		ovpn.GET("/history", func(c *gin.Context) {
+			var h History
+			var p Params
+
+			c.ShouldBindQuery(&p)
+
+			c.JSON(http.StatusOK, h.Query(p))
+		})
+
+		ovpn.POST("/history", func(c *gin.Context) {
+			var h History
+			c.ShouldBind(&h)
+
+			err := h.Create()
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			} else {
+				c.JSON(http.StatusOK, gin.H{"message": "添加记录成功"})
+			}
 		})
 	}
 

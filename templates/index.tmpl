@@ -12,7 +12,7 @@
   <link rel="stylesheet" type="text/css" href="static/css/bootstrap.min.css" />
   <link rel="stylesheet" type="text/css" href="static/css/dataTables.bootstrap5.min.css" />
   <link rel="stylesheet" type="text/css" href="static/css/buttons.bootstrap5.min.css" />
-
+  <link rel="stylesheet" type="text/css" href="static/css/datepicker-bs5.min.css">
   <style>
     .dropdown-menu {
       --bs-dropdown-min-width: 8rem;
@@ -252,6 +252,22 @@
               <hr class="dropdown-divider" />
             </li>
             <li>
+              <span class="dropdown-item" role="button" id="showHistory">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                  class="bi bi-clock-history" viewBox="0 0 16 16">
+                  <path
+                    d="M8.515 1.019A7 7 0 0 0 8 1V0a8 8 0 0 1 .589.022zm2.004.45a7 7 0 0 0-.985-.299l.219-.976q.576.129 1.126.342zm1.37.71a7 7 0 0 0-.439-.27l.493-.87a8 8 0 0 1 .979.654l-.615.789a7 7 0 0 0-.418-.302zm1.834 1.79a7 7 0 0 0-.653-.796l.724-.69q.406.429.747.91zm.744 1.352a7 7 0 0 0-.214-.468l.893-.45a8 8 0 0 1 .45 1.088l-.95.313a7 7 0 0 0-.179-.483m.53 2.507a7 7 0 0 0-.1-1.025l.985-.17q.1.58.116 1.17zm-.131 1.538q.05-.254.081-.51l.993.123a8 8 0 0 1-.23 1.155l-.964-.267q.069-.247.12-.501m-.952 2.379q.276-.436.486-.908l.914.405q-.24.54-.555 1.038zm-.964 1.205q.183-.183.35-.378l.758.653a8 8 0 0 1-.401.432z" />
+                  <path d="M8 1a7 7 0 1 0 4.95 11.95l.707.707A8.001 8.001 0 1 1 8 0z" />
+                  <path
+                    d="M7.5 3a.5.5 0 0 1 .5.5v5.21l3.248 1.856a.5.5 0 0 1-.496.868l-3.5-2A.5.5 0 0 1 7 9V3.5a.5.5 0 0 1 .5-.5" />
+                </svg>
+                历史记录
+              </span>
+            </li>
+            <li>
+              <hr class="dropdown-divider" />
+            </li>
+            <li>
               <h6 class="dropdown-header">系统</h6>
             </li>
             <li>
@@ -342,6 +358,26 @@
               <th scope="col">状态</th>
               <th scope="col">姓名</th>
               <th scope="col">操作</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="history" class="d-none">
+      <div class="my-3 p-3 bg-body rounded shadow-sm">
+        <table id="htable" class="table table-striped" style="width: 100%">
+          <thead>
+            <tr>
+              <th scope="col">用户名</th>
+              <th scope="col">客户端</th>
+              <th scope="col">VPN IP</th>
+              <th scope="col">用户 IP</th>
+              <th scope="col">下载流量</th>
+              <th scope="col">上传流量</th>
+              <th scope="col">上线时间</th>
+              <th scope="col">在线时长</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -524,11 +560,15 @@
   <script type="text/javascript" src="static/js/dataTables.buttons.min.js"></script>
   <script type="text/javascript" src="static/js/buttons.bootstrap5.min.js"></script>
   <script type="text/javascript" src="static/js/copy-to-clipboard.js"></script>
+  <script type="text/javascript" src="static/js/datepicker-full.min.js"></script>
+  <script type="text/javascript" src="static/js/datepicker.zh-CN.js"></script>
+
   <script type="text/javascript">
     $(document).ready(function () {
       let utable;
       let vtable;
       let ctable;
+      let htable;
 
       class Message {
         constructor() {
@@ -720,6 +760,7 @@
       $("#showUser").click(function () {
         $("#status").addClass("d-none");
         $("#client").addClass("d-none");
+        $("#history").addClass("d-none");
         $("#user").removeClass("d-none");
 
         if (utable) {
@@ -815,9 +856,126 @@
         }
       });
 
+      $("#showHistory").click(function () {
+        $("#status").addClass("d-none");
+        $("#client").addClass("d-none");
+        $("#user").addClass("d-none");
+        $("#history").removeClass("d-none");
+
+        const now = new Date();
+        const lastMonth = new Date(now);
+        lastMonth.setMonth(now.getMonth() - 1);
+        lastMonth.setHours(0, 0, 0, 0);
+        now.setHours(23, 59, 59, 0);
+
+        let qt = [Date.parse(lastMonth) / 1000, Date.parse(now) / 1000];
+
+        if (htable) {
+          htable.ajax.reload();
+        } else {
+          htable = $("#htable").DataTable({
+            order: [[6, "desc"]],
+            processing: true,
+            serverSide: true,
+            search: {
+              return: true
+            },
+            language: {
+              url: "/static/zh.json",
+              loadingRecords: "数据加载中...",
+            },
+            columnDefs: [{ className: "dt-center", targets: "_all" }],
+            dom:
+              "<'row align-items-center'<'col d-flex'f><'col d-flex justify-content-center toolbar'><'col d-flex justify-content-end'B>>" +
+              "<'row'<'col-sm-12'tr>>" +
+              "<'d-flex justify-content-between align-items-center'lip>",
+            fnInitComplete: function (oSettings, data) {
+              $("#history div.toolbar").html(
+                `<div id="datepicker">
+                  <div class="input-group input-group-sm">
+                    <input type="text" class="form-control text-center" name="start" />
+                    <span class="input-group-text">to</span>
+                    <input type="text" class="form-control text-center" name="end" />
+                  </div>
+                </div>
+                `
+              );
+
+              const elem = document.getElementById("datepicker");
+              const rangepicker = new DateRangePicker(elem, {
+                buttonClass: 'btn',
+                container: elem,
+                format: "yyyy-mm-dd",
+                autohide: true,
+                language: "zh-CN"
+              });
+
+              rangepicker.setDates(lastMonth, now);
+
+              elem.addEventListener("changeDate", (e) => {
+                qt = rangepicker.getDates().map((d, i) => {
+                  if (d instanceof Date) {
+                    if (i == 1) {
+                      d.setHours(23, 59, 59, 0);
+                    };
+
+                    return Date.parse(d) / 1000;
+                  }
+
+                  return qt[i];
+                });
+
+                htable.ajax.reload();
+              });
+            },
+            drawCallback: function () {
+              $("ul.pagination").addClass("pagination-sm");
+            },
+            buttons: {
+              dom: {
+                button: { className: "btn btn-sm" },
+              },
+              buttons: [
+                {
+                  text: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"> <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/> <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/> </svg> 刷新 ',
+                  className: "btn-primary",
+                  action: () => htable.ajax.reload(),
+                },
+              ],
+            },
+            ajax: function (data, callback, settings) {
+              const orderColumn = data.columns[data.order[0].column].data;
+              const order = data.order[0].dir;
+              const params = {
+                draw: data.draw,
+                offset: data.start,
+                limit: data.length,
+                orderColumn: orderColumn,
+                order: order,
+                search: data.search.value,
+                qt: qt.join()
+              };
+
+              request.get(`/ovpn/history?${new URLSearchParams(params).toString()}`).then((data) => callback(data));
+            },
+            columns: [
+              { data: "username" },
+              { data: "common_name" },
+              { data: "vip" },
+              { data: "rip" },
+              { data: "bytes_received" },
+              { data: "bytes_sent" },
+              { data: "time_unix" },
+              { data: "time_duration" },
+            ],
+          });
+        }
+      });
+
       $("#showClient").click(function () {
         $("#status").addClass("d-none");
         $("#user").addClass("d-none");
+        $("#history").addClass("d-none");
         $("#client").removeClass("d-none");
 
         if (ctable) {
