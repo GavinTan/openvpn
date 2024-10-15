@@ -1,6 +1,6 @@
-FROM alpine:3.20.1
+FROM alpine:3.20.3
 
-RUN apk add --no-cache easy-rsa openvpn iptables iptables-legacy bash supervisor
+RUN apk add --no-cache easy-rsa openvpn iptables iptables-legacy bash supervisor curl
 RUN ln -s /usr/share/easy-rsa/easyrsa /usr/local/bin
 #RUN mkdir /lib64 && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2
 
@@ -21,6 +21,7 @@ ENV OVPN_PORT=1194
 ENV OVPN_MANAGEMENT=127.0.0.1:7505
 ENV AUTH_API=http://127.0.0.1:8833/login
 ENV OVPN_AUTH_API=http://127.0.0.1:8833/ovpn/login
+ENV OVPN_HISTORY_API=http://127.0.0.1:8833/ovpn/history
 ENV GIN_MODE=release
 ENV ADMIN_USERNAME=admin
 ENV ADMIN_PASSWORD=admin
