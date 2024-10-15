@@ -2,13 +2,15 @@
 
 **docker 版[openvpn](https://hub.docker.com/r/yyxx/openvpn)，支持 web 管理。**
 
-openvpn 安全与加密相关配置参考于[openvpn-install](https://github.com/angristan/openvpn-install)的Security and Encryption部分。
+openvpn 安全与加密相关配置参考于[openvpn-install](https://github.com/angristan/openvpn-install?tab=readme-ov-file#security-and-encryption)的Security and Encryption部分。
 
 ![image-20240529110841439](https://raw.githubusercontent.com/GavinTan/files/master/picgo/image-20240529110841439.png)
 
 ![20220930173030](https://raw.githubusercontent.com/GavinTan/files/master/picgo/20220930173030.png)
 
 ![20220930173103](https://raw.githubusercontent.com/GavinTan/files/master/picgo/20220930173103.png)
+
+![image-20241015170847764](https://raw.githubusercontent.com/GavinTan/files/master/picgo/image-20241015170847764.png)
 
 > 提示：
 >
@@ -94,6 +96,7 @@ docker run -d \
 - `OVPN_MANAGEMENT`：openvpn管理接口监听地址
 - `AUTH_API`：web登录认证api
 - `OVPN_AUTH_API`：vpn账号认证api
+- `OVPN_HISTORY_API`: vpn历史记录api
 - `WEB_PORT`：web端口
 - `ADMIN_USERNAME`：web登录账号
 - `ADMIN_PASSWORD`：web登录密码
