@@ -22,7 +22,7 @@ openvpn 安全与加密相关配置参考于[openvpn-install](https://github.com
 >
 > 注意：
 >
-> 1. 默认生成的 server.conf 配置文件里 push "redirect-gateway def1 bypass-dhcp"是禁用的，如果需要客户端所有流量都走 openvpn 请把配置文件里 push 前面注释去掉然后docker-compose restart重启容器。
+> 1. 默认禁用vpn网关，如果需要客户端所有流量都走 openvpn 请使用环境变量`OVPN_GATEWAY=true`。
 > 2. 在创建客户端后关闭账号验证客户端的配置文件存在auth-user-pass参数客户端会依旧弹出登录，登录信息可以随便输入不会做验证，若有弹窗困扰的建议手动编辑客户端配置文件注释掉参数或重新生成客户端配置文件。
 
 ## Quick Start
@@ -51,14 +51,13 @@ docker run -d \
 - 安装 docker-compose
 
   ```bash
-  curl -SL https://github.com/docker/compose/releases/download/v2.11.2/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
+  curl -SL https://github.com/docker/compose/releases/download/v2.30.3/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
   chmod +x /usr/local/bin/docker-compose
   ```
 
 - 创建 docker-compose.yml
 
   ```yaml
-  version: "3.9"
   services:
     openvpn:
       image: yyxx/openvpn
@@ -74,7 +73,7 @@ docker run -d \
         - ./data:/data
         - /etc/localtime:/etc/localtime:ro
   ```
-
+  
 - 初始化生成证书及配置文件
 
   ```bash
@@ -87,16 +86,59 @@ docker run -d \
   docker-compose up -d
   ```
 
+
+
+## IPV6
+
+>注意：
+>
+>1. 启用ipv6后客户端跟服务器的proto需要都指定udp6/tcp6
+>2. docker的网络需要启用ipv6支持
+>3. 使用openvpn-connect客户端的需要使用3.4.1以后的版本
+
+```bash
+services:
+  openvpn:
+    image: yyxx/openvpn
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "1194:1194/udp"
+      - "8833:8833"
+    environment:
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=admin
+      - OVPN_IPV6=true
+    volumes:
+      - ./data:/data
+      - /etc/localtime:/etc/localtime:ro
+    sysctls:
+      - net.ipv6.conf.default.disable_ipv6=0
+      - net.ipv6.conf.all.forwarding=1
+
+networks:
+  default:
+    enable_ipv6: true
+```
+
+
+
 ## 环境变量参数
 
-- `OVPN_DATA`：数据目录
-- `OVPN_SUBNET`：vpn子网
-- `OVPN_PROTO`：协议 tcp/udp
-- `OVPN_PORT`：端口
-- `OVPN_MANAGEMENT`：openvpn管理接口监听地址
-- `AUTH_API`：web登录认证api
-- `OVPN_AUTH_API`：vpn账号认证api
-- `OVPN_HISTORY_API`: vpn历史记录api
-- `WEB_PORT`：web端口
-- `ADMIN_USERNAME`：web登录账号
-- `ADMIN_PASSWORD`：web登录密码
+|       环境变量       |           说明           |
+| :------------------: | :----------------------: |
+|    **OVPN_DATA**     |       数据存放目录       |
+|   **OVPN_SUBNET**    |         vpn子网          |
+|   **OVPN_SUBNET6**   |       vpn ipv6子网       |
+|    **OVPN_PROTO**    |    协议 tcp(6)/udp(6)    |
+|    **OVPN_PORT**     |       vpn连接端口        |
+| **OVPN_MAXCLIENTS**  |   vpn最大客户端连接数    |
+| **OVPN_MANAGEMENT**  | openvpn管理接口监听地址  |
+|  **OVPN_AUTH_API**   |      vpn账号认证api      |
+| **OVPN_HISTORY_API** |      vpn历史记录api      |
+|    **OVPN_IPV6**     |         启用ipv6         |
+|   **OVPN_GATEWAY**   | 启用vpn网关所有流量走vpn |
+|     **WEB_PORT**     |         web端口          |
+|     **AUTH_API**     |      web登录认证api      |
+|  **ADMIN_USERNAME**  |       web登录账号        |
+|  **ADMIN_PASSWORD**  |       web登录密码        |
