@@ -36,10 +36,8 @@ persist-key
 persist-tun
 keepalive 10 120
 topology subnet
-server $(getsubnet $OVPN_SUBNET)
-#push "dhcp-option DNS 1.1.1.1"
-#push "dhcp-option DNS 8.8.8.8"
-#push "redirect-gateway def1 bypass-dhcp"
+$([[ "$OVPN_IPV6" == "true" ]] && echo -e "server $(getsubnet $OVPN_SUBNET)\nserver-ipv6 $OVPN_SUBNET6" || echo "server $(getsubnet $OVPN_SUBNET)")
+$([[ "$OVPN_GATEWAY" == "true" ]] && echo -e 'push "dhcp-option DNS 8.8.8.8"\npush "dhcp-option DNS 8.8.4.4"\npush "redirect-gateway def1 ipv6 bypass-dhcp"' || echo -e '#push "dhcp-option DNS 8.8.8.8"\n#push "dhcp-option DNS 8.8.4.4"\n#push "redirect-gateway def1 ipv6 bypass-dhcp"')
 dh none
 tls-groups prime256v1
 tls-crypt $OVPN_DATA/pki/tc.key
@@ -76,6 +74,7 @@ run_server(){
         mknod /dev/net/tun c 10 200
     fi
 
+
     ipt="iptables-nft"
     if iptables-legacy -L -n -t nat > /dev/null 2>&1; then
         ipt="iptables-legacy"
@@ -84,6 +83,13 @@ run_server(){
     $ipt -t nat -C POSTROUTING -s $OVPN_SUBNET -j MASQUERADE > /dev/null 2>&1 || {
         $ipt -t nat -A POSTROUTING -s $OVPN_SUBNET -j MASQUERADE
     }
+
+    if [ "$OVPN_IPV6" == "true" ]; then
+        ${ipt/iptables/ip6tables} -t nat -C POSTROUTING -s $OVPN_SUBNET6 -j MASQUERADE > /dev/null 2>&1 || {
+            ${ipt/iptables/ip6tables} -t nat -A POSTROUTING -s $OVPN_SUBNET6 -j MASQUERADE
+        }
+    fi
+
 
     /usr/sbin/openvpn $OVPN_DATA/server.conf
 }
@@ -98,6 +104,7 @@ update_config(){
     auth_token=$(grep '^setenv auth_token' $config | cut -d' ' -f3)
     ovpn_data=$(grep '^setenv ovpn_data' $config | cut -d' ' -f3)
     ovpn_subnet=$(grep '^server' $config | cut -d' ' -f2,3)
+    ovpn_subnet6=$(grep '^server-ipv6' $config | cut -d' ' -f2,3)
     ovpn_maxclients=$(grep '^max-clients' $config | cut -d' ' -f2)
     ovpn_proto=$(grep '^proto' $config | cut -d' ' -f2)
     ovpn_port=$(grep '^port' $config | cut -d' ' -f2)
@@ -185,6 +192,33 @@ update_config(){
             sed -i "s|^management .*|management ${OVPN_MANAGEMENT/:/ }|" $config 
         fi
     fi
+
+
+    if [ "$OVPN_IPV6" == "true" ]; then
+        if [[ ! "$(grep '^proto' $config | cut -d' ' -f2)" =~ 6 ]]; then
+            sed -i "s|^proto .*|proto ${OVPN_PROTO}6|" $config
+        fi
+
+        if [ "$ovpn_subnet6" != "$OVPN_SUBNET6" ]; then
+            if [ -z "$ovpn_subnet6" ]; then
+                echo "server-ipv6 $OVPN_SUBNET6" >> $config
+            else
+                sed -i "s|^server-ipv6 .*|server-ipv6 $OVPN_SUBNET6|" $config
+            fi
+        fi
+    else 
+        sed -i "/^server-ipv6/d" $config
+    fi
+
+    if [ "$OVPN_GATEWAY" == "true" ]; then
+        sed -i 's/^#\(push "dhcp-option DNS 8.8.8.8"\)/\1/' $config
+        sed -i 's/^#\(push "dhcp-option DNS 8.8.4.4"\)/\1/' $config
+        sed -i 's/^#\(push "redirect-gateway def1 ipv6 bypass-dhcp"\)/\1/' $config
+    else 
+        sed -i 's/^push "dhcp-option DNS 8.8.8.8"/#&/' $config
+        sed -i 's/^push "dhcp-option DNS 8.8.4.4"/#&/' $config
+        sed -i 's/^push "redirect-gateway def1 ipv6 bypass-dhcp"/#&/' $config
+    fi
 }
 
 renew_cert(){
@@ -234,9 +268,9 @@ genclient() {
     mkdir -p $OVPN_DATA/clients
     cat <<EOF > $OVPN_DATA/clients/$1.ovpn
 client
-proto $OVPN_PROTO
+proto $([[ "$OVPN_IPV6" == "true" ]] && [[ "$OVPN_PROTO" =~ 6 ]] && echo "$OVPN_PROTO" || echo "${OVPN_PROTO}6")
 explicit-exit-notify
-remote ${2:-$(ip -4 route get 8.8.8.8 | awk {'print $7'} | tr -d '\n')} $OVPN_PORT
+remote ${2:-$([[ "$OVPN_IPV6" == "true" ]] && ip -6 route get 2001:4860:4860::8888 | awk {'print $7'} | tr -d '\n' || ip -4 route get 8.8.8.8 | awk {'print $7'} | tr -d '\n')} $OVPN_PORT
 dev tun
 resolv-retry infinite
 nobind
