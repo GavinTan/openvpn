@@ -1,4 +1,3 @@
-version: "3.9"
 services:
   openvpn:
     image: yyxx/openvpn
@@ -10,6 +9,7 @@ services:
     environment:
       - ADMIN_USERNAME=admin
       - ADMIN_PASSWORD=admin
+      - OVPN_GATEWAY=false
     volumes:
       - ./data:/data
       - /etc/localtime:/etc/localtime:ro
