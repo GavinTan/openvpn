@@ -343,14 +343,10 @@ case $1 in
     ;;
     "auth")
         $(auth $2)
-
-        supervisorctl stop openvpn && sleep 1 && supervisorctl start openvpn
         exit 0
     ;;
     "renewcert")
         renew_cert
-
-        supervisorctl stop openvpn && sleep 1 && supervisorctl start openvpn
         exit 0
     ;;
     "addhistory")
