@@ -70,7 +70,7 @@ type Params struct {
 }
 
 type ovpn struct {
-	server string
+	address string
 }
 
 var (
@@ -93,7 +93,7 @@ func (ov *ovpn) sendCommand(command string) (string, error) {
 	var data string
 	var sb strings.Builder
 
-	conn, err := net.DialTimeout("tcp", ov.server, time.Second*10)
+	conn, err := net.DialTimeout("tcp", ov.address, time.Second*10)
 	if err != nil {
 		logger.Error(context.Background(), err.Error())
 		return data, err
@@ -246,9 +246,9 @@ func init() {
 }
 
 func main() {
-	port, ok := os.LookupEnv("OVPN_MANAGE_PORT")
+	ovManage, ok := os.LookupEnv("OVPN_MANAGEMENT")
 	if !ok {
-		port = "7505"
+		ovManage = "127.0.0.1:7505"
 	}
 
 	webPort, ok := os.LookupEnv("WEB_PORT")
@@ -262,7 +262,7 @@ func main() {
 	}
 
 	ov := ovpn{
-		server: fmt.Sprintf(":%s", port),
+		address: ovManage,
 	}
 
 	var err error
@@ -384,6 +384,7 @@ func main() {
 						logger.Error(context.Background(), string(out))
 						c.JSON(http.StatusInternalServerError, gin.H{"message": fmt.Sprintf("%s用户认证失败", msg)})
 					} else {
+						ov.sendCommand("signal SIGHUP")
 						c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("%s用户认证成功", msg)})
 					}
 				}
@@ -398,6 +399,7 @@ func main() {
 					return
 				}
 
+				ov.sendCommand("signal SIGHUP")
 				c.JSON(http.StatusOK, gin.H{"message": "更新证书成功"})
 			default:
 				c.JSON(http.StatusUnprocessableEntity, gin.H{"message": "未知操作"})
