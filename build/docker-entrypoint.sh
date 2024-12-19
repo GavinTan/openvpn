@@ -268,7 +268,7 @@ genclient() {
     mkdir -p $OVPN_DATA/clients
     cat <<EOF > $OVPN_DATA/clients/$1.ovpn
 client
-proto $([[ "$OVPN_IPV6" == "true" ]] && [[ "$OVPN_PROTO" =~ 6 ]] && echo "$OVPN_PROTO" || echo "${OVPN_PROTO}6")
+proto $([[ "$OVPN_IPV6" == "true" ]] && [[ ! "$OVPN_PROTO" =~ 6 ]] && echo "${OVPN_PROTO}6" || echo $OVPN_PROTO)
 explicit-exit-notify
 remote ${2:-$([[ "$OVPN_IPV6" == "true" ]] && ip -6 route get 2001:4860:4860::8888 | awk {'print $7'} | tr -d '\n' || ip -4 route get 8.8.8.8 | awk {'print $7'} | tr -d '\n')} $OVPN_PORT
 dev tun
