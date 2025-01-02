@@ -51,7 +51,6 @@ data-ciphers AES-128-GCM
 tls-server
 tls-version-min 1.2
 tls-cipher TLS-ECDHE-ECDSA-WITH-AES-128-GCM-SHA256
-explicit-exit-notify 1
 auth-user-pass-verify /usr/lib/openvpn/plugins/openvpn-auth via-env
 client-disconnect "/usr/bin/docker-entrypoint.sh addhistory"
 script-security 3
@@ -60,6 +59,7 @@ duplicate-cn
 max-clients $OVPN_MAXCLIENTS
 management ${OVPN_MANAGEMENT/:/ }
 verb 2
+$([[ "$OVPN_PROTO" =~ "udp" ]]  && echo "explicit-exit-notify 1")
 setenv ovpn_data ${OVPN_DATA:-/data}
 setenv auth_api ${AUTH_API:-http://127.0.0.1/login}
 setenv ovpn_auth_api ${OVPN_AUTH_API:-http://127.0.0.1/ovpn/login}
@@ -219,6 +219,14 @@ update_config(){
         sed -i 's/^push "dhcp-option DNS 8.8.4.4"/#&/' $config
         sed -i 's/^push "redirect-gateway def1 ipv6 bypass-dhcp"/#&/' $config
     fi
+
+    if [[ "$OVPN_PROTO" =~ "tcp" ]]; then
+        sed -i "/^explicit-exit-notify/d" $config
+    fi
+
+    if [[ "$OVPN_PROTO" =~ "udp" ]]; then
+        grep -q "^explicit-exit-notify" $config || echo "explicit-exit-notify 1" >> $config
+    fi
 }
 
 renew_cert(){
@@ -269,7 +277,6 @@ genclient() {
     cat <<EOF > $OVPN_DATA/clients/$1.ovpn
 client
 proto $([[ "$OVPN_IPV6" == "true" ]] && [[ ! "$OVPN_PROTO" =~ 6 ]] && echo "${OVPN_PROTO}6" || echo $OVPN_PROTO)
-explicit-exit-notify
 remote ${2:-$([[ "$OVPN_IPV6" == "true" ]] && ip -6 route get 2001:4860:4860::8888 | awk {'print $7'} | tr -d '\n' || ip -4 route get 8.8.8.8 | awk {'print $7'} | tr -d '\n')} $OVPN_PORT
 dev tun
 resolv-retry infinite
@@ -286,6 +293,7 @@ tls-client
 tls-version-min 1.2
 tls-cipher TLS-ECDHE-ECDSA-WITH-AES-128-GCM-SHA256
 verb 3
+$([[ "$OVPN_PROTO" =~ "udp" ]] && echo "explicit-exit-notify")
 
 ## Custom configuration ##
 $(echo -e $3)
