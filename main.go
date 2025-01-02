@@ -276,7 +276,7 @@ func main() {
 
 	store := gormsessions.NewStore(db, true, []byte(secretKey))
 
-	db.AutoMigrate(&User{}, &History{})
+	db.AutoMigrate(&User{}, &History{}, &SysUser{})
 
 	r := gin.New()
 	r.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
@@ -316,13 +316,15 @@ func main() {
 	})
 
 	r.POST("/login", func(c *gin.Context) {
-		username := c.PostForm("username")
-		password := c.PostForm("password")
+		var u SysUser
+		c.ShouldBind(&u)
+
 		remember7d := c.PostForm("remember7d")
 
-		if username == os.Getenv("ADMIN_USERNAME") && password == os.Getenv("ADMIN_PASSWORD") {
+		err := u.Login()
+		if err == nil {
 			session := sessions.Default(c)
-			session.Set("user", username)
+			session.Set("user", u.Username)
 
 			if remember7d == "on" {
 				session.Options(sessions.Options{
@@ -355,8 +357,21 @@ func main() {
 
 	r.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.tmpl", gin.H{
-			"server": ov.getServer(),
+			"server":  ov.getServer(),
+			"sysUser": os.Getenv("ADMIN_USERNAME"),
 		})
+	})
+
+	r.POST("/user", func(c *gin.Context) {
+		var u SysUser
+		c.ShouldBind(&u)
+
+		err := u.Create()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		} else {
+			c.JSON(http.StatusOK, gin.H{"message": "添加用户成功"})
+		}
 	})
 
 	ovpn := r.Group("/ovpn")
