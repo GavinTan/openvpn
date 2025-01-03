@@ -366,7 +366,7 @@ case $1 in
         exit 0
     ;;
     "/usr/sbin/openvpn")
-        update_config
+        [[ "$ENV_UPDATE_CONFIG" == "true" ]] && update_config
         run_server
     ;;
     "/usr/bin/supervisord")
