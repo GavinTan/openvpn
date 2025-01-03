@@ -416,6 +416,15 @@ func main() {
 
 				ov.sendCommand("signal SIGHUP")
 				c.JSON(http.StatusOK, gin.H{"message": "更新证书成功"})
+			case "restartSrv":
+				_, err := ov.sendCommand("signal SIGHUP")
+				if err != nil {
+					logger.Error(context.Background(), err.Error())
+					c.JSON(http.StatusInternalServerError, gin.H{"message": "重启服务失败"})
+					return
+				}
+
+				c.JSON(http.StatusOK, gin.H{"message": "重启服务成功"})
 			default:
 				c.JSON(http.StatusUnprocessableEntity, gin.H{"message": "未知操作"})
 			}
