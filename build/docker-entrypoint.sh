@@ -55,7 +55,10 @@ auth-user-pass-verify /usr/lib/openvpn/plugins/openvpn-auth via-env
 client-disconnect "/usr/bin/docker-entrypoint.sh addhistory"
 script-security 3
 status $OVPN_DATA/openvpn-status.log
+client-config-dir $OVPN_DATA/ccd
+keepalive 10 60
 duplicate-cn
+client-to-client
 max-clients $OVPN_MAXCLIENTS
 management ${OVPN_MANAGEMENT/:/ }
 verb 2
@@ -330,6 +333,8 @@ add_history(){
 ################################################################################################
 
 if [ "$1" == "--init" ]; then
+    mkdir -p $OVPN_DATA/ccd
+
     init_pki
     init_config
     exit 0
@@ -344,6 +349,10 @@ case $1 in
         if [ -z $2 ]; then
             echo "请输入生成客户端名称！"
             exit 1
+        fi
+
+        if [ -n "$5" ]; then
+            echo -e "$5" > $OVPN_DATA/ccd/$2
         fi
 
         $(genclient $2 $3 "$4")
