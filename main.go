@@ -510,22 +510,62 @@ func main() {
 		})
 
 		ovpn.GET("/client", func(c *gin.Context) {
-			ccd := make([]ClientConfigData, 0)
+			a := c.Query("a")
 
-			files, _ := os.ReadDir("clients")
-			for _, file := range files {
-				finfo, _ := file.Info()
+			if a == "getConfig" {
+				f := c.Query("file")
 
-				f := ClientConfigData{
-					Name:     strings.TrimSuffix(file.Name(), filepath.Ext(file.Name())),
-					FullName: file.Name(),
-					File:     fmt.Sprintf("/ovpn/download/%s", file.Name()),
-					Date:     finfo.ModTime().Local().Format("2006-01-02 15:04:05"),
+				data, err := os.ReadFile(path.Join(ovData, f))
+				if err != nil {
+					if strings.Contains(f, "ccd") && os.IsNotExist(err) {
+						c.JSON(http.StatusOK, gin.H{"content": ""})
+					} else {
+						c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+					}
+					return
 				}
-				ccd = append(ccd, f)
+
+				c.JSON(http.StatusOK, gin.H{"content": string(data)})
+			} else {
+				ccd := make([]ClientConfigData, 0)
+
+				files, _ := os.ReadDir(path.Join(ovData, "clients"))
+				for _, file := range files {
+					finfo, _ := file.Info()
+
+					f := ClientConfigData{
+						Name:     strings.TrimSuffix(file.Name(), filepath.Ext(file.Name())),
+						FullName: file.Name(),
+						File:     fmt.Sprintf("/ovpn/download/%s", file.Name()),
+						Date:     finfo.ModTime().Local().Format("2006-01-02 15:04:05"),
+					}
+					ccd = append(ccd, f)
+				}
+
+				c.JSON(http.StatusOK, ccd)
+			}
+		})
+
+		ovpn.PUT("/client", func(c *gin.Context) {
+			f := c.Query("file")
+			content := c.PostForm("content")
+
+			file, err := os.OpenFile(path.Join(ovData, f), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+			if err != nil {
+				logger.Error(context.Background(), err.Error())
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return
+			}
+			defer file.Close()
+
+			_, err = file.WriteString(content)
+			if err != nil {
+				logger.Error(context.Background(), err.Error())
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return
 			}
 
-			c.JSON(http.StatusOK, ccd)
+			c.JSON(http.StatusOK, gin.H{"message": "客户端更新成功"})
 		})
 
 		ovpn.POST("/client", func(c *gin.Context) {

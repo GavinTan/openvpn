@@ -654,6 +654,31 @@
     </div>
   </div>
 
+  <div class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" id="editClientModal"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">编辑</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="form-group mb-3" hidden>
+          <label>客户端:</label>
+          <input type="text" class="form-control form-control-lg float-end w-75" name="name" disabled />
+        </div>
+        <textarea class="form-control form-control-lg border border-0" name="config" rows="16"></textarea>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            取消
+          </button>
+          <button type="submit" class="btn btn-primary" id="editClientSumbit">
+            确认
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <footer class="fixed-bottom border-top bg-light" style="font-size: 12px">
     {{ .server.Version }}
   </footer>
@@ -796,6 +821,10 @@
 
         get(url) {
           return this.request("GET", url);
+        }
+
+        put(url, data) {
+          return this.request("PUT", url, data);
         }
 
         post(url, data) {
@@ -1135,6 +1164,13 @@
                   const html = `
                   <div class="d-grid gap-2 d-flex justify-content-center align-items-center">
                   <a href="${data.file}" download="${data.fullName}" class="text-decoration-none">下载</a>
+                  <div class="dropdown">
+                    <button class="btn btn-link text-decoration-none p-0 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">编辑</button>
+                    <ul class="dropdown-menu">
+                      <li><a class="dropdown-item" href="#" id="editCCD">CCD配置</a></li>
+                      <li><a class="dropdown-item" href="#" id="editClient">客户端配置</a></li>
+                    </ul>
+                  </div>
                   <button class="btn btn-link text-decoration-none p-0" id="delClient">删除</button>
                   </div>
                   `;
@@ -1220,6 +1256,36 @@
         request.delete(`/ovpn/client/${name}`).then((data) => {
           message.success(data.message);
           ctable.ajax.reload(null, false);
+        });
+      });
+
+      $(document).on("click", "#editClient", function () {
+        const name = ctable.row($(this).parents("tr")).data().name;
+        $('#editClientModal input[name="name"]').val(`clients/${name}.ovpn`);
+
+        request.get(`/ovpn/client?a=getConfig&file=clients/${name}.ovpn`).then((data) => {
+          $('#editClientModal textarea[name="config"]').val(data.content);
+          $("#editClientModal").modal("show");
+        });
+      });
+
+      $(document).on("click", "#editCCD", function () {
+        const name = ctable.row($(this).parents("tr")).data().name;
+        $('#editClientModal input[name="name"]').val(`ccd/${name}`);
+
+        request.get(`/ovpn/client?a=getConfig&file=ccd/${name}`).then((data) => {
+          $('#editClientModal textarea[name="config"]').val(data.content);
+          $("#editClientModal").modal("show");
+        });
+      });
+
+      $("#editClientSumbit").click(function () {
+        const name = $('#editClientModal input[name="name"]').val();
+        const content = $('#editClientModal textarea[name="config"]').val();
+
+        $("#editClientModal").modal("hide");
+        request.put(`/ovpn/client?file=${name}`, { content }).then((data) => {
+          message.success(data.message);
         });
       });
 
