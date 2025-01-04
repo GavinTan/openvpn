@@ -246,6 +246,11 @@ func init() {
 }
 
 func main() {
+	ovData, ok := os.LookupEnv("OVPN_DATA")
+	if !ok {
+		ovData = "/data"
+	}
+
 	ovManage, ok := os.LookupEnv("OVPN_MANAGEMENT")
 	if !ok {
 		ovManage = "127.0.0.1:7505"
@@ -527,10 +532,11 @@ func main() {
 			name := c.PostForm("name")
 			serverAddr := c.PostForm("serverAddr")
 			config := c.PostForm("config")
+			ccdConfig := c.PostForm("ccdConfig")
 
-			_, err := os.Stat(path.Join("clients", fmt.Sprintf("%s.ovpn", name)))
+			_, err := os.Stat(path.Join(ovData, "clients", fmt.Sprintf("%s.ovpn", name)))
 			if err != nil {
-				cmd := exec.Command("sh", "-c", fmt.Sprintf("/usr/bin/docker-entrypoint.sh genclient %s %s %#v", name, serverAddr, config))
+				cmd := exec.Command("sh", "-c", fmt.Sprintf("/usr/bin/docker-entrypoint.sh genclient %s %s %#v %#v", name, serverAddr, config, ccdConfig))
 				if out, err := cmd.CombinedOutput(); err != nil {
 					if out == nil {
 						out = []byte(err.Error())
@@ -560,7 +566,9 @@ func main() {
 				return
 			}
 
-			os.Remove(path.Join("/data/clients", fmt.Sprintf("%s.ovpn", name)))
+			os.Remove(path.Join(ovData, "/clients", fmt.Sprintf("%s.ovpn", name)))
+			os.Remove(path.Join(ovData, "/ccd", name))
+
 			c.JSON(http.StatusOK, gin.H{"message": "删除客户端成功"})
 		})
 

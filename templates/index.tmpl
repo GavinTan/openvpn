@@ -503,6 +503,13 @@
                 <input type="text" class="form-control form-control-sm" name="serverAddr" placeholder="VPN服务器外网IP或域名" />
               </div>
             </div>
+            <div class="row mb-2">
+              <label class="col-sm-3 col-form-label">CCD配置:</label>
+              <div class="col-sm-9">
+                <textarea class="form-control form-control-sm" name="ccdConfig" rows="6"
+                  placeholder="ifconfig-push 10.8.0.111 255.255.255.0"></textarea>
+              </div>
+            </div>
             <div class="row">
               <label class="col-sm-3 col-form-label">自定义配置:</label>
               <div class="col-sm-9">
@@ -570,7 +577,7 @@
       <div class="modal-content">
         <form>
           <div class="modal-header">
-            <h5 class="modal-title">更新证书</h5>
+            <h5 class="modal-title">提示</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body" style="text-align: center">
@@ -1184,9 +1191,10 @@
           $('#addClientModal input[name="serverAddr"]').val() ||
           location.hostname;
         const config = $('#addClientModal textarea[name="config"]').val();
+        const ccdConfig = $('#addClientModal textarea[name="ccdConfig"]').val();
 
         request
-          .post("/ovpn/client", { name, serverAddr, config })
+          .post("/ovpn/client", { name, serverAddr, config, ccdConfig })
           .then((data) => {
             ctable.ajax.reload(null, false);
             $("#addClientModal form").trigger("reset");
