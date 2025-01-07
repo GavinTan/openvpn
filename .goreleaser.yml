@@ -24,3 +24,5 @@ archives:
 checksum:
   name_template: "{{ .ProjectName }}_sha256_checksums.txt"
   algorithm: sha256
+upx:
+  - enabled: true
