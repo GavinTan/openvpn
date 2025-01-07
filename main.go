@@ -64,8 +64,15 @@ func main() {
 	}
 	cookie := lresp.Header.Get("Set-Cookie")
 
-	client := &http.Client{}
-	req, err := http.NewRequest("POST", os.Getenv("ovpn_auth_api"), strings.NewReader(fmt.Sprintf("username=%s&password=%s", username, password)))
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	b := url.Values{}
+	b.Add("username", username)
+	b.Add("password", password)
+
+	req, err := http.NewRequest("POST", os.Getenv("ovpn_auth_api"), strings.NewReader(b.Encode()))
 	if err != nil {
 		log.Println(err)
 		os.Exit(1)
