@@ -1,719 +1,1067 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OpenVPN-WEB</title>
-  <link rel="icon" href="static/cropped-openvpn-32x32.png" sizes="32x32" />
-  <link rel="icon" href="static/cropped-openvpn-192x192.png" sizes="192x192" />
-  <link rel="apple-touch-icon" href="static/cropped-openvpn-180x180.png" />
-  <link rel="stylesheet" type="text/css" href="static/css/bootstrap.min.css" />
-  <link rel="stylesheet" type="text/css" href="static/css/dataTables.bootstrap5.min.css" />
-  <link rel="stylesheet" type="text/css" href="static/css/buttons.bootstrap5.min.css" />
-  <link rel="stylesheet" type="text/css" href="static/css/datepicker-bs5.min.css" />
-  <style>
-    .dropdown-menu {
-      --bs-dropdown-min-width: 8rem;
-    }
-
-    .dataTables_info {
-      padding-top: 0 !important;
-    }
-
-    button.nav-link {
-      color: rgba(255, 255, 255, 0.85) !important;
-    }
-
-    button.nav-link:hover,
-    button.nav-link:focus,
-    button.nav-link:active {
-      color: #fff !important;
-    }
-
-    .bi {
-      display: inline-block;
-      vertical-align: -0.125em;
-      fill: currentcolor;
-    }
-
-    th.dt-center,
-    td.dt-center {
-      padding-right: 26px;
-    }
-
-    .message {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      color: rgba(0, 0, 0, 0.85);
-      font-size: 14px;
-      font-variant: tabular-nums;
-      line-height: 1.5715;
-      list-style: none;
-      font-feature-settings: "tnum", "tnum";
-      position: fixed;
-      top: 8px;
-      left: 0;
-      z-index: 1010;
-      width: 100%;
-      pointer-events: none;
-    }
-
-    .message svg {
-      vertical-align: baseline;
-    }
-
-    .message .move-up-enter {
-      -webkit-animation-duration: 0.2s;
-      animation-duration: 0.2s;
-      -webkit-animation-fill-mode: both;
-      animation-fill-mode: both;
-      -webkit-animation-play-state: paused;
-      animation-play-state: paused;
-      opacity: 0;
-      -webkit-animation-timing-function: cubic-bezier(0.08, 0.82, 0.17, 1);
-      animation-timing-function: cubic-bezier(0.08, 0.82, 0.17, 1);
-      -webkit-animation-name: antMoveUpIn;
-      animation-name: antMoveUpIn;
-      -webkit-animation-play-state: running;
-      animation-play-state: running;
-    }
-
-    @-webkit-keyframes antMoveUpIn {
-      0% {
-        -webkit-transform: translateY(-100%);
-        transform: translateY(-100%);
-        -webkit-transform-origin: 0 0;
-        transform-origin: 0 0;
-        opacity: 0;
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OpenVPN-WEB</title>
+    <link rel="icon" href="static/cropped-openvpn-32x32.png" sizes="32x32" />
+    <link
+      rel="icon"
+      href="static/cropped-openvpn-192x192.png"
+      sizes="192x192"
+    />
+    <link rel="apple-touch-icon" href="static/cropped-openvpn-180x180.png" />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="static/css/bootstrap.min.css"
+    />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="static/css/dataTables.bootstrap5.min.css"
+    />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="static/css/buttons.bootstrap5.min.css"
+    />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="static/css/datepicker-bs5.min.css"
+    />
+    <style>
+      .dropdown-menu {
+        --bs-dropdown-min-width: 8rem;
       }
 
-      100% {
-        -webkit-transform: translateY(0%);
-        transform: translateY(0%);
-        -webkit-transform-origin: 0 0;
-        transform-origin: 0 0;
-        opacity: 1;
-      }
-    }
-
-    @keyframes antMoveUpIn {
-      0% {
-        -webkit-transform: translateY(-100%);
-        transform: translateY(-100%);
-        -webkit-transform-origin: 0 0;
-        transform-origin: 0 0;
-        opacity: 0;
+      td .dropdown-menu {
+        --bs-dropdown-min-width: 6rem;
       }
 
-      100% {
-        -webkit-transform: translateY(0%);
-        transform: translateY(0%);
-        -webkit-transform-origin: 0 0;
-        transform-origin: 0 0;
-        opacity: 1;
-      }
-    }
-
-    .message .move-up-leave {
-      -webkit-animation-fill-mode: both;
-      animation-fill-mode: both;
-      -webkit-animation-play-state: paused;
-      animation-play-state: paused;
-      -webkit-animation-timing-function: cubic-bezier(0.6, 0.04, 0.98, 0.34);
-      animation-timing-function: cubic-bezier(0.6, 0.04, 0.98, 0.34);
-      -webkit-animation-play-state: running;
-      animation-play-state: running;
-      pointer-events: none;
-      -webkit-animation-name: MessageMoveOut;
-      animation-name: MessageMoveOut;
-      -webkit-animation-duration: 0.3s;
-      animation-duration: 0.3s;
-    }
-
-    @-webkit-keyframes MessageMoveOut {
-      0% {
-        max-height: 150px;
-        padding: 8px;
-        opacity: 1;
+      .dataTables_info {
+        padding-top: 0 !important;
       }
 
-      100% {
-        max-height: 0;
+      button.nav-link {
+        color: rgba(255, 255, 255, 0.85) !important;
+      }
+
+      button.nav-link:hover,
+      button.nav-link:focus,
+      button.nav-link:active {
+        color: #fff !important;
+      }
+
+      .bi {
+        display: inline-block;
+        vertical-align: -0.125em;
+        fill: currentcolor;
+      }
+
+      th.dt-center,
+      td.dt-center {
+        padding-right: 26px;
+      }
+
+      .message {
+        box-sizing: border-box;
+        margin: 0;
         padding: 0;
-        opacity: 0;
+        color: rgba(0, 0, 0, 0.85);
+        font-size: 14px;
+        font-variant: tabular-nums;
+        line-height: 1.5715;
+        list-style: none;
+        font-feature-settings: "tnum", "tnum";
+        position: fixed;
+        top: 8px;
+        left: 0;
+        z-index: 1010;
+        width: 100%;
+        pointer-events: none;
       }
-    }
 
-    @keyframes MessageMoveOut {
-      0% {
-        max-height: 150px;
+      .message svg {
+        vertical-align: baseline;
+      }
+
+      .message .move-up-enter {
+        -webkit-animation-duration: 0.2s;
+        animation-duration: 0.2s;
+        -webkit-animation-fill-mode: both;
+        animation-fill-mode: both;
+        -webkit-animation-play-state: paused;
+        animation-play-state: paused;
+        opacity: 0;
+        -webkit-animation-timing-function: cubic-bezier(0.08, 0.82, 0.17, 1);
+        animation-timing-function: cubic-bezier(0.08, 0.82, 0.17, 1);
+        -webkit-animation-name: antMoveUpIn;
+        animation-name: antMoveUpIn;
+        -webkit-animation-play-state: running;
+        animation-play-state: running;
+      }
+
+      @-webkit-keyframes antMoveUpIn {
+        0% {
+          -webkit-transform: translateY(-100%);
+          transform: translateY(-100%);
+          -webkit-transform-origin: 0 0;
+          transform-origin: 0 0;
+          opacity: 0;
+        }
+
+        100% {
+          -webkit-transform: translateY(0%);
+          transform: translateY(0%);
+          -webkit-transform-origin: 0 0;
+          transform-origin: 0 0;
+          opacity: 1;
+        }
+      }
+
+      @keyframes antMoveUpIn {
+        0% {
+          -webkit-transform: translateY(-100%);
+          transform: translateY(-100%);
+          -webkit-transform-origin: 0 0;
+          transform-origin: 0 0;
+          opacity: 0;
+        }
+
+        100% {
+          -webkit-transform: translateY(0%);
+          transform: translateY(0%);
+          -webkit-transform-origin: 0 0;
+          transform-origin: 0 0;
+          opacity: 1;
+        }
+      }
+
+      .message .move-up-leave {
+        -webkit-animation-fill-mode: both;
+        animation-fill-mode: both;
+        -webkit-animation-play-state: paused;
+        animation-play-state: paused;
+        -webkit-animation-timing-function: cubic-bezier(0.6, 0.04, 0.98, 0.34);
+        animation-timing-function: cubic-bezier(0.6, 0.04, 0.98, 0.34);
+        -webkit-animation-play-state: running;
+        animation-play-state: running;
+        pointer-events: none;
+        -webkit-animation-name: MessageMoveOut;
+        animation-name: MessageMoveOut;
+        -webkit-animation-duration: 0.3s;
+        animation-duration: 0.3s;
+      }
+
+      @-webkit-keyframes MessageMoveOut {
+        0% {
+          max-height: 150px;
+          padding: 8px;
+          opacity: 1;
+        }
+
+        100% {
+          max-height: 0;
+          padding: 0;
+          opacity: 0;
+        }
+      }
+
+      @keyframes MessageMoveOut {
+        0% {
+          max-height: 150px;
+          padding: 8px;
+          opacity: 1;
+        }
+
+        100% {
+          max-height: 0;
+          padding: 0;
+          opacity: 0;
+        }
+      }
+
+      .message .message-notice {
         padding: 8px;
-        opacity: 1;
+        text-align: center;
       }
 
-      100% {
-        max-height: 0;
-        padding: 0;
-        opacity: 0;
+      .message .message-notice:first-child {
+        margin-top: -8px;
       }
-    }
 
-    .message .message-notice {
-      padding: 8px;
-      text-align: center;
-    }
+      .message .message-content {
+        display: inline-block;
+        padding: 10px 16px;
+        background: #fff;
+        border-radius: 2px;
+        box-shadow: 0 3px 6px -4px rgb(0 0 0 / 12%),
+          0 6px 16px 0 rgb(0 0 0 / 8%), 0 9px 28px 8px rgb(0 0 0 / 5%);
+        pointer-events: all;
+      }
 
-    .message .message-notice:first-child {
-      margin-top: -8px;
-    }
+      .message-anticon {
+        display: inline-block;
+        color: inherit;
+        font-style: normal;
+        line-height: 0;
+        text-align: center;
+        text-transform: none;
+        vertical-align: -0.125em;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
 
-    .message .message-content {
-      display: inline-block;
-      padding: 10px 16px;
-      background: #fff;
-      border-radius: 2px;
-      box-shadow: 0 3px 6px -4px rgb(0 0 0 / 12%),
-        0 6px 16px 0 rgb(0 0 0 / 8%), 0 9px 28px 8px rgb(0 0 0 / 5%);
-      pointer-events: all;
-    }
+      .message .message-anticon {
+        position: relative;
+        top: 1px;
+        margin-right: 8px;
+        font-size: 16px;
+      }
 
-    .message-anticon {
-      display: inline-block;
-      color: inherit;
-      font-style: normal;
-      line-height: 0;
-      text-align: center;
-      text-transform: none;
-      vertical-align: -0.125em;
-      text-rendering: optimizeLegibility;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
+      .message .message-success .message-anticon {
+        color: #52c41a;
+      }
 
-    .message .message-anticon {
-      position: relative;
-      top: 1px;
-      margin-right: 8px;
-      font-size: 16px;
-    }
+      .message .message-info .message-anticon {
+        color: #1890ff;
+      }
 
-    .message .message-success .message-anticon {
-      color: #52c41a;
-    }
+      .message .message-warning .message-anticon {
+        color: #faad14;
+      }
 
-    .message .message-info .message-anticon {
-      color: #1890ff;
-    }
+      .message .message-error .message-anticon {
+        color: #ff4d4f;
+      }
+    </style>
+  </head>
 
-    .message .message-warning .message-anticon {
-      color: #faad14;
-    }
+  <body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="/">OpenVPN</a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="offcanvas"
+          data-bs-target="#offcanvasNavbar"
+          aria-controls="offcanvasNavbar"
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div
+          class="offcanvas-lg offcanvas-end flex-grow-1 bg-primary"
+          tabindex="-1"
+          id="offcanvasNavbar"
+          aria-labelledby="offcanvasNavbarLabel"
+        >
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title text-white" id="offcanvasNavbarLabel">
+              OpenVPN
+            </h5>
+            <button
+              type="button"
+              class="btn-close btn-close-white"
+              data-bs-dismiss="offcanvas"
+              data-bs-target="#offcanvasNavbar"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="offcanvas-body">
+            <ul class="navbar-nav flex-row flex-wrap ms-md-auto">
+              <li class="nav-item dropdown">
+                <button
+                  type="button"
+                  class="btn btn-link nav-link dropdown-toggle"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                  data-bs-display="static"
+                >
+                  管理
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li>
+                    <span class="dropdown-item" role="button" id="showUser">
+                      <svg
+                        width="1em"
+                        height="1em"
+                        fill="currentColor"
+                        class="bi"
+                        viewBox="0 0 16 16"
+                      >
+                        <path
+                          d="M6 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-5 6s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H1zM11 3.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5zm.5 2.5a.5.5 0 0 0 0 1h4a.5.5 0 0 0 0-1h-4zm2 3a.5.5 0 0 0 0 1h2a.5.5 0 0 0 0-1h-2zm0 3a.5.5 0 0 0 0 1h2a.5.5 0 0 0 0-1h-2z"
+                        />
+                      </svg>
+                      VPN账号
+                    </span>
+                  </li>
+                  <li>
+                    <span class="dropdown-item" role="button" id="showClient">
+                      <svg
+                        width="1em"
+                        height="1em"
+                        fill="currentColor"
+                        class="bi"
+                        viewBox="0 0 16 16"
+                      >
+                        <path
+                          d="M2.5 13.5A.5.5 0 0 1 3 13h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zM2 2h12s2 0 2 2v6s0 2-2 2H2s-2 0-2-2V4s0-2 2-2z"
+                        />
+                      </svg>
+                      客户端
+                    </span>
+                  </li>
+                  <li>
+                    <hr class="dropdown-divider" />
+                  </li>
+                  <li>
+                    <span class="dropdown-item" role="button" id="showHistory">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        fill="currentColor"
+                        class="bi bi-clock-history"
+                        viewBox="0 0 16 16"
+                      >
+                        <path
+                          d="M8.515 1.019A7 7 0 0 0 8 1V0a8 8 0 0 1 .589.022zm2.004.45a7 7 0 0 0-.985-.299l.219-.976q.576.129 1.126.342zm1.37.71a7 7 0 0 0-.439-.27l.493-.87a8 8 0 0 1 .979.654l-.615.789a7 7 0 0 0-.418-.302zm1.834 1.79a7 7 0 0 0-.653-.796l.724-.69q.406.429.747.91zm.744 1.352a7 7 0 0 0-.214-.468l.893-.45a8 8 0 0 1 .45 1.088l-.95.313a7 7 0 0 0-.179-.483m.53 2.507a7 7 0 0 0-.1-1.025l.985-.17q.1.58.116 1.17zm-.131 1.538q.05-.254.081-.51l.993.123a8 8 0 0 1-.23 1.155l-.964-.267q.069-.247.12-.501m-.952 2.379q.276-.436.486-.908l.914.405q-.24.54-.555 1.038zm-.964 1.205q.183-.183.35-.378l.758.653a8 8 0 0 1-.401.432z"
+                        />
+                        <path
+                          d="M8 1a7 7 0 1 0 4.95 11.95l.707.707A8.001 8.001 0 1 1 8 0z"
+                        />
+                        <path
+                          d="M7.5 3a.5.5 0 0 1 .5.5v5.21l3.248 1.856a.5.5 0 0 1-.496.868l-3.5-2A.5.5 0 0 1 7 9V3.5a.5.5 0 0 1 .5-.5"
+                        />
+                      </svg>
+                      历史记录
+                    </span>
+                  </li>
+                  <li>
+                    <hr class="dropdown-divider" />
+                  </li>
+                  <li>
+                    <h6 class="dropdown-header">openvpn</h6>
+                  </li>
+                  <li>
+                    <span class="dropdown-item" role="button" id="restartSrv">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="1em"
+                        height="1em"
+                        fill="currentColor"
+                        class="bi bi-gear-wide"
+                        viewBox="0 0 16 16"
+                      >
+                        <path
+                          d="M8.932.727c-.243-.97-1.62-.97-1.864 0l-.071.286a.96.96 0 0 1-1.622.434l-.205-.211c-.695-.719-1.888-.03-1.613.931l.08.284a.96.96 0 0 1-1.186 1.187l-.284-.081c-.96-.275-1.65.918-.931 1.613l.211.205a.96.96 0 0 1-.434 1.622l-.286.071c-.97.243-.97 1.62 0 1.864l.286.071a.96.96 0 0 1 .434 1.622l-.211.205c-.719.695-.03 1.888.931 1.613l.284-.08a.96.96 0 0 1 1.187 1.187l-.081.283c-.275.96.918 1.65 1.613.931l.205-.211a.96.96 0 0 1 1.622.434l.071.286c.243.97 1.62.97 1.864 0l.071-.286a.96.96 0 0 1 1.622-.434l.205.211c.695.719 1.888.03 1.613-.931l-.08-.284a.96.96 0 0 1 1.187-1.187l.283.081c.96.275 1.65-.918.931-1.613l-.211-.205a.96.96 0 0 1 .434-1.622l.286-.071c.97-.243.97-1.62 0-1.864l-.286-.071a.96.96 0 0 1-.434-1.622l.211-.205c.719-.695.03-1.888-.931-1.613l-.284.08a.96.96 0 0 1-1.187-1.186l.081-.284c.275-.96-.918-1.65-1.613-.931l-.205.211a.96.96 0 0 1-1.622-.434zM8 12.997a4.998 4.998 0 1 1 0-9.995 4.998 4.998 0 0 1 0 9.996z"
+                        />
+                      </svg>
+                      重启服务
+                    </span>
+                  </li>
+                  <li>
+                    <span class="dropdown-item" role="button" id="renewcert">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="1em"
+                        height="1em"
+                        fill="currentColor"
+                        class="bi bi-opencollective"
+                        viewBox="0 0 16 16"
+                      >
+                        <path
+                          fill-opacity=".4"
+                          d="M12.995 8.195c0 .937-.312 1.912-.78 2.693l1.99 1.99c.976-1.327 1.6-2.966 1.6-4.683 0-1.795-.624-3.434-1.561-4.76l-2.068 2.028c.468.781.78 1.679.78 2.732z"
+                        />
+                        <path
+                          d="M8 13.151a4.995 4.995 0 1 1 0-9.99c1.015 0 1.951.273 2.732.82l1.95-2.03a7.805 7.805 0 1 0 .04 12.449l-1.951-2.03a5.07 5.07 0 0 1-2.732.781z"
+                        />
+                      </svg>
+                      更新证书
+                    </span>
+                  </li>
+                </ul>
+              </li>
+              <li class="nav-item py-2 py-lg-1 col-12 col-lg-auto">
+                <div class="vr d-none d-lg-flex h-100 mx-lg-2 text-white"></div>
+                <hr class="d-lg-none my-2 text-white-50" />
+              </li>
+              <li class="nav-item dropdown">
+                <button
+                  type="button"
+                  class="btn btn-link nav-link"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                  data-bs-display="static"
+                >
+                  <span class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      fill="currentColor"
+                      class="bi bi-person-circle"
+                      viewBox="0 0 16 16"
+                    >
+                      <path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0" />
+                      <path
+                        fill-rule="evenodd"
+                        d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1"
+                      />
+                    </svg>
+                    {{ .sysUser }}
+                  </span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li>
+                    <a class="dropdown-item" role="button" id="modifyPass">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="1em"
+                        height="1em"
+                        fill="currentColor"
+                        class="bi bi-person-lock"
+                        viewBox="0 0 16 16"
+                      >
+                        <path
+                          d="M11 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0M8 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4m0 5.996V14H3s-1 0-1-1 1-4 6-4q.845.002 1.544.107a4.5 4.5 0 0 0-.803.918A11 11 0 0 0 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664zM9 13a1 1 0 0 1 1-1v-1a2 2 0 1 1 4 0v1a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1zm3-3a1 1 0 0 0-1 1v1h2v-1a1 1 0 0 0-1-1"
+                        />
+                      </svg>
+                      修改密码
+                    </a>
+                  </li>
+                  <li>
+                    <hr class="dropdown-divider" />
+                  </li>
+                  <li>
+                    <a
+                      class="dropdown-item"
+                      role="button"
+                      id="logout"
+                      href="/logout"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="1em"
+                        height="1em"
+                        fill="currentColor"
+                        class="bi bi-box-arrow-right"
+                        viewBox="0 0 16 16"
+                      >
+                        <path
+                          fill-rule="evenodd"
+                          d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0z"
+                        />
+                        <path
+                          fill-rule="evenodd"
+                          d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708z"
+                        />
+                      </svg>
+                      退出系统
+                    </a>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </nav>
 
-    .message .message-error .message-anticon {
-      color: #ff4d4f;
-    }
-  </style>
-</head>
-
-<body class="bg-light">
-  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
     <div class="container-fluid">
-      <a class="navbar-brand" href="/">OpenVPN</a>
+      <div id="status">
+        <div class="my-3 p-3 bg-body rounded shadow-sm">
+          <table class="table table-borderless m-0 text-center">
+            <thead class="border-bottom border-2">
+              <tr>
+                <th scope="col">VPN Server</th>
+                <th scope="col">状态</th>
+                <th scope="col">下载总流量</th>
+                <th scope="col">上传总流量</th>
+                <th scope="col">启动时间</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>{{ .server.Address }}</td>
+                <td>{{ .server.Status }}</td>
+                <td>{{ .server.BytesIn }}</td>
+                <td>{{ .server.BytesOut }}</td>
+                <td>{{ .server.RunDate }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-      <ul class="navbar-nav flex-row flex-wrap ms-md-auto">
-        <li class="nav-item dropdown">
-          <button type="button" class="btn btn-link nav-link dropdown-toggle" data-bs-toggle="dropdown"
-            aria-expanded="false" data-bs-display="static">
-            管理
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end">
-            <li>
-              <span class="dropdown-item" role="button" id="showUser">
-                <svg width="1em" height="1em" fill="currentColor" class="bi" viewBox="0 0 16 16">
-                  <path
-                    d="M6 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-5 6s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H1zM11 3.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5zm.5 2.5a.5.5 0 0 0 0 1h4a.5.5 0 0 0 0-1h-4zm2 3a.5.5 0 0 0 0 1h2a.5.5 0 0 0 0-1h-2zm0 3a.5.5 0 0 0 0 1h2a.5.5 0 0 0 0-1h-2z" />
-                </svg>
-                VPN账号
-              </span>
-            </li>
-            <li>
-              <span class="dropdown-item" role="button" id="showClient">
-                <svg width="1em" height="1em" fill="currentColor" class="bi" viewBox="0 0 16 16">
-                  <path
-                    d="M2.5 13.5A.5.5 0 0 1 3 13h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zM2 2h12s2 0 2 2v6s0 2-2 2H2s-2 0-2-2V4s0-2 2-2z" />
-                </svg>
-                客户端
-              </span>
-            </li>
-            <li>
-              <hr class="dropdown-divider" />
-            </li>
-            <li>
-              <span class="dropdown-item" role="button" id="showHistory">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                  class="bi bi-clock-history" viewBox="0 0 16 16">
-                  <path
-                    d="M8.515 1.019A7 7 0 0 0 8 1V0a8 8 0 0 1 .589.022zm2.004.45a7 7 0 0 0-.985-.299l.219-.976q.576.129 1.126.342zm1.37.71a7 7 0 0 0-.439-.27l.493-.87a8 8 0 0 1 .979.654l-.615.789a7 7 0 0 0-.418-.302zm1.834 1.79a7 7 0 0 0-.653-.796l.724-.69q.406.429.747.91zm.744 1.352a7 7 0 0 0-.214-.468l.893-.45a8 8 0 0 1 .45 1.088l-.95.313a7 7 0 0 0-.179-.483m.53 2.507a7 7 0 0 0-.1-1.025l.985-.17q.1.58.116 1.17zm-.131 1.538q.05-.254.081-.51l.993.123a8 8 0 0 1-.23 1.155l-.964-.267q.069-.247.12-.501m-.952 2.379q.276-.436.486-.908l.914.405q-.24.54-.555 1.038zm-.964 1.205q.183-.183.35-.378l.758.653a8 8 0 0 1-.401.432z" />
-                  <path d="M8 1a7 7 0 1 0 4.95 11.95l.707.707A8.001 8.001 0 1 1 8 0z" />
-                  <path
-                    d="M7.5 3a.5.5 0 0 1 .5.5v5.21l3.248 1.856a.5.5 0 0 1-.496.868l-3.5-2A.5.5 0 0 1 7 9V3.5a.5.5 0 0 1 .5-.5" />
-                </svg>
-                历史记录
-              </span>
-            </li>
-            <li>
-              <hr class="dropdown-divider" />
-            </li>
-            <li>
-              <h6 class="dropdown-header">openvpn</h6>
-            </li>
-            <li>
-              <span class="dropdown-item" role="button" id="restartSrv">
-                <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor"
-                  class="bi bi-gear-wide" viewBox="0 0 16 16">
-                  <path
-                    d="M8.932.727c-.243-.97-1.62-.97-1.864 0l-.071.286a.96.96 0 0 1-1.622.434l-.205-.211c-.695-.719-1.888-.03-1.613.931l.08.284a.96.96 0 0 1-1.186 1.187l-.284-.081c-.96-.275-1.65.918-.931 1.613l.211.205a.96.96 0 0 1-.434 1.622l-.286.071c-.97.243-.97 1.62 0 1.864l.286.071a.96.96 0 0 1 .434 1.622l-.211.205c-.719.695-.03 1.888.931 1.613l.284-.08a.96.96 0 0 1 1.187 1.187l-.081.283c-.275.96.918 1.65 1.613.931l.205-.211a.96.96 0 0 1 1.622.434l.071.286c.243.97 1.62.97 1.864 0l.071-.286a.96.96 0 0 1 1.622-.434l.205.211c.695.719 1.888.03 1.613-.931l-.08-.284a.96.96 0 0 1 1.187-1.187l.283.081c.96.275 1.65-.918.931-1.613l-.211-.205a.96.96 0 0 1 .434-1.622l.286-.071c.97-.243.97-1.62 0-1.864l-.286-.071a.96.96 0 0 1-.434-1.622l.211-.205c.719-.695.03-1.888-.931-1.613l-.284.08a.96.96 0 0 1-1.187-1.186l.081-.284c.275-.96-.918-1.65-1.613-.931l-.205.211a.96.96 0 0 1-1.622-.434zM8 12.997a4.998 4.998 0 1 1 0-9.995 4.998 4.998 0 0 1 0 9.996z" />
-                </svg>
-                重启服务
-              </span>
-            </li>
-            <li>
-              <span class="dropdown-item" role="button" id="renewcert">
-                <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor"
-                  class="bi bi-opencollective" viewBox="0 0 16 16">
-                  <path fill-opacity=".4"
-                    d="M12.995 8.195c0 .937-.312 1.912-.78 2.693l1.99 1.99c.976-1.327 1.6-2.966 1.6-4.683 0-1.795-.624-3.434-1.561-4.76l-2.068 2.028c.468.781.78 1.679.78 2.732z" />
-                  <path
-                    d="M8 13.151a4.995 4.995 0 1 1 0-9.99c1.015 0 1.951.273 2.732.82l1.95-2.03a7.805 7.805 0 1 0 .04 12.449l-1.951-2.03a5.07 5.07 0 0 1-2.732.781z" />
-                </svg>
-                更新证书
-              </span>
-            </li>
-          </ul>
-        </li>
-        <li class="nav-item py-2 py-lg-1 col-12 col-lg-auto">
-          <div class="vr d-none d-lg-flex h-100 mx-lg-2 text-white"></div>
-          <hr class="d-lg-none my-2 text-white-50" />
-        </li>
-        <li class="nav-item dropdown">
-          <button type="button" class="btn btn-link nav-link" data-bs-toggle="dropdown" aria-expanded="false"
-            data-bs-display="static">
-            <span class="d-grid gap-2 d-md-flex justify-content-md-end">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
-                class="bi bi-person-circle" viewBox="0 0 16 16">
-                <path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0" />
-                <path fill-rule="evenodd"
-                  d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1" />
-              </svg>
-              {{ .sysUser }}
-            </span>
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end">
-            <li>
-              <a class="dropdown-item" role="button" id="modifyPass">
-                <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor"
-                  class="bi bi-person-lock" viewBox="0 0 16 16">
-                  <path
-                    d="M11 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0M8 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4m0 5.996V14H3s-1 0-1-1 1-4 6-4q.845.002 1.544.107a4.5 4.5 0 0 0-.803.918A11 11 0 0 0 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664zM9 13a1 1 0 0 1 1-1v-1a2 2 0 1 1 4 0v1a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1zm3-3a1 1 0 0 0-1 1v1h2v-1a1 1 0 0 0-1-1" />
-                </svg>
-                修改密码
-              </a>
-            </li>
-            <li>
-              <hr class="dropdown-divider" />
-            </li>
-            <li>
-              <a class="dropdown-item" role="button" id="logout" href="/logout">
-                <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor"
-                  class="bi bi-box-arrow-right" viewBox="0 0 16 16">
-                  <path fill-rule="evenodd"
-                    d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0z" />
-                  <path fill-rule="evenodd"
-                    d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708z" />
-                </svg>
-                退出系统
-              </a>
-            </li>
-          </ul>
-        </li>
-      </ul>
-    </div>
-  </nav>
-
-  <div class="container-fluid">
-    <div id="status">
-      <div class="my-3 p-3 bg-body rounded shadow-sm">
-        <table class="table table-borderless m-0 text-center">
-          <thead class="border-bottom border-2">
-            <tr>
-              <th scope="col">VPN Server</th>
-              <th scope="col">状态</th>
-              <th scope="col">下载总流量</th>
-              <th scope="col">上传总流量</th>
-              <th scope="col">启动时间</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>{{ .server.Address }}</td>
-              <td>{{ .server.Status }}</td>
-              <td>{{ .server.BytesIn }}</td>
-              <td>{{ .server.BytesOut }}</td>
-              <td>{{ .server.RunDate }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="my-5 p-3 bg-body rounded shadow-sm">
+          <table id="vtable" class="table table-striped" style="width: 100%">
+            <thead>
+              <tr>
+                <th scope="col">用户名/客户端</th>
+                <th scope="col">VPN IP</th>
+                <th scope="col">用户 IP</th>
+                <th scope="col">下载流量</th>
+                <th scope="col">上传流量</th>
+                <th scope="col">上线时间</th>
+                <th scope="col">时长</th>
+                <th scope="col">操作</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
 
-      <div class="my-5 p-3 bg-body rounded shadow-sm">
-        <table id="vtable" class="table table-striped" style="width: 100%">
-          <thead>
-            <tr>
-              <th scope="col">用户名/客户端</th>
-              <th scope="col">VPN IP</th>
-              <th scope="col">用户 IP</th>
-              <th scope="col">下载流量</th>
-              <th scope="col">上传流量</th>
-              <th scope="col">上线时间</th>
-              <th scope="col">时长</th>
-              <th scope="col">操作</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+      <div id="user" class="d-none">
+        <div class="my-3 p-3 bg-body rounded shadow-sm">
+          <table id="utable" class="table table-striped" style="width: 100%">
+            <thead>
+              <tr>
+                <th scope="col">ID</th>
+                <th scope="col">用户名</th>
+                <th scope="col">密码</th>
+                <th scope="col">状态</th>
+                <th scope="col">姓名</th>
+                <th scope="col">操作</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="history" class="d-none">
+        <div class="my-3 p-3 bg-body rounded shadow-sm">
+          <table id="htable" class="table table-striped" style="width: 100%">
+            <thead>
+              <tr>
+                <th scope="col">用户名</th>
+                <th scope="col">客户端</th>
+                <th scope="col">VPN IP</th>
+                <th scope="col">用户 IP</th>
+                <th scope="col">下载流量</th>
+                <th scope="col">上传流量</th>
+                <th scope="col">上线时间</th>
+                <th scope="col">在线时长</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="client" class="d-none">
+        <div class="my-3 p-3 bg-body rounded shadow-sm">
+          <table id="ctable" class="table table-striped" style="width: 100%">
+            <thead>
+              <tr>
+                <th scope="col">名称</th>
+                <th scope="col">日期</th>
+                <th scope="col">操作</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
-    <div id="user" class="d-none">
-      <div class="my-3 p-3 bg-body rounded shadow-sm">
-        <table id="utable" class="table table-striped" style="width: 100%">
-          <thead>
-            <tr>
-              <th scope="col">ID</th>
-              <th scope="col">用户名</th>
-              <th scope="col">密码</th>
-              <th scope="col">状态</th>
-              <th scope="col">姓名</th>
-              <th scope="col">操作</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div id="history" class="d-none">
-      <div class="my-3 p-3 bg-body rounded shadow-sm">
-        <table id="htable" class="table table-striped" style="width: 100%">
-          <thead>
-            <tr>
-              <th scope="col">用户名</th>
-              <th scope="col">客户端</th>
-              <th scope="col">VPN IP</th>
-              <th scope="col">用户 IP</th>
-              <th scope="col">下载流量</th>
-              <th scope="col">上传流量</th>
-              <th scope="col">上线时间</th>
-              <th scope="col">在线时长</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div id="client" class="d-none">
-      <div class="my-3 p-3 bg-body rounded shadow-sm">
-        <table id="ctable" class="table table-striped" style="width: 100%">
-          <thead>
-            <tr>
-              <th scope="col">名称</th>
-              <th scope="col">日期</th>
-              <th scope="col">操作</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal fade" tabindex="-1" id="addUserModal" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <form>
-          <div class="modal-header">
-            <h5 class="modal-title">添加账号</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <div class="row">
-              <label class="col-sm-3 col-form-label">用户名:</label>
-              <div class="col-sm-9">
-                <input type="text" class="form-control form-control-sm" name="username" autofocus required />
+    <div class="modal fade" tabindex="-1" id="addUserModal" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <form>
+            <div class="modal-header">
+              <h5 class="modal-title">添加账号</h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <div class="row">
+                <label class="col-sm-3 col-form-label">用户名:</label>
+                <div class="col-sm-9">
+                  <input
+                    type="text"
+                    class="form-control form-control-sm"
+                    name="username"
+                    autofocus
+                    required
+                  />
+                </div>
+              </div>
+              <div class="row">
+                <label class="col-sm-3 col-form-label">密码:</label>
+                <div class="col-sm-9">
+                  <input
+                    type="password"
+                    autocomplete="one-time-code"
+                    class="form-control form-control-sm"
+                    name="password"
+                    required
+                  />
+                </div>
+              </div>
+              <div class="row">
+                <label class="col-sm-3 col-form-label">姓名:</label>
+                <div class="col-sm-9">
+                  <input
+                    type="text"
+                    class="form-control form-control-sm"
+                    name="name"
+                    required
+                  />
+                </div>
               </div>
             </div>
-            <div class="row">
-              <label class="col-sm-3 col-form-label">密码:</label>
-              <div class="col-sm-9">
-                <input type="password" autocomplete="one-time-code" class="form-control form-control-sm" name="password"
-                  required />
-              </div>
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal"
+              >
+                取消
+              </button>
+              <button type="submit" class="btn btn-primary">保存</button>
             </div>
-            <div class="row">
-              <label class="col-sm-3 col-form-label">姓名:</label>
-              <div class="col-sm-9">
-                <input type="text" class="form-control form-control-sm" name="name" required />
-              </div>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-              取消
-            </button>
-            <button type="submit" class="btn btn-primary">保存</button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="modal fade" tabindex="-1" id="addClientModal" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <form>
-          <div class="modal-header">
-            <h5 class="modal-title">添加客户端</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <div class="row">
-              <label class="col-sm-3 col-form-label">名称:</label>
-              <div class="col-sm-9">
-                <input type="text" class="form-control form-control-sm" name="name" placeholder="客户端名称" autofocus
-                  required />
+    <div
+      class="modal fade"
+      tabindex="-1"
+      id="addClientModal"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <form>
+            <div class="modal-header">
+              <h5 class="modal-title">添加客户端</h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <div class="row">
+                <label class="col-sm-3 col-form-label">名称:</label>
+                <div class="col-sm-9">
+                  <input
+                    type="text"
+                    class="form-control form-control-sm"
+                    name="name"
+                    placeholder="客户端名称"
+                    autofocus
+                    required
+                  />
+                </div>
+              </div>
+              <div class="row">
+                <label class="col-sm-3 col-form-label">VPNServer:</label>
+                <div class="col-sm-9">
+                  <input
+                    type="text"
+                    class="form-control form-control-sm"
+                    name="serverAddr"
+                    placeholder="VPN服务器外网IP或域名"
+                  />
+                </div>
+              </div>
+              <div class="row mb-2">
+                <label class="col-sm-3 col-form-label">CCD配置:</label>
+                <div class="col-sm-9">
+                  <textarea
+                    class="form-control form-control-sm"
+                    name="ccdConfig"
+                    rows="6"
+                    placeholder="ifconfig-push 10.8.0.111 255.255.255.0"
+                  ></textarea>
+                </div>
+              </div>
+              <div class="row">
+                <label class="col-sm-3 col-form-label">自定义配置:</label>
+                <div class="col-sm-9">
+                  <textarea
+                    class="form-control form-control-sm"
+                    name="config"
+                    rows="6"
+                    placeholder="route 192.168.8.0 255.255.255.0"
+                  ></textarea>
+                </div>
               </div>
             </div>
-            <div class="row">
-              <label class="col-sm-3 col-form-label">VPNServer:</label>
-              <div class="col-sm-9">
-                <input type="text" class="form-control form-control-sm" name="serverAddr" placeholder="VPN服务器外网IP或域名" />
-              </div>
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal"
+              >
+                取消
+              </button>
+              <button type="submit" class="btn btn-primary">保存</button>
             </div>
-            <div class="row mb-2">
-              <label class="col-sm-3 col-form-label">CCD配置:</label>
-              <div class="col-sm-9">
-                <textarea class="form-control form-control-sm" name="ccdConfig" rows="6"
-                  placeholder="ifconfig-push 10.8.0.111 255.255.255.0"></textarea>
-              </div>
-            </div>
-            <div class="row">
-              <label class="col-sm-3 col-form-label">自定义配置:</label>
-              <div class="col-sm-9">
-                <textarea class="form-control form-control-sm" name="config" rows="6"
-                  placeholder="route 192.168.8.0 255.255.255.0"></textarea>
-              </div>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-              取消
-            </button>
-            <button type="submit" class="btn btn-primary">保存</button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="modal fade" tabindex="-1" id="resetPassModal" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <form>
-          <div class="modal-header">
-            <h5 class="modal-title">重置密码</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <div class="form-group mb-3" hidden>
-              <label>ID:</label>
-              <input type="text" class="form-control form-control-sm float-end w-75" name="id" disabled />
+    <div
+      class="modal fade"
+      tabindex="-1"
+      id="resetPassModal"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <form>
+            <div class="modal-header">
+              <h5 class="modal-title">重置密码</h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+              ></button>
             </div>
-            <div class="form-group mb-3">
-              <label>用户名:</label>
-              <input type="text" class="form-control form-control-sm float-end w-75" name="username" disabled />
+            <div class="modal-body">
+              <div class="form-group mb-3" hidden>
+                <label>ID:</label>
+                <input
+                  type="text"
+                  class="form-control form-control-sm float-end w-75"
+                  name="id"
+                  disabled
+                />
+              </div>
+              <div class="form-group mb-3">
+                <label>用户名:</label>
+                <input
+                  type="text"
+                  class="form-control form-control-sm float-end w-75"
+                  name="username"
+                  disabled
+                />
+              </div>
+              <div class="form-group mb-3">
+                <label>密码:</label>
+                <input
+                  type="password"
+                  autocomplete="one-time-code"
+                  class="form-control form-control-sm float-end w-75"
+                  name="newPass"
+                  required
+                />
+              </div>
+              <div class="form-group mb-3">
+                <label>确认密码:</label>
+                <input
+                  type="password"
+                  autocomplete="one-time-code"
+                  class="form-control form-control-sm float-end w-75"
+                  name="newPassAgain"
+                  required
+                />
+                <div
+                  class="form-text d-none mt-2"
+                  style="left: 27%; position: absolute"
+                ></div>
+              </div>
             </div>
-            <div class="form-group mb-3">
-              <label>密码:</label>
-              <input type="password" autocomplete="one-time-code" class="form-control form-control-sm float-end w-75"
-                name="newPass" required />
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal"
+              >
+                取消
+              </button>
+              <button
+                type="submit"
+                class="btn btn-primary"
+                id="resetPassSumbit"
+              >
+                保存
+              </button>
             </div>
-            <div class="form-group mb-3">
-              <label>确认密码:</label>
-              <input type="password" autocomplete="one-time-code" class="form-control form-control-sm float-end w-75"
-                name="newPassAgain" required />
-              <div class="form-text d-none mt-2" style="left: 27%; position: absolute"></div>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-              取消
-            </button>
-            <button type="submit" class="btn btn-primary" id="resetPassSumbit">
-              保存
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" id="renewCertModal"
-    aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <form>
+    <div
+      class="modal fade"
+      data-bs-backdrop="static"
+      data-bs-keyboard="false"
+      tabindex="-1"
+      id="renewCertModal"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form>
+            <div class="modal-header">
+              <h5 class="modal-title">提示</h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+              ></button>
+            </div>
+            <div class="modal-body" style="text-align: center">
+              <h4>确认更新openvpn证书?</h4>
+              <span style="font-size: 14px; color: red"
+                >注: 更新证书会重启服务</span
+              >
+            </div>
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal"
+              >
+                取消
+              </button>
+              <button
+                type="submit"
+                class="btn btn-primary"
+                id="renewcertSumbit"
+              >
+                确认
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="modal fade"
+      tabindex="-1"
+      id="modifyPassModal"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form>
+            <div class="modal-header">
+              <h5 class="modal-title">修改密码</h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group mb-3">
+                <label>密码:</label>
+                <input
+                  type="password"
+                  autocomplete="one-time-code"
+                  class="form-control form-control-sm float-end w-75"
+                  name="newPass"
+                  required
+                />
+              </div>
+              <div class="form-group mb-3">
+                <label>确认密码:</label>
+                <input
+                  type="password"
+                  autocomplete="one-time-code"
+                  class="form-control form-control-sm float-end w-75"
+                  name="newPassAgain"
+                  required
+                />
+                <div
+                  class="form-text d-none mt-2"
+                  style="left: 27%; position: absolute"
+                ></div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal"
+              >
+                取消
+              </button>
+              <button
+                type="submit"
+                class="btn btn-primary"
+                id="modifyPassSumbit"
+              >
+                保存
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="modal fade"
+      data-bs-backdrop="static"
+      data-bs-keyboard="false"
+      tabindex="-1"
+      id="restartInfoModal"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title">提示</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
           </div>
           <div class="modal-body" style="text-align: center">
-            <h4>确认更新openvpn证书?</h4>
-            <span style="font-size: 14px; color: red">注: 更新证书会重启服务</span>
+            <h4>确认重启openvpn服务?</h4>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
               取消
             </button>
-            <button type="submit" class="btn btn-primary" id="renewcertSumbit">
+            <button
+              type="submit"
+              class="btn btn-primary"
+              id="restartInfoSumbit"
+            >
               确认
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="modal fade" tabindex="-1" id="modifyPassModal" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <form>
+    <div
+      class="modal fade"
+      data-bs-backdrop="static"
+      data-bs-keyboard="false"
+      tabindex="-1"
+      id="editClientModal"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">修改密码</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <h5 class="modal-title">编辑</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
           </div>
-          <div class="modal-body">
-            <div class="form-group mb-3">
-              <label>密码:</label>
-              <input type="password" autocomplete="one-time-code" class="form-control form-control-sm float-end w-75"
-                name="newPass" required />
-            </div>
-            <div class="form-group mb-3">
-              <label>确认密码:</label>
-              <input type="password" autocomplete="one-time-code" class="form-control form-control-sm float-end w-75"
-                name="newPassAgain" required />
-              <div class="form-text d-none mt-2" style="left: 27%; position: absolute"></div>
-            </div>
+          <div class="form-group mb-3" hidden>
+            <label>客户端:</label>
+            <input
+              type="text"
+              class="form-control form-control-lg float-end w-75"
+              name="name"
+              disabled
+            />
           </div>
+          <textarea
+            class="form-control form-control-lg border border-0"
+            name="config"
+            rows="16"
+          ></textarea>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
               取消
             </button>
-            <button type="submit" class="btn btn-primary" id="modifyPassSumbit">
-              保存
+            <button type="submit" class="btn btn-primary" id="editClientSumbit">
+              确认
             </button>
           </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" id="restartInfoModal"
-    aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">提示</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body" style="text-align: center">
-          <h4>确认重启openvpn服务?</h4>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-            取消
-          </button>
-          <button type="submit" class="btn btn-primary" id="restartInfoSumbit">
-            确认
-          </button>
         </div>
       </div>
     </div>
-  </div>
 
-  <div class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" id="editClientModal"
-    aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">编辑</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="form-group mb-3" hidden>
-          <label>客户端:</label>
-          <input type="text" class="form-control form-control-lg float-end w-75" name="name" disabled />
-        </div>
-        <textarea class="form-control form-control-lg border border-0" name="config" rows="16"></textarea>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-            取消
-          </button>
-          <button type="submit" class="btn btn-primary" id="editClientSumbit">
-            确认
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
+    <footer class="fixed-bottom border-top bg-light" style="font-size: 12px">
+      {{ .server.Version }}
+    </footer>
+    <script type="text/javascript" src="static/js/jquery.min.js"></script>
+    <script
+      type="text/javascript"
+      src="static/js/bootstrap.bundle.min.js"
+    ></script>
+    <script
+      type="text/javascript"
+      src="static/js/jquery.dataTables.js"
+    ></script>
+    <script
+      type="text/javascript"
+      src="static/js/dataTables.bootstrap5.min.js"
+    ></script>
+    <script
+      type="text/javascript"
+      src="static/js/dataTables.buttons.min.js"
+    ></script>
+    <script
+      type="text/javascript"
+      src="static/js/buttons.bootstrap5.min.js"
+    ></script>
+    <script
+      type="text/javascript"
+      src="static/js/copy-to-clipboard.js"
+    ></script>
+    <script
+      type="text/javascript"
+      src="static/js/datepicker-full.min.js"
+    ></script>
+    <script type="text/javascript" src="static/js/datepicker.zh-CN.js"></script>
 
-  <footer class="fixed-bottom border-top bg-light" style="font-size: 12px">
-    {{ .server.Version }}
-  </footer>
-  <script type="text/javascript" src="static/js/jquery.min.js"></script>
-  <script type="text/javascript" src="static/js/bootstrap.bundle.min.js"></script>
-  <script type="text/javascript" src="static/js/jquery.dataTables.js"></script>
-  <script type="text/javascript" src="static/js/dataTables.bootstrap5.min.js"></script>
-  <script type="text/javascript" src="static/js/dataTables.buttons.min.js"></script>
-  <script type="text/javascript" src="static/js/buttons.bootstrap5.min.js"></script>
-  <script type="text/javascript" src="static/js/copy-to-clipboard.js"></script>
-  <script type="text/javascript" src="static/js/datepicker-full.min.js"></script>
-  <script type="text/javascript" src="static/js/datepicker.zh-CN.js"></script>
+    <script type="text/javascript">
+      $(document).ready(function () {
+        let utable;
+        let vtable;
+        let ctable;
+        let htable;
 
-  <script type="text/javascript">
-    $(document).ready(function () {
-      let utable;
-      let vtable;
-      let ctable;
-      let htable;
+        class Message {
+          constructor() {
+            this.div = document.createElement("div");
+            this.div.id = "message";
+            this.div.className = "message";
 
-      class Message {
-        constructor() {
-          this.div = document.createElement("div");
-          this.div.id = "message";
-          this.div.className = "message";
-
-          if (!document.getElementById("message")) {
-            document.body.appendChild(this.div);
+            if (!document.getElementById("message")) {
+              document.body.appendChild(this.div);
+            }
           }
-        }
 
-        open(type = "info", content, duration, onClose) {
-          duration = duration == 0 ? duration : (duration || 3) * 1000;
+          open(type = "info", content, duration, onClose) {
+            duration = duration == 0 ? duration : (duration || 3) * 1000;
 
-          const html = `
+            const html = `
           <div class="message-notice">
             <div class="message-content message-${type}">
               <span class="message-anticon">
@@ -724,241 +1072,244 @@
           </div>
           `;
 
-          const $msgDiv = $(html).appendTo("#message");
-          $msgDiv.removeClass("move-up-leave").addClass("move-up-enter");
-          setTimeout(() => {
-            $msgDiv.removeClass("move-up-enter");
-          }, 300);
-          if (duration != 0) {
-            setTimeout(function () {
-              $msgDiv.removeClass("move-up-enter").addClass("move-up-leave");
-              setTimeout(() => {
-                $msgDiv.removeClass("move-up-leave").remove();
-              }, 300);
-              if (onClose && typeof onClose === "function") {
-                onClose();
-              }
-            }, duration);
+            const $msgDiv = $(html).appendTo("#message");
+            $msgDiv.removeClass("move-up-leave").addClass("move-up-enter");
+            setTimeout(() => {
+              $msgDiv.removeClass("move-up-enter");
+            }, 300);
+            if (duration != 0) {
+              setTimeout(function () {
+                $msgDiv.removeClass("move-up-enter").addClass("move-up-leave");
+                setTimeout(() => {
+                  $msgDiv.removeClass("move-up-leave").remove();
+                }, 300);
+                if (onClose && typeof onClose === "function") {
+                  onClose();
+                }
+              }, duration);
+            }
           }
-        }
 
-        info(content, duration, onClose) {
-          this.icon = `
+          info(content, duration, onClose) {
+            this.icon = `
           <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16">
             <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8 4a.905.905 0 0 0-.9.995l.35 3.507a.552.552 0 0 0 1.1 0l.35-3.507A.905.905 0 0 0 8 4zm.002 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
           </svg>`;
 
-          this.open("info", content, duration, onClose);
-        }
+            this.open("info", content, duration, onClose);
+          }
 
-        success(content, duration, onClose) {
-          this.icon = `
+          success(content, duration, onClose) {
+            this.icon = `
           <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16">
             <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
           </svg>`;
 
-          this.open("success", content, duration, onClose);
-        }
+            this.open("success", content, duration, onClose);
+          }
 
-        warning(content, duration, onClose) {
-          this.icon = `
+          warning(content, duration, onClose) {
+            this.icon = `
           <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16">
             <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8 4a.905.905 0 0 0-.9.995l.35 3.507a.552.552 0 0 0 1.1 0l.35-3.507A.905.905 0 0 0 8 4zm.002 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
           </svg>`;
 
-          this.open("warning", content, duration, onClose);
-        }
+            this.open("warning", content, duration, onClose);
+          }
 
-        error(content, duration, onClose) {
-          this.icon = `
+          error(content, duration, onClose) {
+            this.icon = `
           <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16">
             <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/>
           </svg>
           `;
 
-          this.open("error", content, duration, onClose);
-        }
-      }
-
-      const message = new Message();
-
-      class Request {
-        async request(method, url, data = null) {
-          const options = {
-            method,
-            headers: {
-              "Content-Type":
-                "application/x-www-form-urlencoded; charset=UTF-8",
-            },
-            redirect: "manual",
-          };
-
-          if (data) {
-            options.body = new URLSearchParams(data);
-          }
-
-          try {
-            const response = await fetch(url, options);
-
-            if (response.type == "opaqueredirect") {
-              window.location.href = response.url;
-              return;
-            }
-
-            const body = await response.json();
-            if (!response.ok) {
-              throw new Error(
-                body?.message || response.text || response.statusText
-              );
-            }
-
-            return body;
-          } catch (error) {
-            message.error(error.message);
-            throw error;
+            this.open("error", content, duration, onClose);
           }
         }
 
-        get(url) {
-          return this.request("GET", url);
-        }
+        const message = new Message();
 
-        put(url, data) {
-          return this.request("PUT", url, data);
-        }
+        class Request {
+          async request(method, url, data = null) {
+            const options = {
+              method,
+              headers: {
+                "Content-Type":
+                  "application/x-www-form-urlencoded; charset=UTF-8",
+              },
+              redirect: "manual",
+            };
 
-        post(url, data) {
-          return this.request("POST", url, data);
-        }
+            if (data) {
+              options.body = new URLSearchParams(data);
+            }
 
-        delete(url) {
-          return this.request("DELETE", url);
-        }
+            try {
+              const response = await fetch(url, options);
 
-        patch(url, data) {
-          return this.request("PATCH", url, data);
-        }
-      }
-
-      const request = new Request();
-
-      if (vtable) {
-        vtable.ajax.reload();
-      } else {
-        vtable = $("#vtable").DataTable({
-          language: {
-            url: "/static/zh.json",
-            loadingRecords: "数据加载中...",
-          },
-          columnDefs: [{ className: "dt-center", targets: "_all" }],
-          dom:
-            "<'d-flex justify-content-between'f<'toolbar'>>" +
-            "<'row'<'col-sm-12'tr>>" +
-            "<'d-flex justify-content-between align-items-center'lip>",
-          fnInitComplete: function () {
-            const interval = setInterval(() => {
-              if ($("#status").hasClass("d-none")) {
-                clearInterval(interval);
-              } else {
-                vtable.ajax.reload(null, false);
+              if (response.type == "opaqueredirect") {
+                window.location.href = response.url;
+                return;
               }
-            }, 30000);
-          },
-          drawCallback: function () {
-            $("ul.pagination").addClass("pagination-sm");
-          },
-          ajax: function (data, callback, settings) {
-            request
-              .get("/ovpn/online-client")
-              .then((data) => callback({ data }));
-          },
-          columns: [
-            { data: "username" },
-            { data: "vip" },
-            { data: "rip" },
-            { data: "recvBytes" },
-            { data: "sendBytes" },
-            { data: "connDate" },
-            { data: "onlineTime" },
-            {
-              data: (data) =>
-                `<button type="button" class="btn btn-outline-danger btn-sm" id="${data.id}">断开</button>`,
-            },
-          ],
-        });
-      }
 
-      $("#vtable").on("click", "button", function () {
-        request.post("/ovpn/kill", { cid: this.id }).then((res) => {
-          vtable.cell(this).row().remove().draw();
-        });
-      });
+              const body = await response.json();
+              if (!response.ok) {
+                throw new Error(
+                  body?.message || response.text || response.statusText
+                );
+              }
 
-      $("#showUser").click(function () {
-        $("#status").addClass("d-none");
-        $("#client").addClass("d-none");
-        $("#history").addClass("d-none");
-        $("#user").removeClass("d-none");
+              return body;
+            } catch (error) {
+              message.error(error.message);
+              throw error;
+            }
+          }
 
-        if (utable) {
-          utable.ajax.reload();
+          get(url) {
+            return this.request("GET", url);
+          }
+
+          put(url, data) {
+            return this.request("PUT", url, data);
+          }
+
+          post(url, data) {
+            return this.request("POST", url, data);
+          }
+
+          delete(url) {
+            return this.request("DELETE", url);
+          }
+
+          patch(url, data) {
+            return this.request("PATCH", url, data);
+          }
+        }
+
+        const request = new Request();
+
+        if (vtable) {
+          vtable.ajax.reload();
         } else {
-          utable = $("#utable").DataTable({
-            order: [[0, "desc"]],
+          vtable = $("#vtable").DataTable({
             language: {
               url: "/static/zh.json",
               loadingRecords: "数据加载中...",
             },
             columnDefs: [{ className: "dt-center", targets: "_all" }],
             dom:
-              "<'row align-items-center'<'col d-flex'f><'col d-flex justify-content-center toolbar'><'col d-flex justify-content-end'B>>" +
+              "<'d-flex justify-content-between'f<'toolbar'>>" +
               "<'row'<'col-sm-12'tr>>" +
               "<'d-flex justify-content-between align-items-center'lip>",
-            fnInitComplete: function (oSettings, data) {
-              $("#user div.toolbar").html(
-                `<div class="form-check form-switch form-check-reverse">
-                  <input class="form-check-input" type="checkbox" role="switch" id="authUser" ${data.authUser ? "checked" : ""
-                }>
-                  <label class="form-check-label" for="authUser">账号启用: </label>
-                </div>
-                `
-              );
+            fnInitComplete: function () {
+              const interval = setInterval(() => {
+                if ($("#status").hasClass("d-none")) {
+                  clearInterval(interval);
+                } else {
+                  vtable.ajax.reload(null, false);
+                }
+              }, 30000);
             },
             drawCallback: function () {
               $("ul.pagination").addClass("pagination-sm");
             },
-            buttons: {
-              dom: {
-                button: { className: "btn btn-sm" },
-              },
-              buttons: [
-                {
-                  text: "添加",
-                  className: "btn-primary",
-                  action: () => $("#addUserModal").modal("show"),
-                },
-              ],
-            },
             ajax: function (data, callback, settings) {
               request
-                .get("/ovpn/user")
-                .then((data) =>
-                  callback({ data: data?.users, authUser: data?.authUser })
-                );
+                .get("/ovpn/online-client")
+                .then((data) => callback({ data }));
             },
             columns: [
-              { data: "id" },
               { data: "username" },
+              { data: "vip" },
+              { data: "rip" },
+              { data: "recvBytes" },
+              { data: "sendBytes" },
+              { data: "connDate" },
+              { data: "onlineTime" },
               {
-                data: (data) => {
-                  if (data.password.length == 0) {
-                    return data.password;
-                  }
+                data: (data) =>
+                  `<button type="button" class="btn btn-outline-danger btn-sm" id="${data.id}">断开</button>`,
+              },
+            ],
+          });
+        }
 
-                  const html = `
+        $("#vtable").on("click", "button", function () {
+          request.post("/ovpn/kill", { cid: this.id }).then((res) => {
+            vtable.cell(this).row().remove().draw();
+          });
+        });
+
+        $("#showUser").click(function () {
+          $("#status").addClass("d-none");
+          $("#client").addClass("d-none");
+          $("#history").addClass("d-none");
+          $("#user").removeClass("d-none");
+
+          if (utable) {
+            utable.ajax.reload();
+          } else {
+            utable = $("#utable").DataTable({
+              order: [[0, "desc"]],
+              language: {
+                url: "/static/zh.json",
+                loadingRecords: "数据加载中...",
+              },
+              columnDefs: [{ className: "dt-center", targets: "_all" }],
+              dom:
+                "<'row align-items-center'<'col d-flex'f><'col d-flex justify-content-center toolbar'><'col d-flex justify-content-end'B>>" +
+                "<'row'<'col-sm-12'tr>>" +
+                "<'d-flex justify-content-between align-items-center'lip>",
+              fnInitComplete: function (oSettings, data) {
+                $("#user div.toolbar").html(
+                  `<div class="form-check form-switch form-check-reverse">
+                  <input class="form-check-input" type="checkbox" role="switch" id="authUser" ${
+                    data.authUser ? "checked" : ""
+                  }>
+                  <label class="form-check-label" for="authUser">账号启用: </label>
+                </div>
+                `
+                );
+              },
+              drawCallback: function () {
+                $("ul.pagination").addClass("pagination-sm");
+              },
+              buttons: {
+                dom: {
+                  button: { className: "btn btn-sm" },
+                },
+                buttons: [
+                  {
+                    text: "添加",
+                    className: "btn-primary",
+                    action: () => $("#addUserModal").modal("show"),
+                  },
+                ],
+              },
+              ajax: function (data, callback, settings) {
+                request
+                  .get("/ovpn/user")
+                  .then((data) =>
+                    callback({ data: data?.users, authUser: data?.authUser })
+                  );
+              },
+              columns: [
+                { data: "id" },
+                { data: "username" },
+                {
+                  data: (data) => {
+                    if (data.password.length == 0) {
+                      return data.password;
+                    }
+
+                    const html = `
                   <div class="form-group">
-                    <input class="border border-0 p-0 bg-transparent" style="outline: none;width: ${data.password.length * 7
-                    }px;max-width: 175px;" value="${data.password
+                    <input class="border border-0 p-0 bg-transparent" style="outline: none;width: ${
+                      data.password.length * 7
+                    }px;max-width: 175px;" value="${
+                      data.password
                     }" type="password" readonly>
                     <button class="btn btn-link p-0" id="copyPass">
                       <svg viewBox="64 64 896 896" focusable="false" data-icon="copy" width="1em" height="1em" fill="currentColor" aria-hidden="true">
@@ -967,73 +1318,74 @@
                     </button>
                   </div>
                   `;
-                  return html;
+                    return html;
+                  },
                 },
-              },
-              {
-                data: (data) => {
-                  if (data.isEnable) {
-                    return `<span class="badge text-bg-success">启用</span>`;
-                  } else {
-                    return `<span class="badge text-bg-secondary">禁用</span>`;
-                  }
+                {
+                  data: (data) => {
+                    if (data.isEnable) {
+                      return `<span class="badge text-bg-success">启用</span>`;
+                    } else {
+                      return `<span class="badge text-bg-secondary">禁用</span>`;
+                    }
+                  },
                 },
-              },
-              { data: "name" },
-              {
-                data: (data) => {
-                  const html = `
+                { data: "name" },
+                {
+                  data: (data) => {
+                    const html = `
                   <button class="btn btn-link text-decoration-none p-0" id="resetPass">重置密码</button>
-                  ${data.isEnable === true
+                  ${
+                    data.isEnable === true
                       ? '<button class="btn btn-link text-decoration-none p-0" id="disableUser">禁用</button>'
                       : '<button class="btn btn-link text-decoration-none p-0" id="enableUser">启用</button>'
-                    }
+                  }
                   <button class="btn btn-link text-decoration-none p-0" id="delUser">删除</button>
                   `;
-                  return html;
+                    return html;
+                  },
                 },
+              ],
+            });
+          }
+        });
+
+        $("#showHistory").click(function () {
+          $("#status").addClass("d-none");
+          $("#client").addClass("d-none");
+          $("#user").addClass("d-none");
+          $("#history").removeClass("d-none");
+
+          const now = new Date();
+          const lastMonth = new Date(now);
+          lastMonth.setMonth(now.getMonth() - 1);
+          lastMonth.setHours(0, 0, 0, 0);
+          now.setHours(23, 59, 59, 0);
+
+          let qt = [Date.parse(lastMonth) / 1000, Date.parse(now) / 1000];
+
+          if (htable) {
+            htable.ajax.reload();
+          } else {
+            htable = $("#htable").DataTable({
+              order: [[6, "desc"]],
+              processing: true,
+              serverSide: true,
+              search: {
+                return: true,
               },
-            ],
-          });
-        }
-      });
-
-      $("#showHistory").click(function () {
-        $("#status").addClass("d-none");
-        $("#client").addClass("d-none");
-        $("#user").addClass("d-none");
-        $("#history").removeClass("d-none");
-
-        const now = new Date();
-        const lastMonth = new Date(now);
-        lastMonth.setMonth(now.getMonth() - 1);
-        lastMonth.setHours(0, 0, 0, 0);
-        now.setHours(23, 59, 59, 0);
-
-        let qt = [Date.parse(lastMonth) / 1000, Date.parse(now) / 1000];
-
-        if (htable) {
-          htable.ajax.reload();
-        } else {
-          htable = $("#htable").DataTable({
-            order: [[6, "desc"]],
-            processing: true,
-            serverSide: true,
-            search: {
-              return: true,
-            },
-            language: {
-              url: "/static/zh.json",
-              loadingRecords: "数据加载中...",
-            },
-            columnDefs: [{ className: "dt-center", targets: "_all" }],
-            dom:
-              "<'row align-items-center'<'col d-flex'f><'col d-flex justify-content-center toolbar'><'col d-flex justify-content-end'B>>" +
-              "<'row'<'col-sm-12'tr>>" +
-              "<'d-flex justify-content-between align-items-center'lip>",
-            fnInitComplete: function (oSettings, data) {
-              $("#history div.toolbar").html(
-                `<div id="datepicker">
+              language: {
+                url: "/static/zh.json",
+                loadingRecords: "数据加载中...",
+              },
+              columnDefs: [{ className: "dt-center", targets: "_all" }],
+              dom:
+                "<'row align-items-center'<'col d-flex'f><'col d-flex justify-content-center toolbar'><'col d-flex justify-content-end'B>>" +
+                "<'row'<'col-sm-12'tr>>" +
+                "<'d-flex justify-content-between align-items-center'lip>",
+              fnInitComplete: function (oSettings, data) {
+                $("#history div.toolbar").html(
+                  `<div id="datepicker">
                   <div class="input-group input-group-sm">
                     <input type="text" class="form-control text-center" name="start" />
                     <span class="input-group-text">to</span>
@@ -1041,401 +1393,410 @@
                   </div>
                 </div>
                 `
-              );
+                );
 
-              const elem = document.getElementById("datepicker");
-              const rangepicker = new DateRangePicker(elem, {
-                buttonClass: "btn",
-                container: elem,
-                format: "yyyy-mm-dd",
-                autohide: true,
-                language: "zh-CN",
-              });
-
-              rangepicker.setDates(lastMonth, now);
-
-              elem.addEventListener("changeDate", (e) => {
-                qt = rangepicker.getDates().map((d, i) => {
-                  if (d instanceof Date) {
-                    if (i == 1) {
-                      d.setHours(23, 59, 59, 0);
-                    }
-
-                    return Date.parse(d) / 1000;
-                  }
-
-                  return qt[i];
+                const elem = document.getElementById("datepicker");
+                const rangepicker = new DateRangePicker(elem, {
+                  buttonClass: "btn",
+                  container: elem,
+                  format: "yyyy-mm-dd",
+                  autohide: true,
+                  language: "zh-CN",
                 });
 
-                htable.ajax.reload();
-              });
-            },
-            drawCallback: function () {
-              $("ul.pagination").addClass("pagination-sm");
-            },
-            buttons: {
-              dom: {
-                button: { className: "btn btn-sm" },
+                rangepicker.setDates(lastMonth, now);
+
+                elem.addEventListener("changeDate", (e) => {
+                  qt = rangepicker.getDates().map((d, i) => {
+                    if (d instanceof Date) {
+                      if (i == 1) {
+                        d.setHours(23, 59, 59, 0);
+                      }
+
+                      return Date.parse(d) / 1000;
+                    }
+
+                    return qt[i];
+                  });
+
+                  htable.ajax.reload();
+                });
               },
-              buttons: [
-                {
-                  text: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"> <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/> <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/> </svg> 刷新 ',
-                  className: "btn-primary",
-                  action: () => htable.ajax.reload(),
-                },
-              ],
-            },
-            ajax: function (data, callback, settings) {
-              const orderColumn = data.columns[data.order[0].column].data;
-              const order = data.order[0].dir;
-              const params = {
-                draw: data.draw,
-                offset: data.start,
-                limit: data.length,
-                orderColumn: orderColumn,
-                order: order,
-                search: data.search.value,
-                qt: qt.join(),
-              };
-
-              request
-                .get(
-                  `/ovpn/history?${new URLSearchParams(params).toString()}`
-                )
-                .then((data) => callback(data));
-            },
-            columns: [
-              { data: "username" },
-              { data: "common_name" },
-              { data: "vip" },
-              { data: "rip" },
-              { data: "bytes_received" },
-              { data: "bytes_sent" },
-              { data: "time_unix" },
-              { data: "time_duration" },
-            ],
-          });
-        }
-      });
-
-      $("#showClient").click(function () {
-        $("#status").addClass("d-none");
-        $("#user").addClass("d-none");
-        $("#history").addClass("d-none");
-        $("#client").removeClass("d-none");
-
-        if (ctable) {
-          ctable.ajax.reload();
-        } else {
-          ctable = $("#ctable").DataTable({
-            order: [[1, "desc"]],
-            language: {
-              url: "/static/zh.json",
-              loadingRecords: "数据加载中...",
-            },
-            columnDefs: [{ className: "dt-center", targets: "_all" }],
-            dom:
-              "<'d-flex justify-content-between align-items-center'fB>" +
-              "<'row'<'col-sm-12'tr>>" +
-              "<'d-flex justify-content-between align-items-center'lip>",
-            drawCallback: function () {
-              $("ul.pagination").addClass("pagination-sm");
-            },
-            buttons: {
-              dom: {
-                button: { className: "btn btn-sm" },
+              drawCallback: function () {
+                $("ul.pagination").addClass("pagination-sm");
               },
-              buttons: [
-                {
-                  text: "添加",
-                  className: "btn-primary",
-                  action: () => $("#addClientModal").modal("show"),
+              buttons: {
+                dom: {
+                  button: { className: "btn btn-sm" },
                 },
+                buttons: [
+                  {
+                    text: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"> <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/> <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/> </svg> 刷新 ',
+                    className: "btn-primary",
+                    action: () => htable.ajax.reload(),
+                  },
+                ],
+              },
+              ajax: function (data, callback, settings) {
+                const orderColumn = data.columns[data.order[0].column].data;
+                const order = data.order[0].dir;
+                const params = {
+                  draw: data.draw,
+                  offset: data.start,
+                  limit: data.length,
+                  orderColumn: orderColumn,
+                  order: order,
+                  search: data.search.value,
+                  qt: qt.join(),
+                };
+
+                request
+                  .get(
+                    `/ovpn/history?${new URLSearchParams(params).toString()}`
+                  )
+                  .then((data) => callback(data));
+              },
+              columns: [
+                { data: "username" },
+                { data: "common_name" },
+                { data: "vip" },
+                { data: "rip" },
+                { data: "bytes_received" },
+                { data: "bytes_sent" },
+                { data: "time_unix" },
+                { data: "time_duration" },
               ],
-            },
-            ajax: function (data, callback, settings) {
-              request.get("/ovpn/client").then((data) => callback({ data }));
-            },
-            columns: [
-              { data: "name" },
-              { data: "date" },
-              {
-                data: (data) => {
-                  const html = `
+            });
+          }
+        });
+
+        $("#showClient").click(function () {
+          $("#status").addClass("d-none");
+          $("#user").addClass("d-none");
+          $("#history").addClass("d-none");
+          $("#client").removeClass("d-none");
+
+          if (ctable) {
+            ctable.ajax.reload();
+          } else {
+            ctable = $("#ctable").DataTable({
+              order: [[1, "desc"]],
+              language: {
+                url: "/static/zh.json",
+                loadingRecords: "数据加载中...",
+              },
+              columnDefs: [{ className: "dt-center", targets: "_all" }],
+              dom:
+                "<'d-flex justify-content-between align-items-center'fB>" +
+                "<'row'<'col-sm-12'tr>>" +
+                "<'d-flex justify-content-between align-items-center'lip>",
+              drawCallback: function () {
+                $("ul.pagination").addClass("pagination-sm");
+              },
+              buttons: {
+                dom: {
+                  button: { className: "btn btn-sm" },
+                },
+                buttons: [
+                  {
+                    text: "添加",
+                    className: "btn-primary",
+                    action: () => $("#addClientModal").modal("show"),
+                  },
+                ],
+              },
+              ajax: function (data, callback, settings) {
+                request.get("/ovpn/client").then((data) => callback({ data }));
+              },
+              columns: [
+                { data: "name" },
+                { data: "date" },
+                {
+                  data: (data) => {
+                    const html = `
                   <div class="d-grid gap-2 d-flex justify-content-center align-items-center">
                   <a href="${data.file}" download="${data.fullName}" class="text-decoration-none">下载</a>
                   <div class="dropdown">
                     <button class="btn btn-link text-decoration-none p-0 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">编辑</button>
                     <ul class="dropdown-menu">
-                      <li><a class="dropdown-item" href="#" id="editCCD">CCD配置</a></li>
-                      <li><a class="dropdown-item" href="#" id="editClient">客户端配置</a></li>
+                      <li><button type="button" class="dropdown-item" id="editCCD">CCD配置</button></li>
+                      <li><button type="button" class="dropdown-item" id="editClient">客户端配置</button></li>
                     </ul>
                   </div>
                   <button class="btn btn-link text-decoration-none p-0" id="delClient">删除</button>
                   </div>
                   `;
-                  return html;
+                    return html;
+                  },
                 },
-              },
-            ],
+              ],
+            });
+          }
+        });
+
+        $("#renewcert").click(function () {
+          $("#renewCertModal").modal("show");
+        });
+
+        $("#renewCertModal form").submit(function () {
+          $("#renewCertModal").modal("hide");
+          request.post("/ovpn/server", { action: "renewcert" }).then((data) => {
+            message.success(data.message);
           });
-        }
-      });
-
-      $("#renewcert").click(function () {
-        $("#renewCertModal").modal("show");
-      });
-
-      $("#renewCertModal form").submit(function () {
-        $("#renewCertModal").modal("hide");
-        request.post("/ovpn/server", { action: "renewcert" }).then((data) => {
-          message.success(data.message);
+          return false;
         });
-        return false;
-      });
 
-      $("#restartSrv").click(function () {
-        $("#restartInfoModal").modal("show");
-      });
-
-      $("#restartInfoSumbit").click(function () {
-        $("#restartInfoModal").modal("hide");
-        request.post("/ovpn/server", { action: "restartSrv" }).then((data) => {
-          message.success(data.message);
+        $("#restartSrv").click(function () {
+          $("#restartInfoModal").modal("show");
         });
-      });
 
-      $("#addUserModal form").submit(function () {
-        const name = $('#addUserModal input[name="name"]').val();
-        const username = $('#addUserModal input[name="username"]').val();
-        const password = $('#addUserModal input[name="password"]').val();
+        $("#restartInfoSumbit").click(function () {
+          $("#restartInfoModal").modal("hide");
+          request
+            .post("/ovpn/server", { action: "restartSrv" })
+            .then((data) => {
+              message.success(data.message);
+            });
+        });
 
-        request
-          .post("/ovpn/user", { name, username, password })
-          .then((data) => {
+        $("#addUserModal form").submit(function () {
+          const name = $('#addUserModal input[name="name"]').val();
+          const username = $('#addUserModal input[name="username"]').val();
+          const password = $('#addUserModal input[name="password"]').val();
+
+          request
+            .post("/ovpn/user", { name, username, password })
+            .then((data) => {
+              utable.ajax.reload(null, false);
+              $("#addUserModal form").trigger("reset");
+              $("#addUserModal").modal("hide");
+            });
+
+          return false;
+        });
+
+        $("#addClientModal form").submit(function () {
+          const name = $('#addClientModal input[name="name"]').val();
+          const serverAddr =
+            $('#addClientModal input[name="serverAddr"]').val() ||
+            location.hostname;
+          const config = $('#addClientModal textarea[name="config"]').val();
+          const ccdConfig = $(
+            '#addClientModal textarea[name="ccdConfig"]'
+          ).val();
+
+          request
+            .post("/ovpn/client", { name, serverAddr, config, ccdConfig })
+            .then((data) => {
+              ctable.ajax.reload(null, false);
+              $("#addClientModal form").trigger("reset");
+              message.success(data.message);
+            });
+
+          $("#addClientModal").modal("hide");
+          return false;
+        });
+
+        $(document).on("click", "#delUser", function () {
+          const id = utable.row($(this).parents("tr")).data().id;
+
+          request.delete(`/ovpn/user/${id}`).then((data) => {
+            message.success(data.message);
             utable.ajax.reload(null, false);
-            $("#addUserModal form").trigger("reset");
-            $("#addUserModal").modal("hide");
           });
+        });
 
-        return false;
-      });
+        $(document).on("click", "#delClient", function () {
+          const name = ctable.row($(this).parents("tr")).data().name;
 
-      $("#addClientModal form").submit(function () {
-        const name = $('#addClientModal input[name="name"]').val();
-        const serverAddr =
-          $('#addClientModal input[name="serverAddr"]').val() ||
-          location.hostname;
-        const config = $('#addClientModal textarea[name="config"]').val();
-        const ccdConfig = $('#addClientModal textarea[name="ccdConfig"]').val();
-
-        request
-          .post("/ovpn/client", { name, serverAddr, config, ccdConfig })
-          .then((data) => {
+          request.delete(`/ovpn/client/${name}`).then((data) => {
+            message.success(data.message);
             ctable.ajax.reload(null, false);
-            $("#addClientModal form").trigger("reset");
+          });
+        });
+
+        $(document).on("click", "#editClient", function () {
+          const name = ctable.row($(this).parents("tr")).data().name;
+          $('#editClientModal input[name="name"]').val(`clients/${name}.ovpn`);
+
+          request
+            .get(`/ovpn/client?a=getConfig&file=clients/${name}.ovpn`)
+            .then((data) => {
+              $('#editClientModal textarea[name="config"]').val(data.content);
+              $("#editClientModal").modal("show");
+            });
+        });
+
+        $(document).on("click", "#editCCD", function () {
+          const name = ctable.row($(this).parents("tr")).data().name;
+          $('#editClientModal input[name="name"]').val(`ccd/${name}`);
+
+          request
+            .get(`/ovpn/client?a=getConfig&file=ccd/${name}`)
+            .then((data) => {
+              $('#editClientModal textarea[name="config"]').val(data.content);
+              $("#editClientModal").modal("show");
+            });
+        });
+
+        $("#editClientSumbit").click(function () {
+          const name = $('#editClientModal input[name="name"]').val();
+          const content = $('#editClientModal textarea[name="config"]').val();
+
+          $("#editClientModal").modal("hide");
+          request.put(`/ovpn/client?file=${name}`, { content }).then((data) => {
             message.success(data.message);
           });
-
-        $("#addClientModal").modal("hide");
-        return false;
-      });
-
-      $(document).on("click", "#delUser", function () {
-        const id = utable.row($(this).parents("tr")).data().id;
-
-        request.delete(`/ovpn/user/${id}`).then((data) => {
-          message.success(data.message);
-          utable.ajax.reload(null, false);
         });
-      });
 
-      $(document).on("click", "#delClient", function () {
-        const name = ctable.row($(this).parents("tr")).data().name;
+        $(document).on("click", "#disableUser", function () {
+          const id = utable.row($(this).parents("tr")).data().id;
 
-        request.delete(`/ovpn/client/${name}`).then((data) => {
-          message.success(data.message);
-          ctable.ajax.reload(null, false);
+          request
+            .patch(`/ovpn/user/${id}`, { isEnable: false })
+            .then((data) => {
+              message.success(data.message);
+              utable.ajax.reload(null, false);
+            });
         });
-      });
 
-      $(document).on("click", "#editClient", function () {
-        const name = ctable.row($(this).parents("tr")).data().name;
-        $('#editClientModal input[name="name"]').val(`clients/${name}.ovpn`);
+        $(document).on("click", "#enableUser", function () {
+          const id = utable.row($(this).parents("tr")).data().id;
 
-        request.get(`/ovpn/client?a=getConfig&file=clients/${name}.ovpn`).then((data) => {
-          $('#editClientModal textarea[name="config"]').val(data.content);
-          $("#editClientModal").modal("show");
-        });
-      });
-
-      $(document).on("click", "#editCCD", function () {
-        const name = ctable.row($(this).parents("tr")).data().name;
-        $('#editClientModal input[name="name"]').val(`ccd/${name}`);
-
-        request.get(`/ovpn/client?a=getConfig&file=ccd/${name}`).then((data) => {
-          $('#editClientModal textarea[name="config"]').val(data.content);
-          $("#editClientModal").modal("show");
-        });
-      });
-
-      $("#editClientSumbit").click(function () {
-        const name = $('#editClientModal input[name="name"]').val();
-        const content = $('#editClientModal textarea[name="config"]').val();
-
-        $("#editClientModal").modal("hide");
-        request.put(`/ovpn/client?file=${name}`, { content }).then((data) => {
-          message.success(data.message);
-        });
-      });
-
-      $(document).on("click", "#disableUser", function () {
-        const id = utable.row($(this).parents("tr")).data().id;
-
-        request
-          .patch(`/ovpn/user/${id}`, { isEnable: false })
-          .then((data) => {
+          request.patch(`/ovpn/user/${id}`, { isEnable: true }).then((data) => {
             message.success(data.message);
             utable.ajax.reload(null, false);
           });
-      });
-
-      $(document).on("click", "#enableUser", function () {
-        const id = utable.row($(this).parents("tr")).data().id;
-
-        request.patch(`/ovpn/user/${id}`, { isEnable: true }).then((data) => {
-          message.success(data.message);
-          utable.ajax.reload(null, false);
         });
-      });
 
-      $(document).on("click", "#resetPass", function () {
-        const id = utable.row($(this).parents("tr")).data().id;
-        const username = utable.row($(this).parents("tr")).data().username;
-        $('#resetPassModal input[name="id"]').val(id);
-        $('#resetPassModal input[name="username"]').val(username);
+        $(document).on("click", "#resetPass", function () {
+          const id = utable.row($(this).parents("tr")).data().id;
+          const username = utable.row($(this).parents("tr")).data().username;
+          $('#resetPassModal input[name="id"]').val(id);
+          $('#resetPassModal input[name="username"]').val(username);
 
-        $("#resetPassModal").modal("show");
-      });
+          $("#resetPassModal").modal("show");
+        });
 
-      $(document).on("click", "#copyPass", function () {
-        copyToClipboard(this.previousSibling.previousSibling.value?.trim());
+        $(document).on("click", "#copyPass", function () {
+          copyToClipboard(this.previousSibling.previousSibling.value?.trim());
 
-        const icon = $(this).html();
-        $(this).html(`
+          const icon = $(this).html();
+          $(this).html(`
           <svg width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16">
             <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/>
           </svg>`);
-        $(this).addClass("text-success");
-        $(this).attr("disabled", true);
+          $(this).addClass("text-success");
+          $(this).attr("disabled", true);
 
-        setTimeout(() => {
-          $(this).html(icon);
-          $(this).removeClass("text-success");
-          $(this).attr("disabled", false);
-        }, 1500);
-      });
-
-      $(document).on(
-        "keyup",
-        '#resetPassModal input[name="newPassAgain"]',
-        function () {
-          const newPss = $('#resetPassModal input[name="newPass"]').val();
-          const newPassAgain = $(
-            '#resetPassModal input[name="newPassAgain"]'
-          ).val();
-
-          if (newPassAgain == newPss) {
-            $('#resetPassModal .form-text').addClass("d-none");
-            $('#resetPassModal input[name="newPassAgain"]').removeClass(
-              "border border-danger"
-            );
-            $("#resetPassSumbit").removeAttr("disabled");
-          } else {
-            $('#resetPassModal .form-text').text("密码不一致！");
-            $('#resetPassModal .form-text').addClass("text-danger");
-            $('#resetPassModal input[name="newPassAgain"]').addClass(
-              "border border-danger"
-            );
-            $('#resetPassModal .form-text').removeClass("d-none");
-            $("#resetPassSumbit").attr("disabled", true);
-          }
-        }
-      );
-
-      $("#resetPassModal form").submit(function () {
-        let id = $('#resetPassModal input[name="id"]').val();
-        let newPass = $('#resetPassModal input[name="newPassAgain"]').val();
-
-        request.patch(`/ovpn/user/${id}`, { password: newPass }).then(() => {
-          utable.ajax.reload(null, false);
-          $("#resetPassModal form").trigger("reset");
-          $("#resetPassModal").modal("hide");
-          message.success("密码重置成功");
+          setTimeout(() => {
+            $(this).html(icon);
+            $(this).removeClass("text-success");
+            $(this).attr("disabled", false);
+          }, 1500);
         });
 
-        return false;
-      });
+        $(document).on(
+          "keyup",
+          '#resetPassModal input[name="newPassAgain"]',
+          function () {
+            const newPss = $('#resetPassModal input[name="newPass"]').val();
+            const newPassAgain = $(
+              '#resetPassModal input[name="newPassAgain"]'
+            ).val();
 
-      $(document).on("click", "#modifyPass", function () {
-        $("#modifyPassModal").modal("show");
-      });
-
-      $(document).on(
-        "keyup",
-        '#modifyPassModal input[name="newPassAgain"]',
-        function () {
-          const newPss = $('#modifyPassModal input[name="newPass"]').val();
-          const newPassAgain = $(
-            '#modifyPassModal input[name="newPassAgain"]'
-          ).val();
-
-          if (newPassAgain == newPss) {
-            $('#modifyPassModal .form-text').addClass("d-none");
-            $('#modifyPassModal input[name="newPassAgain"]').removeClass(
-              "border border-danger"
-            );
-            $("#modifyPassSumbit").removeAttr("disabled");
-          } else {
-            $('#modifyPassModal .form-text').text("密码不一致！");
-            $('#modifyPassModal .form-text').addClass("text-danger");
-            $('#modifyPassModal input[name="newPassAgain"]').addClass(
-              "border border-danger"
-            );
-            $('#modifyPassModal .form-text').removeClass("d-none");
-            $("#modifyPassSumbit").attr("disabled", true);
+            if (newPassAgain == newPss) {
+              $("#resetPassModal .form-text").addClass("d-none");
+              $('#resetPassModal input[name="newPassAgain"]').removeClass(
+                "border border-danger"
+              );
+              $("#resetPassSumbit").removeAttr("disabled");
+            } else {
+              $("#resetPassModal .form-text").text("密码不一致！");
+              $("#resetPassModal .form-text").addClass("text-danger");
+              $('#resetPassModal input[name="newPassAgain"]').addClass(
+                "border border-danger"
+              );
+              $("#resetPassModal .form-text").removeClass("d-none");
+              $("#resetPassSumbit").attr("disabled", true);
+            }
           }
-        }
-      );
+        );
 
-      $("#modifyPassModal form").submit(function () {
-        let newPass = $('#modifyPassModal input[name="newPassAgain"]').val();
+        $("#resetPassModal form").submit(function () {
+          let id = $('#resetPassModal input[name="id"]').val();
+          let newPass = $('#resetPassModal input[name="newPassAgain"]').val();
 
-        request.post("/user", { username: "{{ .sysUser }}", password: newPass }).then(() => {
-          $("#modifyPassModal form").trigger("reset");
-          $("#modifyPassModal").modal("hide");
-          message.success("密码修改成功");
-        });
-
-        return false;
-      });
-
-      $(document).on("change", "#authUser", function () {
-        request
-          .post("/ovpn/server", {
-            action: "settings",
-            key: "auth-user",
-            value: $(this).is(":checked"),
-          })
-          .then((data) => {
-            message.success(data.message);
-          })
-          .catch(() => {
-            $("#authUser").prop("checked", false);
+          request.patch(`/ovpn/user/${id}`, { password: newPass }).then(() => {
+            utable.ajax.reload(null, false);
+            $("#resetPassModal form").trigger("reset");
+            $("#resetPassModal").modal("hide");
+            message.success("密码重置成功");
           });
-      });
-    });
-  </script>
-</body>
 
+          return false;
+        });
+
+        $(document).on("click", "#modifyPass", function () {
+          $("#modifyPassModal").modal("show");
+        });
+
+        $(document).on(
+          "keyup",
+          '#modifyPassModal input[name="newPassAgain"]',
+          function () {
+            const newPss = $('#modifyPassModal input[name="newPass"]').val();
+            const newPassAgain = $(
+              '#modifyPassModal input[name="newPassAgain"]'
+            ).val();
+
+            if (newPassAgain == newPss) {
+              $("#modifyPassModal .form-text").addClass("d-none");
+              $('#modifyPassModal input[name="newPassAgain"]').removeClass(
+                "border border-danger"
+              );
+              $("#modifyPassSumbit").removeAttr("disabled");
+            } else {
+              $("#modifyPassModal .form-text").text("密码不一致！");
+              $("#modifyPassModal .form-text").addClass("text-danger");
+              $('#modifyPassModal input[name="newPassAgain"]').addClass(
+                "border border-danger"
+              );
+              $("#modifyPassModal .form-text").removeClass("d-none");
+              $("#modifyPassSumbit").attr("disabled", true);
+            }
+          }
+        );
+
+        $("#modifyPassModal form").submit(function () {
+          let newPass = $('#modifyPassModal input[name="newPassAgain"]').val();
+
+          request
+            .post("/user", { username: "{{ .sysUser }}", password: newPass })
+            .then(() => {
+              $("#modifyPassModal form").trigger("reset");
+              $("#modifyPassModal").modal("hide");
+              message.success("密码修改成功");
+            });
+
+          return false;
+        });
+
+        $(document).on("change", "#authUser", function () {
+          request
+            .post("/ovpn/server", {
+              action: "settings",
+              key: "auth-user",
+              value: $(this).is(":checked"),
+            })
+            .then((data) => {
+              message.success(data.message);
+            })
+            .catch(() => {
+              $("#authUser").prop("checked", false);
+            });
+        });
+      });
+    </script>
+  </body>
 </html>
