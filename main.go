@@ -231,6 +231,13 @@ func AuthMiddleWare() gin.HandlerFunc {
 		session := sessions.Default(c)
 		user := session.Get("user")
 
+		if c.Request.URL.Path == "/ovpn/login" || c.Request.URL.Path == "/ovpn/history" {
+			if strings.Contains(c.Request.Host, "127.0.0.1") {
+				c.Next()
+				return
+			}
+		}
+
 		if user == nil {
 			c.Redirect(302, "/login")
 			c.Abort()
