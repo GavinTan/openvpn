@@ -67,7 +67,6 @@ setenv ovpn_data ${OVPN_DATA:-/data}
 setenv auth_api ${AUTH_API:-http://127.0.0.1/login}
 setenv ovpn_auth_api ${OVPN_AUTH_API:-http://127.0.0.1/ovpn/login}
 setenv ovpn_history_api ${OVPN_HISTORY_API:-http://127.0.0.1:8833/ovpn/history}
-setenv auth_token $(echo "$ADMIN_USERNAME:$ADMIN_PASSWORD" | openssl enc -e -aes-256-cbc -a -pbkdf2 -k $SECRET_KEY)
 EOF
 }
 
@@ -104,7 +103,6 @@ update_config(){
     auth_api=$(grep '^setenv auth_api' $config | cut -d' ' -f3)
     ovpn_auth_api=$(grep '^setenv ovpn_auth_api' $config | cut -d' ' -f3)
     ovpn_history_api=$(grep '^setenv ovpn_history_api' $config | cut -d' ' -f3)
-    auth_token=$(grep '^setenv auth_token' $config | cut -d' ' -f3)
     ovpn_data=$(grep '^setenv ovpn_data' $config | cut -d' ' -f3)
     ovpn_subnet=$(grep '^server' $config | cut -d' ' -f2,3)
     ovpn_subnet6=$(grep '^server-ipv6' $config | cut -d' ' -f2,3)
@@ -134,16 +132,6 @@ update_config(){
             echo "setenv ovpn_history_api $OVPN_HISTORY_API" >> $config
         else
             sed -i "s|^setenv ovpn_history_api .*|setenv ovpn_history_api $OVPN_HISTORY_API|" $config
-        fi
-    fi
-
-    decrypt_auth_token=$(echo "$auth_token" | openssl enc -d -aes-256-cbc -a -pbkdf2 -k $SECRET_KEY 2>/dev/null || true)
-    if [ "$decrypt_auth_token" != "$ADMIN_USERNAME:$ADMIN_PASSWORD" ]; then
-        AUTH_TOKEN=$(echo "$ADMIN_USERNAME:$ADMIN_PASSWORD" | openssl enc -e -aes-256-cbc -a -pbkdf2 -k $SECRET_KEY)
-        if [ -z "$auth_token" ]; then
-            echo "setenv auth_token $AUTH_TOKEN" >> $config
-        else
-            sed -i "s|^setenv auth_token .*|setenv auth_token $AUTH_TOKEN|" $config
         fi
     fi
 
@@ -319,13 +307,8 @@ EOF
 
 add_history(){
     #https://build.openvpn.net/man/openvpn-2.6/openvpn.8.html#environmental-variables
-    auth=$(source $ovpn_data/.vars && echo $auth_token|openssl enc -d -aes-256-cbc -a -pbkdf2 -k $SECRET_KEY)
-    IFS=':' read -r user pass <<< $auth
-    response=$(curl --connect-timeout 5 -s -D - -o /dev/null -d "username=$user&password=$pass" $auth_api)
-    cookie=$(echo $response | awk -F 'Set-Cookie: ' '{print $2}' | awk '{print $1}')
     data="vip=$ifconfig_pool_remote_ip&rip=$trusted_ip&common_name=$common_name&username=$username&bytes_received=$bytes_received&bytes_sent=$bytes_sent&time_unix=$time_unix&time_duration=$time_duration"
-
-    status=$(curl -w "%{http_code}" --connect-timeout 5 -s -X POST -o /dev/null -b $cookie -d $data $ovpn_history_api)
+    status=$(curl -w "%{http_code}" --connect-timeout 5 -s -X POST -o /dev/null -d $data $ovpn_history_api)
 
     [ $status -ne 200 ] && echo "[CLIENT-DISCONNECT] $0:$LINENO 保存历史记录出错，请检查！" || true
 }
