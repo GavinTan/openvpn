@@ -437,6 +437,34 @@ func main() {
 				}
 
 				c.JSON(http.StatusOK, gin.H{"message": "重启服务成功"})
+			case "getConfig":
+				data, err := os.ReadFile(path.Join(ovData, "server.conf"))
+				if err != nil {
+					logger.Error(context.Background(), err.Error())
+					c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+					return
+				}
+
+				c.JSON(http.StatusOK, gin.H{"content": string(data)})
+			case "updateConfig":
+				content := c.PostForm("content")
+
+				file, err := os.OpenFile(path.Join(ovData, "server.conf"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+				if err != nil {
+					logger.Error(context.Background(), err.Error())
+					c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+					return
+				}
+				defer file.Close()
+
+				_, err = file.WriteString(content)
+				if err != nil {
+					logger.Error(context.Background(), err.Error())
+					c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+					return
+				}
+
+				c.JSON(http.StatusOK, gin.H{"message": "配置更新成功"})
 			default:
 				c.JSON(http.StatusUnprocessableEntity, gin.H{"message": "未知操作"})
 			}
@@ -556,6 +584,31 @@ func main() {
 		ovpn.PUT("/client", func(c *gin.Context) {
 			f := c.Query("file")
 			content := c.PostForm("content")
+			msg := "客户端更新成功"
+
+			dir := filepath.Dir(path.Join(ovData, f))
+			if _, err := os.Stat(dir); os.IsNotExist(err) {
+				err := os.MkdirAll(dir, 0755)
+				if err != nil {
+					logger.Error(context.Background(), err.Error())
+				}
+			}
+
+			if strings.Contains(f, "ccd") {
+				grepCmd := exec.Command("grep", "-q", "^client-config-dir", path.Join(ovData, "server.conf"))
+				err := grepCmd.Run()
+				if err != nil {
+					cmd := exec.Command("sh", "-c", fmt.Sprintf("echo 'client-config-dir %[1]s/ccd' >> %[1]s/server.conf", ovData))
+					if out, err := cmd.CombinedOutput(); err != nil {
+						if out == nil {
+							out = []byte(err.Error())
+						}
+						logger.Error(context.Background(), string(out))
+					}
+
+					msg += "（未启用CCD需要重启服务）"
+				}
+			}
 
 			file, err := os.OpenFile(path.Join(ovData, f), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 			if err != nil {
@@ -572,7 +625,7 @@ func main() {
 				return
 			}
 
-			c.JSON(http.StatusOK, gin.H{"message": "客户端更新成功"})
+			c.JSON(http.StatusOK, gin.H{"message": msg})
 		})
 
 		ovpn.POST("/client", func(c *gin.Context) {

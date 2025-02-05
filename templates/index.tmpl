@@ -351,6 +351,26 @@
                     <h6 class="dropdown-header">openvpn</h6>
                   </li>
                   <li>
+                    <span class="dropdown-item" role="button" id="sconfig">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="1em"
+                        height="1em"
+                        fill="currentColor"
+                        class="bi bi-card-heading"
+                        viewBox="0 0 16 16"
+                      >
+                        <path
+                          d="M14.5 3a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5zm-13-1A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 14.5 2z"
+                        />
+                        <path
+                          d="M3 8.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5m0-5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5z"
+                        />
+                      </svg>
+                      配置文件
+                    </span>
+                  </li>
+                  <li>
                     <span class="dropdown-item" role="button" id="restartSrv">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -1006,6 +1026,46 @@
       </div>
     </div>
 
+    <div
+      class="modal fade"
+      data-bs-backdrop="static"
+      data-bs-keyboard="false"
+      tabindex="-1"
+      id="editServerModal"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">server.conf</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <textarea
+            class="form-control form-control-lg border border-0"
+            name="config"
+            rows="16"
+          ></textarea>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              取消
+            </button>
+            <button type="submit" class="btn btn-primary" id="editServerSumbit">
+              确认
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <footer class="fixed-bottom border-top bg-light" style="font-size: 12px">
       {{ .server.Version }}
     </footer>
@@ -1554,6 +1614,24 @@
           $("#restartInfoModal").modal("hide");
           request
             .post("/ovpn/server", { action: "restartSrv" })
+            .then((data) => {
+              message.success(data.message);
+            });
+        });
+
+        $("#sconfig").click(function () {
+          request.post("/ovpn/server", { action: "getConfig" }).then((data) => {
+            $('#editServerModal textarea[name="config"]').val(data.content);
+            $("#editServerModal").modal("show");
+          });
+        });
+
+        $("#editServerSumbit").click(function () {
+          const content = $('#editServerModal textarea[name="config"]').val();
+
+          $("#editServerModal").modal("hide");
+          request
+            .post("/ovpn/server", { action: "updateConfig", content })
             .then((data) => {
               message.success(data.message);
             });
