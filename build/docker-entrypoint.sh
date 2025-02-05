@@ -335,6 +335,7 @@ case $1 in
         fi
 
         if [ -n "$5" ]; then
+            mkdir -p $OVPN_DATA/ccd
             echo -e "$5" > $OVPN_DATA/ccd/$2
         fi
 
@@ -358,7 +359,6 @@ case $1 in
         exit 0
     ;;
     "/usr/sbin/openvpn")
-        mkdir -p $OVPN_DATA/ccd
         [[ "$ENV_UPDATE_CONFIG" == "true" ]] && update_config
         run_server
     ;;
