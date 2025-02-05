@@ -125,21 +125,18 @@ networks:
 
 ## 环境变量参数
 
-|       环境变量        |             说明             |               默认值               |
-| :-------------------: | :--------------------------: | :--------------------------------: |
-|     **OVPN_DATA**     |         数据存放目录         |               /data                |
-|    **OVPN_SUBNET**    |           vpn子网            |            10.8.0.0/24             |
-|   **OVPN_SUBNET6**    |         vpn ipv6子网         |      fdaf:f178:e916:6dd0::/64      |
-|    **OVPN_PROTO**     |      协议 tcp(6)/udp(6)      |                udp                 |
-|     **OVPN_PORT**     |         vpn连接端口          |                1194                |
-|  **OVPN_MAXCLIENTS**  |     vpn最大客户端连接数      |                200                 |
-|  **OVPN_MANAGEMENT**  |   openvpn管理接口监听地址    |           127.0.0.1:7505           |
-|   **OVPN_AUTH_API**   |        vpn账号认证api        |  http://127.0.0.1:8833/ovpn/login  |
-| **OVPN_HISTORY_API**  |        vpn历史记录api        | http://127.0.0.1:8833/ovpn/history |
-|     **OVPN_IPV6**     |           启用ipv6           |               false                |
-|   **OVPN_GATEWAY**    |   启用vpn网关所有流量走vpn   |               false                |
-|     **WEB_PORT**      |           web端口            |                8833                |
-|     **AUTH_API**      |        web登录认证api        |    http://127.0.0.1:8833/login     |
-|  **ADMIN_USERNAME**   |         web登录账号          |               admin                |
-|  **ADMIN_PASSWORD**   |         web登录密码          |               admin                |
-| **ENV_UPDATE_CONFIG** | 启用环境变量自动更新配置文件 |                true                |
+|       环境变量        |             说明             |          默认值          |
+| :-------------------: | :--------------------------: | :----------------------: |
+|     **OVPN_DATA**     |         数据存放目录         |          /data           |
+|    **OVPN_SUBNET**    |           vpn子网            |       10.8.0.0/24        |
+|   **OVPN_SUBNET6**    |         vpn ipv6子网         | fdaf:f178:e916:6dd0::/64 |
+|    **OVPN_PROTO**     |      协议 tcp(6)/udp(6)      |           udp            |
+|     **OVPN_PORT**     |         vpn连接端口          |           1194           |
+|  **OVPN_MAXCLIENTS**  |     vpn最大客户端连接数      |           200            |
+|  **OVPN_MANAGEMENT**  |   openvpn管理接口监听地址    |      127.0.0.1:7505      |
+|     **OVPN_IPV6**     |           启用ipv6           |          false           |
+|   **OVPN_GATEWAY**    |   启用vpn网关所有流量走vpn   |          false           |
+|     **WEB_PORT**      |           web端口            |           8833           |
+|  **ADMIN_USERNAME**   |         web登录账号          |          admin           |
+|  **ADMIN_PASSWORD**   |         web登录密码          |          admin           |
+| **ENV_UPDATE_CONFIG** | 启用环境变量自动更新配置文件 |           true           |
