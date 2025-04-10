@@ -52,7 +52,8 @@ tls-server
 tls-version-min 1.2
 tls-cipher TLS-ECDHE-ECDSA-WITH-AES-128-GCM-SHA256
 auth-user-pass-verify /usr/lib/openvpn/plugins/openvpn-auth via-env
-client-disconnect "/usr/bin/docker-entrypoint.sh addhistory"
+client-disconnect /usr/bin/docker-entrypoint.sh
+client-connect /usr/bin/docker-entrypoint.sh
 script-security 3
 status $OVPN_DATA/openvpn-status.log
 client-config-dir $OVPN_DATA/ccd
@@ -305,6 +306,12 @@ $(cat $OVPN_DATA/pki/tc.key)
 EOF
 }
 
+check_config(){
+    config=$OVPN_DATA/server.conf
+    grep -q "^client-connect" $config || echo "client-connect /usr/bin/docker-entrypoint.sh" >> $config
+    grep -q "^client-disconnect" $config || echo "client-disconnect /usr/bin/docker-entrypoint.sh" >> $config
+}
+
 add_history(){
     #https://build.openvpn.net/man/openvpn-2.6/openvpn.8.html#environmental-variables
     data="vip=$ifconfig_pool_remote_ip&rip=$trusted_ip&common_name=$common_name&username=$username&bytes_received=$bytes_received&bytes_sent=$bytes_sent&time_unix=$time_unix&time_duration=$time_duration"
@@ -313,7 +320,26 @@ add_history(){
     [ $status -ne 200 ] && echo "[CLIENT-DISCONNECT] $0:$LINENO 保存历史记录出错，请检查！" || true
 }
 
+client_disconnect(){
+    set +e
+    add_history
+    [ $? -ne 0 ] && echo "[CLIENT-DISCONNECT] $0:$LINENO 保存历史记录出错，请检查！"
+    set -e
+}
+
+client_connect(){
+    #set static ip
+    cc_file="$1"
+    sql="SELECT ip_addr FROM user WHERE username='$username'"
+    ipaddr=$(sqlite3 $ovpn_data/ovpn.db "$sql")
+    echo "ifconfig-push $ipaddr $ifconfig_netmask" > $cc_file
+}
+
+
+
 ################################################################################################
+
+
 
 if [ "$1" == "--init" ]; then
     mkdir -p $OVPN_DATA/ccd
@@ -341,34 +367,39 @@ case $1 in
 
         $(genclient $2 $3 "$4")
         exit 0
-    ;;
+        ;;
     "auth")
         $(auth $2)
         exit 0
-    ;;
+        ;;
     "renewcert")
         renew_cert
         exit 0
-    ;;
-    "addhistory")
-        set +e
-        add_history
-        [ $? -ne 0 ] && echo "[CLIENT-DISCONNECT] $0:$LINENO 保存历史记录出错，请检查！"
-        set -e
-        
-        exit 0
-    ;;
+        ;;
     "/usr/sbin/openvpn")
         [[ "$ENV_UPDATE_CONFIG" == "true" ]] && update_config
+        check_config
         run_server
-    ;;
+        ;;
     "/usr/bin/supervisord")
         if [ ! -e $OVPN_DATA/.vars ]; then
             echo "请执行命令docker-compose run --rm openvpn --init进行初始化配置！"
             exit 1
         fi
         /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
-    ;;
+        ;;
+esac
+
+
+case "$script_type" in
+    client-connect)
+        client_connect "$@"
+        exit 0
+        ;;
+    client-disconnect)
+        client_disconnect "$@"
+        exit 0
+        ;;
 esac
 
 exec "$@"
