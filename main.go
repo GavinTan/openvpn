@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"embed"
 	"fmt"
 	"html/template"
@@ -278,7 +279,7 @@ func main() {
 	}
 
 	var err error
-	db, err = gorm.Open(sqlite.Open("ovpn.db"), &gorm.Config{
+	db, err = gorm.Open(sqlite.Open(path.Join(ovData, "ovpn.db")), &gorm.Config{
 		Logger: logger,
 	})
 
@@ -523,6 +524,10 @@ func main() {
 			id := c.Param("id")
 
 			c.ShouldBind(&u)
+
+			if ipAddr, ok := c.Request.PostForm["ipAddr"]; ok {
+				u.IpAddr = sql.NullString{String: ipAddr[0], Valid: true}
+			}
 
 			err := u.Update(id, u)
 			if err != nil {

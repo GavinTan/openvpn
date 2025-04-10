@@ -548,6 +548,7 @@
                 <th scope="col">ID</th>
                 <th scope="col">用户名</th>
                 <th scope="col">密码</th>
+                <th scope="col">IP地址</th>
                 <th scope="col">状态</th>
                 <th scope="col">姓名</th>
                 <th scope="col">操作</th>
@@ -608,40 +609,156 @@
               ></button>
             </div>
             <div class="modal-body">
-              <div class="row">
-                <label class="col-sm-3 col-form-label">用户名:</label>
-                <div class="col-sm-9">
-                  <input
-                    type="text"
-                    class="form-control form-control-sm"
-                    name="username"
-                    autofocus
-                    required
-                  />
-                </div>
+              <div class="form-group mb-3">
+                <label>用户名</label>
+                <input
+                  type="text"
+                  class="form-control form-control-sm float-end w-75"
+                  name="username"
+                  autofocus
+                  required
+                />
               </div>
-              <div class="row">
-                <label class="col-sm-3 col-form-label">密码:</label>
-                <div class="col-sm-9">
-                  <input
-                    type="password"
-                    autocomplete="one-time-code"
-                    class="form-control form-control-sm"
-                    name="password"
-                    required
-                  />
-                </div>
+              <div class="form-group mb-3">
+                <label>密码</label>
+                <input
+                  type="password"
+                  autocomplete="one-time-code"
+                  class="form-control form-control-sm float-end w-75"
+                  name="password"
+                  required
+                />
               </div>
-              <div class="row">
-                <label class="col-sm-3 col-form-label">姓名:</label>
-                <div class="col-sm-9">
-                  <input
-                    type="text"
-                    class="form-control form-control-sm"
-                    name="name"
-                    required
-                  />
-                </div>
+              <div class="form-group mb-3">
+                <label>姓名</label>
+                <input
+                  type="text"
+                  class="form-control form-control-sm float-end w-75"
+                  name="name"
+                  required
+                />
+              </div>
+              <div class="form-group mb-3">
+                <label>
+                  IP地址
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    fill="currentColor"
+                    class="bi bi-question-circle"
+                    viewBox="0 0 16 16"
+                    data-bs-toggle="tooltip"
+                    data-bs-placement="right"
+                    data-bs-title="固定VPN的IP地址"
+                  >
+                    <path
+                      d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"
+                    ></path>
+                    <path
+                      d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286m1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94"
+                    ></path>
+                  </svg>
+                </label>
+                <input
+                  type="text"
+                  class="form-control form-control-sm float-end w-75"
+                  name="ipAddr"
+                />
+                <div
+                  class="form-text d-none mt-2"
+                  style="left: 27%; position: absolute"
+                ></div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal"
+              >
+                取消
+              </button>
+              <button type="submit" class="btn btn-primary">保存</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" tabindex="-1" id="editUserModal" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <form>
+            <div class="modal-header">
+              <h5 class="modal-title">编辑账号</h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group mb-3" hidden>
+                <label>ID</label>
+                <input
+                  type="text"
+                  class="form-control form-control-sm float-end w-75"
+                  name="id"
+                  disabled
+                />
+              </div>
+              <div class="form-group mb-3">
+                <label>用户名</label>
+                <input
+                  type="text"
+                  class="form-control form-control-sm float-end w-75"
+                  name="username"
+                  autofocus
+                  required
+                />
+              </div>
+              <div class="form-group mb-3">
+                <label>姓名</label>
+                <input
+                  type="text"
+                  class="form-control form-control-sm float-end w-75"
+                  name="name"
+                  required
+                />
+              </div>
+              <div class="form-group mb-3">
+                <label>
+                  IP地址
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    fill="currentColor"
+                    class="bi bi-question-circle"
+                    viewBox="0 0 16 16"
+                    data-bs-toggle="tooltip"
+                    data-bs-placement="right"
+                    data-bs-title="固定VPN的IP地址"
+                  >
+                    <path
+                      d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"
+                    ></path>
+                    <path
+                      d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286m1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94"
+                    ></path>
+                  </svg>
+                </label>
+                <input
+                  type="text"
+                  class="form-control form-control-sm float-end w-75"
+                  name="ipAddr"
+                />
+                <div
+                  class="form-text d-none mt-2"
+                  style="left: 27%; position: absolute"
+                ></div>
               </div>
             </div>
             <div class="modal-footer">
@@ -679,7 +796,7 @@
             </div>
             <div class="modal-body">
               <div class="row">
-                <label class="col-sm-3 col-form-label">名称:</label>
+                <label class="col-sm-3 col-form-label">名称</label>
                 <div class="col-sm-9">
                   <input
                     type="text"
@@ -692,7 +809,7 @@
                 </div>
               </div>
               <div class="row">
-                <label class="col-sm-3 col-form-label">VPNServer:</label>
+                <label class="col-sm-3 col-form-label">VPNServer</label>
                 <div class="col-sm-9">
                   <input
                     type="text"
@@ -703,7 +820,7 @@
                 </div>
               </div>
               <div class="row mb-2">
-                <label class="col-sm-3 col-form-label">CCD配置:</label>
+                <label class="col-sm-3 col-form-label">CCD配置</label>
                 <div class="col-sm-9">
                   <textarea
                     class="form-control form-control-sm"
@@ -714,7 +831,7 @@
                 </div>
               </div>
               <div class="row">
-                <label class="col-sm-3 col-form-label">自定义配置:</label>
+                <label class="col-sm-3 col-form-label">自定义配置</label>
                 <div class="col-sm-9">
                   <textarea
                     class="form-control form-control-sm"
@@ -746,7 +863,7 @@
       id="resetPassModal"
       aria-hidden="true"
     >
-      <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-dialog">
         <div class="modal-content">
           <form>
             <div class="modal-header">
@@ -769,7 +886,7 @@
                 />
               </div>
               <div class="form-group mb-3">
-                <label>用户名:</label>
+                <label>用户名</label>
                 <input
                   type="text"
                   class="form-control form-control-sm float-end w-75"
@@ -778,7 +895,7 @@
                 />
               </div>
               <div class="form-group mb-3">
-                <label>密码:</label>
+                <label>密码</label>
                 <input
                   type="password"
                   autocomplete="one-time-code"
@@ -788,7 +905,7 @@
                 />
               </div>
               <div class="form-group mb-3">
-                <label>确认密码:</label>
+                <label>确认密码</label>
                 <input
                   type="password"
                   autocomplete="one-time-code"
@@ -890,7 +1007,7 @@
             </div>
             <div class="modal-body">
               <div class="form-group mb-3">
-                <label>密码:</label>
+                <label>密码</label>
                 <input
                   type="password"
                   autocomplete="one-time-code"
@@ -900,7 +1017,7 @@
                 />
               </div>
               <div class="form-group mb-3">
-                <label>确认密码:</label>
+                <label>确认密码</label>
                 <input
                   type="password"
                   autocomplete="one-time-code"
@@ -997,7 +1114,7 @@
             ></button>
           </div>
           <div class="form-group mb-3" hidden>
-            <label>客户端:</label>
+            <label>客户端</label>
             <input
               type="text"
               class="form-control form-control-lg float-end w-75"
@@ -1222,7 +1339,16 @@
 
               return body;
             } catch (error) {
-              message.error(error.message);
+              if (
+                error.message.includes(
+                  "UNIQUE constraint failed: user.username"
+                )
+              ) {
+                message.error("用户名已存在");
+              } else {
+                message.error(error.message);
+              }
+
               throw error;
             }
           }
@@ -1249,6 +1375,13 @@
         }
 
         const request = new Request();
+
+        const tooltipTriggerList = document.querySelectorAll(
+          '[data-bs-toggle="tooltip"]'
+        );
+        const tooltipList = [...tooltipTriggerList].map(
+          (tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl)
+        );
 
         if (vtable) {
           vtable.ajax.reload();
@@ -1381,6 +1514,7 @@
                     return html;
                   },
                 },
+                { data: "ipAddr" },
                 {
                   data: (data) => {
                     if (data.isEnable) {
@@ -1394,13 +1528,20 @@
                 {
                   data: (data) => {
                     const html = `
-                  <button class="btn btn-link text-decoration-none p-0" id="resetPass">重置密码</button>
+                  <button class="btn btn-link text-decoration-none p-0" id="editUser">编辑</button>
                   ${
                     data.isEnable === true
                       ? '<button class="btn btn-link text-decoration-none p-0" id="disableUser">禁用</button>'
                       : '<button class="btn btn-link text-decoration-none p-0" id="enableUser">启用</button>'
                   }
                   <button class="btn btn-link text-decoration-none p-0" id="delUser">删除</button>
+                  <div class="btn btn-link text-decoration-none p-0 dropdown">
+                    <button class="btn btn-link text-decoration-none p-0 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li><a class="dropdown-item" id="resetPass">重置密码</a></li>
+                    </ul>
+                  </div>
                   `;
                     return html;
                   },
@@ -1641,9 +1782,10 @@
           const name = $('#addUserModal input[name="name"]').val();
           const username = $('#addUserModal input[name="username"]').val();
           const password = $('#addUserModal input[name="password"]').val();
+          const ipAddr = $('#addUserModal input[name="ipAddr"]').val();
 
           request
-            .post("/ovpn/user", { name, username, password })
+            .post("/ovpn/user", { name, username, password, ipAddr })
             .then((data) => {
               utable.ajax.reload(null, false);
               $("#addUserModal form").trigger("reset");
@@ -1652,6 +1794,32 @@
 
           return false;
         });
+
+        $(document).on(
+          "keyup",
+          '#addUserModal input[name="ipAddr"]',
+          function () {
+            const ipAddr = $('#addUserModal input[name="ipAddr"]').val();
+            const regex =
+              /^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+
+            if (regex.test(ipAddr) || ipAddr.length == 0) {
+              $("#addUserModal .form-text").addClass("d-none");
+              $('#addUserModal input[name="ipAddr"]').removeClass(
+                "border border-danger"
+              );
+              $("#addUserModal :submit").removeAttr("disabled");
+            } else {
+              $("#addUserModal .form-text").text("非法IP地址！");
+              $("#addUserModal .form-text").addClass("text-danger");
+              $('#addUserModal input[name="ipAddr"]').addClass(
+                "border border-danger"
+              );
+              $("#addUserModal .form-text").removeClass("d-none");
+              $("#addUserModal :submit").attr("disabled", true);
+            }
+          }
+        );
 
         $("#addClientModal form").submit(function () {
           const name = $('#addClientModal input[name="name"]').val();
@@ -1746,6 +1914,63 @@
             utable.ajax.reload(null, false);
           });
         });
+
+        $(document).on("click", "#editUser", function () {
+          const id = utable.row($(this).parents("tr")).data().id;
+          const name = utable.row($(this).parents("tr")).data().name;
+          const username = utable.row($(this).parents("tr")).data().username;
+          const ipAddr = utable.row($(this).parents("tr")).data().ipAddr;
+
+          $('#editUserModal input[name="id"]').val(id);
+          $('#editUserModal input[name="name"]').val(name);
+          $('#editUserModal input[name="username"]').val(username);
+          $('#editUserModal input[name="ipAddr"]').val(ipAddr);
+
+          $("#editUserModal").modal("show");
+        });
+
+        $("#editUserModal form").submit(function () {
+          const id = $('#editUserModal input[name="id"]').val();
+          const name = $('#editUserModal input[name="name"]').val();
+          const username = $('#editUserModal input[name="username"]').val();
+          const ipAddr = $('#editUserModal input[name="ipAddr"]').val();
+
+          request
+            .patch(`/ovpn/user/${id}`, { name, username, ipAddr })
+            .then((data) => {
+              utable.ajax.reload(null, false);
+              message.success(data.message);
+            });
+
+          $("#editUserModal").modal("hide");
+          return false;
+        });
+
+        $(document).on(
+          "keyup",
+          '#editUserModal input[name="ipAddr"]',
+          function () {
+            const ipAddr = $('#editUserModal input[name="ipAddr"]').val();
+            const regex =
+              /^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+
+            if (regex.test(ipAddr) || ipAddr.length == 0) {
+              $("#editUserModal .form-text").addClass("d-none");
+              $('#editUserModal input[name="ipAddr"]').removeClass(
+                "border border-danger"
+              );
+              $("#editUserModal :submit").removeAttr("disabled");
+            } else {
+              $("#editUserModal .form-text").text("非法IP地址！");
+              $("#editUserModal .form-text").addClass("text-danger");
+              $('#editUserModal input[name="ipAddr"]').addClass(
+                "border border-danger"
+              );
+              $("#editUserModal .form-text").removeClass("d-none");
+              $("#editUserModal :submit").attr("disabled", true);
+            }
+          }
+        );
 
         $(document).on("click", "#resetPass", function () {
           const id = utable.row($(this).parents("tr")).data().id;

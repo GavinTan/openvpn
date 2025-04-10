@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -12,13 +14,25 @@ import (
 )
 
 type User struct {
-	ID        uint      `gorm:"primarykey" json:"id" form:"id"`
-	Username  string    `gorm:"column:username" json:"username" form:"username"`
-	Password  string    `form:"password" json:"password"`
-	IsEnable  *bool     `gorm:"default:true" form:"isEnable" json:"isEnable"`
-	Name      string    `json:"name" form:"name"`
-	CreatedAt time.Time `json:"createdAt,omitempty" form:"createdAt,omitempty"`
-	UpdatedAt time.Time `json:"updatedAt,omitempty" form:"updatedAt,omitempty"`
+	ID        uint           `gorm:"primarykey" json:"id" form:"id"`
+	Username  string         `gorm:"uniqueIndex;column:username" json:"username" form:"username"`
+	Password  string         `form:"password" json:"password"`
+	IsEnable  *bool          `gorm:"default:true" form:"isEnable" json:"isEnable"`
+	Name      string         `json:"name" form:"name"`
+	IpAddr    sql.NullString `json:"ipAddr" form:"ipAddr"`
+	CreatedAt time.Time      `json:"createdAt,omitempty" form:"createdAt,omitempty"`
+	UpdatedAt time.Time      `json:"updatedAt,omitempty" form:"updatedAt,omitempty"`
+}
+
+func (u User) MarshalJSON() ([]byte, error) {
+	type Alias User
+	return json.Marshal(&struct {
+		*Alias
+		IpAddr string `json:"ipAddr"`
+	}{
+		Alias:  (*Alias)(&u),
+		IpAddr: u.IpAddr.String,
+	})
 }
 
 func (u User) All() []User {
