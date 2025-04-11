@@ -19,7 +19,7 @@ type User struct {
 	Password  string         `form:"password" json:"password"`
 	IsEnable  *bool          `gorm:"default:true" form:"isEnable" json:"isEnable"`
 	Name      string         `json:"name" form:"name"`
-	IpAddr    sql.NullString `json:"ipAddr" form:"ipAddr"`
+	IpAddr    sql.NullString `gorm:"uniqueIndex" json:"ipAddr" form:"ipAddr"`
 	CreatedAt time.Time      `json:"createdAt,omitempty" form:"createdAt,omitempty"`
 	UpdatedAt time.Time      `json:"updatedAt,omitempty" form:"updatedAt,omitempty"`
 }

@@ -79,7 +79,7 @@
         position: fixed;
         top: 8px;
         left: 0;
-        z-index: 1010;
+        z-index: 99999;
         width: 100%;
         pointer-events: none;
       }
@@ -1339,14 +1339,19 @@
 
               return body;
             } catch (error) {
-              if (
-                error.message.includes(
+              switch (true) {
+                case error.message.includes(
+                  "UNIQUE constraint failed: user.ip_addr"
+                ):
+                  message.error("IP已经使用");
+                  break;
+                case error.message.includes(
                   "UNIQUE constraint failed: user.username"
-                )
-              ) {
-                message.error("用户名已存在");
-              } else {
-                message.error(error.message);
+                ):
+                  message.error("用户名已存在");
+                  break;
+                default:
+                  message.error(error.message);
               }
 
               throw error;
@@ -1835,11 +1840,11 @@
             .post("/ovpn/client", { name, serverAddr, config, ccdConfig })
             .then((data) => {
               ctable.ajax.reload(null, false);
+              $("#addClientModal").modal("hide");
               $("#addClientModal form").trigger("reset");
               message.success(data.message);
             });
 
-          $("#addClientModal").modal("hide");
           return false;
         });
 
@@ -1939,10 +1944,10 @@
             .patch(`/ovpn/user/${id}`, { name, username, ipAddr })
             .then((data) => {
               utable.ajax.reload(null, false);
+              $("#editUserModal").modal("hide");
               message.success(data.message);
             });
 
-          $("#editUserModal").modal("hide");
           return false;
         });
 

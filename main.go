@@ -511,6 +511,10 @@ func main() {
 			var u User
 			c.ShouldBind(&u)
 
+			if ipAddr, ok := c.Request.PostForm["ipAddr"]; ok {
+				u.IpAddr = sql.NullString{String: ipAddr[0], Valid: true}
+			}
+
 			err := u.Create()
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
