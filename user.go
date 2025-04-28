@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -14,75 +12,68 @@ import (
 )
 
 type User struct {
-	ID        uint           `gorm:"primarykey" json:"id" form:"id"`
-	Username  string         `gorm:"uniqueIndex;column:username" json:"username" form:"username"`
-	Password  string         `form:"password" json:"password"`
-	IsEnable  *bool          `gorm:"default:true" form:"isEnable" json:"isEnable"`
-	Name      string         `json:"name" form:"name"`
-	IpAddr    sql.NullString `gorm:"uniqueIndex" json:"ipAddr" form:"ipAddr"`
-	CreatedAt time.Time      `json:"createdAt,omitempty" form:"createdAt,omitempty"`
-	UpdatedAt time.Time      `json:"updatedAt,omitempty" form:"updatedAt,omitempty"`
+	ID        uint      `gorm:"primarykey" json:"id" form:"id"`
+	Username  string    `gorm:"uniqueIndex;column:username" json:"username" form:"username"`
+	Password  string    `form:"password" json:"password"`
+	IsEnable  *bool     `gorm:"default:true" form:"isEnable" json:"isEnable"`
+	Name      string    `json:"name" form:"name"`
+	IpAddr    string    `gorm:"uniqueIndex;default:NULL" json:"ipAddr" form:"ipAddr"`
+	CreatedAt time.Time `json:"createdAt,omitempty" form:"createdAt,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt,omitempty" form:"updatedAt,omitempty"`
 }
 
-func (u User) MarshalJSON() ([]byte, error) {
-	type Alias User
-	return json.Marshal(&struct {
-		*Alias
-		IpAddr string `json:"ipAddr"`
-	}{
-		Alias:  (*Alias)(&u),
-		IpAddr: u.IpAddr.String,
-	})
+func (u *User) BeforeSave(tx *gorm.DB) (err error) {
+	if u.Password != "" {
+		ep, _ := aes.AesEncrypt(u.Password, os.Getenv("SECRET_KEY"))
+		tx.Statement.SetColumn("Password", ep)
+	}
+
+	return
 }
 
-func (u User) All() []User {
+func (u *User) AfterFind(tx *gorm.DB) (err error) {
+	dp, err := aes.AesDecrypt(u.Password, os.Getenv("SECRET_KEY"))
+	if err == nil {
+		u.Password = dp
+	}
+
+	return
+}
+
+func (u *User) All() []User {
 	var users []User
 
-	result := db.Table(u.TableName()).WithContext(context.Background()).Find(&users)
+	result := db.Model(&User{}).WithContext(context.Background()).Find(&users)
 	if result.Error != nil {
 		logger.Error(context.Background(), result.Error.Error())
 		return []User{}
 	}
 
-	for k, v := range users {
-		dp, _ := aes.AesDecrypt(v.Password, os.Getenv("SECRET_KEY"))
-		users[k].Password = dp
-	}
-
 	return users
 }
 
-func (u User) Create() error {
+func (u *User) Create() error {
 	if u.Username == "" || u.Password == "" {
 		return fmt.Errorf("非法请求")
 	}
 
-	ep, _ := aes.AesEncrypt(u.Password, os.Getenv("SECRET_KEY"))
-	u.Password = ep
-
-	result := db.Table(u.TableName()).WithContext(context.Background()).Create(&u)
-
+	result := db.Create(&u)
 	return result.Error
 }
 
-func (u User) Update(id string, data User) error {
-	if data.Password != "" {
-		ep, _ := aes.AesEncrypt(data.Password, os.Getenv("SECRET_KEY"))
-		data.Password = ep
-	}
-
-	result := db.Table(u.TableName()).WithContext(context.Background()).Where("id = ?", id).Updates(data)
+func (u *User) Update() error {
+	result := db.Model(&u).Updates(&u)
 	return result.Error
 }
 
-func (u User) Delete(id string) error {
-	result := db.Table(u.TableName()).WithContext(context.Background()).Unscoped().Delete(&u, id)
+func (u *User) Delete(id string) error {
+	result := db.Unscoped().Delete(&User{}, id)
 	return result.Error
 }
 
-func (u User) Login() error {
+func (u *User) Login() error {
 	pass := u.Password
-	result := db.Table(u.TableName()).WithContext(context.Background()).First(&u, "username = ?", u.Username)
+	result := db.First(&u, "username = ?", u.Username)
 
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		return fmt.Errorf("用户名不存在")
@@ -92,8 +83,7 @@ func (u User) Login() error {
 		return fmt.Errorf("账号已禁用")
 	}
 
-	dp, _ := aes.AesDecrypt(u.Password, os.Getenv("SECRET_KEY"))
-	if dp != pass {
+	if u.Password != pass {
 		return fmt.Errorf("密码错误")
 	}
 

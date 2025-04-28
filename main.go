@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"embed"
 	"fmt"
 	"html/template"
@@ -511,10 +510,6 @@ func main() {
 			var u User
 			c.ShouldBind(&u)
 
-			if ipAddr, ok := c.Request.PostForm["ipAddr"]; ok {
-				u.IpAddr = sql.NullString{String: ipAddr[0], Valid: true}
-			}
-
 			err := u.Create()
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -523,17 +518,17 @@ func main() {
 			}
 		})
 
-		ovpn.PATCH("/user/:id", func(c *gin.Context) {
+		ovpn.PATCH("/user", func(c *gin.Context) {
 			var u User
-			id := c.Param("id")
-
 			c.ShouldBind(&u)
 
 			if ipAddr, ok := c.Request.PostForm["ipAddr"]; ok {
-				u.IpAddr = sql.NullString{String: ipAddr[0], Valid: true}
+				if ipAddr[0] == "" {
+					db.Model(&u).Update("ip_addr", nil)
+				}
 			}
 
-			err := u.Update(id, u)
+			err := u.Update()
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 			} else {

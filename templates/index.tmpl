@@ -1503,7 +1503,7 @@
                     }
 
                     const html = `
-                  <div class="form-group">
+                  <div class="form-group d-flex align-items-center gap-1">
                     <input class="border border-0 p-0 bg-transparent" style="outline: none;width: ${
                       data.password.length * 7
                     }px;max-width: 175px;" value="${
@@ -1903,18 +1903,16 @@
         $(document).on("click", "#disableUser", function () {
           const id = utable.row($(this).parents("tr")).data().id;
 
-          request
-            .patch(`/ovpn/user/${id}`, { isEnable: false })
-            .then((data) => {
-              message.success(data.message);
-              utable.ajax.reload(null, false);
-            });
+          request.patch("/ovpn/user", { id, isEnable: false }).then((data) => {
+            message.success(data.message);
+            utable.ajax.reload(null, false);
+          });
         });
 
         $(document).on("click", "#enableUser", function () {
           const id = utable.row($(this).parents("tr")).data().id;
 
-          request.patch(`/ovpn/user/${id}`, { isEnable: true }).then((data) => {
+          request.patch("/ovpn/user", { id, isEnable: true }).then((data) => {
             message.success(data.message);
             utable.ajax.reload(null, false);
           });
@@ -1941,7 +1939,7 @@
           const ipAddr = $('#editUserModal input[name="ipAddr"]').val();
 
           request
-            .patch(`/ovpn/user/${id}`, { name, username, ipAddr })
+            .patch("/ovpn/user", { id, name, username, ipAddr })
             .then((data) => {
               utable.ajax.reload(null, false);
               $("#editUserModal").modal("hide");
@@ -2032,10 +2030,10 @@
         );
 
         $("#resetPassModal form").submit(function () {
-          let id = $('#resetPassModal input[name="id"]').val();
-          let newPass = $('#resetPassModal input[name="newPassAgain"]').val();
+          const id = $('#resetPassModal input[name="id"]').val();
+          const newPass = $('#resetPassModal input[name="newPassAgain"]').val();
 
-          request.patch(`/ovpn/user/${id}`, { password: newPass }).then(() => {
+          request.patch("/ovpn/user", { id, password: newPass }).then(() => {
             utable.ajax.reload(null, false);
             $("#resetPassModal form").trigger("reset");
             $("#resetPassModal").modal("hide");
