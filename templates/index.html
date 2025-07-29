@@ -388,7 +388,7 @@
                     </span>
                   </li>
                   <li>
-                    <span class="dropdown-item" role="button" id="renewcert">
+                    <span class="dropdown-item" role="button" id="renewCert">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         width="1em"
@@ -497,101 +497,35 @@
     </nav>
 
     <div class="container-fluid">
-      <div id="status">
-        <div class="my-3 p-3 bg-body rounded shadow-sm">
-          <table class="table table-borderless m-0 text-center">
-            <thead class="border-bottom border-2">
-              <tr>
-                <th scope="col">VPN Server</th>
-                <th scope="col">状态</th>
-                <th scope="col">下载总流量</th>
-                <th scope="col">上传总流量</th>
-                <th scope="col">启动时间</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>{{ .server.Address }}</td>
-                <td>{{ .server.Status }}</td>
-                <td>{{ .server.BytesIn }}</td>
-                <td>{{ .server.BytesOut }}</td>
-                <td>{{ .server.RunDate }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="my-5 p-3 bg-body rounded shadow-sm">
-          <table id="vtable" class="table table-striped" style="width: 100%">
-            <thead>
-              <tr>
-                <th scope="col">用户名/客户端</th>
-                <th scope="col">VPN IP</th>
-                <th scope="col">用户 IP</th>
-                <th scope="col">下载流量</th>
-                <th scope="col">上传流量</th>
-                <th scope="col">上线时间</th>
-                <th scope="col">时长</th>
-                <th scope="col">操作</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
+      <div id="serverTable" class="my-3 p-3 bg-body rounded shadow-sm">
+        <table class="table table-borderless m-0 text-center">
+          <thead class="border-bottom border-2">
+            <tr>
+              <th scope="col">VPN Server</th>
+              <th scope="col">状态</th>
+              <th scope="col">下载总流量</th>
+              <th scope="col">上传总流量</th>
+              <th scope="col">启动时间</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{{ .server.Address }}</td>
+              <td>{{ .server.Status }}</td>
+              <td>{{ .server.BytesIn }}</td>
+              <td>{{ .server.BytesOut }}</td>
+              <td>{{ .server.RunDate }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
-      <div id="user" class="d-none">
-        <div class="my-3 p-3 bg-body rounded shadow-sm">
-          <table id="utable" class="table table-striped" style="width: 100%">
-            <thead>
-              <tr>
-                <th scope="col">ID</th>
-                <th scope="col">用户名</th>
-                <th scope="col">密码</th>
-                <th scope="col">IP地址</th>
-                <th scope="col">状态</th>
-                <th scope="col">姓名</th>
-                <th scope="col">操作</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div id="history" class="d-none">
-        <div class="my-3 p-3 bg-body rounded shadow-sm">
-          <table id="htable" class="table table-striped" style="width: 100%">
-            <thead>
-              <tr>
-                <th scope="col">用户名</th>
-                <th scope="col">客户端</th>
-                <th scope="col">VPN IP</th>
-                <th scope="col">用户 IP</th>
-                <th scope="col">下载流量</th>
-                <th scope="col">上传流量</th>
-                <th scope="col">上线时间</th>
-                <th scope="col">在线时长</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div id="client" class="d-none">
-        <div class="my-3 p-3 bg-body rounded shadow-sm">
-          <table id="ctable" class="table table-striped" style="width: 100%">
-            <thead>
-              <tr>
-                <th scope="col">名称</th>
-                <th scope="col">日期</th>
-                <th scope="col">操作</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
+      <div class="my-5 p-3 bg-body rounded shadow-sm">
+        <table
+          id="vtable"
+          class="table table-striped"
+          style="width: 100%"
+        ></table>
       </div>
     </div>
 
@@ -826,7 +760,7 @@
                     class="form-control form-control-sm"
                     name="ccdConfig"
                     rows="6"
-                    placeholder="ifconfig-push 10.8.0.111 255.255.255.0"
+                    placeholder="ifconfig-push 10.8.0.111 255.255.255.0&#10;iroute 192.168.0.0 255.255.0.0"
                   ></textarea>
                 </div>
               </div>
@@ -837,7 +771,7 @@
                     class="form-control form-control-sm"
                     name="config"
                     rows="6"
-                    placeholder="route 192.168.8.0 255.255.255.0"
+                    placeholder="route 192.168.8.0 255.255.255.0&#10;redirect-gateway def1 ipv6 bypass-dhcp"
                   ></textarea>
                 </div>
               </div>
@@ -1219,11 +1153,6 @@
 
     <script type="text/javascript">
       $(document).ready(function () {
-        let utable;
-        let vtable;
-        let ctable;
-        let htable;
-
         class Message {
           constructor() {
             this.div = document.createElement("div");
@@ -1305,8 +1234,6 @@
           }
         }
 
-        const message = new Message();
-
         class Request {
           async request(method, url, data = null) {
             const options = {
@@ -1379,7 +1306,12 @@
           }
         }
 
+        const message = new Message();
         const request = new Request();
+        let vtable;
+        let qt;
+        let now;
+        let lastMonth;
 
         const tooltipTriggerList = document.querySelectorAll(
           '[data-bs-toggle="tooltip"]'
@@ -1388,127 +1320,59 @@
           (tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl)
         );
 
-        if (vtable) {
-          vtable.ajax.reload();
-        } else {
-          vtable = $("#vtable").DataTable({
-            language: {
-              url: "/static/zh.json",
-              loadingRecords: "数据加载中...",
-            },
-            columnDefs: [{ className: "dt-center", targets: "_all" }],
+        const tables = {
+          status: {
+            columns: [
+              { title: "用户名/客户端", data: "username" },
+              { title: "VPN IP", data: "vip" },
+              { title: "用户 IP", data: "rip" },
+              { title: "下载流量", data: "recvBytes" },
+              { title: "上传流量", data: "sendBytes" },
+              { title: "上线时间", data: "connDate" },
+              { title: "时长", data: "onlineTime" },
+              {
+                title: "操作",
+                data: (data) =>
+                  `<button type="button" class="btn btn-outline-danger btn-sm" id="killClient">断开</button>`,
+              },
+            ],
             dom:
               "<'d-flex justify-content-between'f<'toolbar'>>" +
               "<'row'<'col-sm-12'tr>>" +
               "<'d-flex justify-content-between align-items-center'lip>",
             fnInitComplete: function () {
               const interval = setInterval(() => {
-                if ($("#status").hasClass("d-none")) {
+                if ($("#serverTable").is(":hidden")) {
                   clearInterval(interval);
                 } else {
                   vtable.ajax.reload(null, false);
                 }
               }, 30000);
             },
-            drawCallback: function () {
-              $("ul.pagination").addClass("pagination-sm");
-            },
             ajax: function (data, callback, settings) {
               request
                 .get("/ovpn/online-client")
                 .then((data) => callback({ data }));
             },
+          },
+          user: {
             columns: [
-              { data: "username" },
-              { data: "vip" },
-              { data: "rip" },
-              { data: "recvBytes" },
-              { data: "sendBytes" },
-              { data: "connDate" },
-              { data: "onlineTime" },
+              { title: "ID", data: "id" },
+              { title: "用户名", data: "username" },
               {
-                data: (data) =>
-                  `<button type="button" class="btn btn-outline-danger btn-sm" id="${data.id}">断开</button>`,
-              },
-            ],
-          });
-        }
+                title: "密码",
+                data: (data) => {
+                  if (data.password.length == 0) {
+                    return data.password;
+                  }
 
-        $("#vtable").on("click", "button", function () {
-          request.post("/ovpn/kill", { cid: this.id }).then((res) => {
-            vtable.cell(this).row().remove().draw();
-          });
-        });
-
-        $("#showUser").click(function () {
-          $("#status").addClass("d-none");
-          $("#client").addClass("d-none");
-          $("#history").addClass("d-none");
-          $("#user").removeClass("d-none");
-
-          if (utable) {
-            utable.ajax.reload();
-          } else {
-            utable = $("#utable").DataTable({
-              order: [[0, "desc"]],
-              language: {
-                url: "/static/zh.json",
-                loadingRecords: "数据加载中...",
-              },
-              columnDefs: [{ className: "dt-center", targets: "_all" }],
-              dom:
-                "<'row align-items-center'<'col d-flex'f><'col d-flex justify-content-center toolbar'><'col d-flex justify-content-end'B>>" +
-                "<'row'<'col-sm-12'tr>>" +
-                "<'d-flex justify-content-between align-items-center'lip>",
-              fnInitComplete: function (oSettings, data) {
-                $("#user div.toolbar").html(
-                  `<div class="form-check form-switch form-check-reverse">
-                  <input class="form-check-input" type="checkbox" role="switch" id="authUser" ${
-                    data.authUser ? "checked" : ""
-                  }>
-                  <label class="form-check-label" for="authUser">账号启用: </label>
-                </div>
-                `
-                );
-              },
-              drawCallback: function () {
-                $("ul.pagination").addClass("pagination-sm");
-              },
-              buttons: {
-                dom: {
-                  button: { className: "btn btn-sm" },
-                },
-                buttons: [
-                  {
-                    text: "添加",
-                    className: "btn-primary",
-                    action: () => $("#addUserModal").modal("show"),
-                  },
-                ],
-              },
-              ajax: function (data, callback, settings) {
-                request
-                  .get("/ovpn/user")
-                  .then((data) =>
-                    callback({ data: data?.users, authUser: data?.authUser })
-                  );
-              },
-              columns: [
-                { data: "id" },
-                { data: "username" },
-                {
-                  data: (data) => {
-                    if (data.password.length == 0) {
-                      return data.password;
-                    }
-
-                    const html = `
+                  const html = `
                   <div class="form-group d-flex align-items-center gap-1">
                     <input class="border border-0 p-0 bg-transparent" style="outline: none;width: ${
                       data.password.length * 7
                     }px;max-width: 175px;" value="${
-                      data.password
-                    }" type="password" readonly>
+                    data.password
+                  }" type="password" readonly>
                     <button class="btn btn-link p-0" id="copyPass">
                       <svg viewBox="64 64 896 896" focusable="false" data-icon="copy" width="1em" height="1em" fill="currentColor" aria-hidden="true">
                         <path d="M832 64H296c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h496v688c0 4.4 3.6 8 8 8h56c4.4 0 8-3.6 8-8V96c0-17.7-14.3-32-32-32zM704 192H192c-17.7 0-32 14.3-32 32v530.7c0 8.5 3.4 16.6 9.4 22.6l173.3 173.3c2.2 2.2 4.7 4 7.4 5.5v1.9h4.2c3.5 1.3 7.2 2 11 2H704c17.7 0 32-14.3 32-32V224c0-17.7-14.3-32-32-32zM350 856.2L263.9 770H350v86.2zM664 888H414V746c0-22.1-17.9-40-40-40H232V264h432v624z"></path>
@@ -1516,23 +1380,25 @@
                     </button>
                   </div>
                   `;
-                    return html;
-                  },
+                  return html;
                 },
-                { data: "ipAddr" },
-                {
-                  data: (data) => {
-                    if (data.isEnable) {
-                      return `<span class="badge text-bg-success">启用</span>`;
-                    } else {
-                      return `<span class="badge text-bg-secondary">禁用</span>`;
-                    }
-                  },
+              },
+              { title: "IP地址", data: "ipAddr" },
+              {
+                title: "状态",
+                data: (data) => {
+                  if (data.isEnable) {
+                    return `<span class="badge text-bg-success">启用</span>`;
+                  } else {
+                    return `<span class="badge text-bg-secondary">禁用</span>`;
+                  }
                 },
-                { data: "name" },
-                {
-                  data: (data) => {
-                    const html = `
+              },
+              { title: "姓名", data: "name" },
+              {
+                title: "操作",
+                data: (data) => {
+                  const html = `
                   <button class="btn btn-link text-decoration-none p-0" id="editUser">编辑</button>
                   ${
                     data.isEnable === true
@@ -1548,50 +1414,70 @@
                     </ul>
                   </div>
                   `;
-                    return html;
-                  },
+                  return html;
+                },
+              },
+            ],
+            order: [[0, "desc"]],
+            buttons: {
+              dom: {
+                button: { className: "btn btn-sm" },
+              },
+              buttons: [
+                {
+                  text: "添加",
+                  className: "btn-primary",
+                  action: () => $("#addUserModal").modal("show"),
                 },
               ],
-            });
-          }
-        });
-
-        $("#showHistory").click(function () {
-          $("#status").addClass("d-none");
-          $("#client").addClass("d-none");
-          $("#user").addClass("d-none");
-          $("#history").removeClass("d-none");
-
-          const now = new Date();
-          const lastMonth = new Date(now);
-          lastMonth.setMonth(now.getMonth() - 1);
-          lastMonth.setHours(0, 0, 0, 0);
-          now.setHours(23, 59, 59, 0);
-
-          let qt = [Date.parse(lastMonth) / 1000, Date.parse(now) / 1000];
-
-          if (htable) {
-            htable.ajax.reload();
-          } else {
-            htable = $("#htable").DataTable({
-              order: [[6, "desc"]],
-              processing: true,
-              serverSide: true,
-              search: {
-                return: true,
-              },
-              language: {
-                url: "/static/zh.json",
-                loadingRecords: "数据加载中...",
-              },
-              columnDefs: [{ className: "dt-center", targets: "_all" }],
-              dom:
-                "<'row align-items-center'<'col d-flex'f><'col d-flex justify-content-center toolbar'><'col d-flex justify-content-end'B>>" +
-                "<'row'<'col-sm-12'tr>>" +
-                "<'d-flex justify-content-between align-items-center'lip>",
-              fnInitComplete: function (oSettings, data) {
-                $("#history div.toolbar").html(
-                  `<div id="datepicker">
+            },
+            dom:
+              "<'row align-items-center'<'col d-flex'f><'col d-flex justify-content-center toolbar'><'col d-flex justify-content-end'B>>" +
+              "<'row'<'col-sm-12'tr>>" +
+              "<'d-flex justify-content-between align-items-center'lip>",
+            fnInitComplete: function (oSettings, data) {
+              $("#vtable_wrapper div.toolbar").html(
+                `<div class="form-check form-switch form-check-reverse">
+                  <input class="form-check-input" type="checkbox" role="switch" id="authUser" style="cursor: pointer;" ${
+                    data.authUser ? "checked" : ""
+                  }>
+                  <label class="form-check-label" for="authUser">账号启用: </label>
+                </div>
+                `
+              );
+            },
+            ajax: function (data, callback, settings) {
+              request
+                .get("/ovpn/user")
+                .then((data) =>
+                  callback({ data: data?.users, authUser: data?.authUser })
+                );
+            },
+          },
+          history: {
+            columns: [
+              { title: "用户名", data: "username" },
+              { title: "客户端", data: "common_name" },
+              { title: "VPN IP", data: "vip" },
+              { title: "用户 IP", data: "rip" },
+              { title: "下载流量", data: "bytes_received" },
+              { title: "上传流量", data: "bytes_sent" },
+              { title: "上线时间", data: "time_unix" },
+              { title: "在线时长", data: "time_duration" },
+            ],
+            order: [[6, "desc"]],
+            processing: true,
+            serverSide: true,
+            search: {
+              return: true,
+            },
+            dom:
+              "<'row align-items-center'<'col d-flex'f><'col d-flex justify-content-center toolbar'><'col d-flex justify-content-end'B>>" +
+              "<'row'<'col-sm-12'tr>>" +
+              "<'d-flex justify-content-between align-items-center'lip>",
+            fnInitComplete: function (oSettings, data) {
+              $("#vtable_wrapper div.toolbar").html(
+                `<div id="datepicker">
                   <div class="input-group input-group-sm">
                     <input type="text" class="form-control text-center" name="start" />
                     <span class="input-group-text">to</span>
@@ -1599,127 +1485,73 @@
                   </div>
                 </div>
                 `
-                );
+              );
 
-                const elem = document.getElementById("datepicker");
-                const rangepicker = new DateRangePicker(elem, {
-                  buttonClass: "btn",
-                  container: elem,
-                  format: "yyyy-mm-dd",
-                  autohide: true,
-                  language: "zh-CN",
-                });
+              const elem = document.getElementById("datepicker");
+              const rangepicker = new DateRangePicker(elem, {
+                buttonClass: "btn",
+                container: elem,
+                format: "yyyy-mm-dd",
+                autohide: true,
+                language: "zh-CN",
+              });
 
-                rangepicker.setDates(lastMonth, now);
+              rangepicker.setDates(lastMonth, now);
 
-                elem.addEventListener("changeDate", (e) => {
-                  qt = rangepicker.getDates().map((d, i) => {
-                    if (d instanceof Date) {
-                      if (i == 1) {
-                        d.setHours(23, 59, 59, 0);
-                      }
-
-                      return Date.parse(d) / 1000;
+              elem.addEventListener("changeDate", (e) => {
+                qt = rangepicker.getDates().map((d, i) => {
+                  if (d instanceof Date) {
+                    if (i == 1) {
+                      d.setHours(23, 59, 59, 0);
                     }
 
-                    return qt[i];
-                  });
+                    return Date.parse(d) / 1000;
+                  }
 
-                  htable.ajax.reload();
+                  return qt[i];
                 });
-              },
-              drawCallback: function () {
-                $("ul.pagination").addClass("pagination-sm");
-              },
-              buttons: {
-                dom: {
-                  button: { className: "btn btn-sm" },
-                },
-                buttons: [
-                  {
-                    text: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"> <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/> <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/> </svg> 刷新 ',
-                    className: "btn-primary",
-                    action: () => htable.ajax.reload(),
-                  },
-                ],
-              },
-              ajax: function (data, callback, settings) {
-                const orderColumn = data.columns[data.order[0].column].data;
-                const order = data.order[0].dir;
-                const params = {
-                  draw: data.draw,
-                  offset: data.start,
-                  limit: data.length,
-                  orderColumn: orderColumn,
-                  order: order,
-                  search: data.search.value,
-                  qt: qt.join(),
-                };
 
-                request
-                  .get(
-                    `/ovpn/history?${new URLSearchParams(params).toString()}`
-                  )
-                  .then((data) => callback(data));
+                vtable.ajax.reload();
+              });
+            },
+            buttons: {
+              dom: {
+                button: { className: "btn btn-sm" },
               },
-              columns: [
-                { data: "username" },
-                { data: "common_name" },
-                { data: "vip" },
-                { data: "rip" },
-                { data: "bytes_received" },
-                { data: "bytes_sent" },
-                { data: "time_unix" },
-                { data: "time_duration" },
-              ],
-            });
-          }
-        });
-
-        $("#showClient").click(function () {
-          $("#status").addClass("d-none");
-          $("#user").addClass("d-none");
-          $("#history").addClass("d-none");
-          $("#client").removeClass("d-none");
-
-          if (ctable) {
-            ctable.ajax.reload();
-          } else {
-            ctable = $("#ctable").DataTable({
-              order: [[1, "desc"]],
-              language: {
-                url: "/static/zh.json",
-                loadingRecords: "数据加载中...",
-              },
-              columnDefs: [{ className: "dt-center", targets: "_all" }],
-              dom:
-                "<'d-flex justify-content-between align-items-center'fB>" +
-                "<'row'<'col-sm-12'tr>>" +
-                "<'d-flex justify-content-between align-items-center'lip>",
-              drawCallback: function () {
-                $("ul.pagination").addClass("pagination-sm");
-              },
-              buttons: {
-                dom: {
-                  button: { className: "btn btn-sm" },
-                },
-                buttons: [
-                  {
-                    text: "添加",
-                    className: "btn-primary",
-                    action: () => $("#addClientModal").modal("show"),
-                  },
-                ],
-              },
-              ajax: function (data, callback, settings) {
-                request.get("/ovpn/client").then((data) => callback({ data }));
-              },
-              columns: [
-                { data: "name" },
-                { data: "date" },
+              buttons: [
                 {
-                  data: (data) => {
-                    const html = `
+                  text: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"> <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/> <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/> </svg> 刷新 ',
+                  className: "btn-primary",
+                  action: () => vtable.ajax.reload(),
+                },
+              ],
+            },
+            ajax: function (data, callback, settings) {
+              const orderColumn = data.columns[data.order[0].column].data;
+              const order = data.order[0].dir;
+              const params = {
+                draw: data.draw,
+                offset: data.start,
+                limit: data.length,
+                orderColumn: orderColumn,
+                order: order,
+                search: data.search.value,
+                qt: qt.join(),
+              };
+
+              request
+                .get(`/ovpn/history?${new URLSearchParams(params).toString()}`)
+                .then((data) => callback(data));
+            },
+          },
+          client: {
+            columns: [
+              { title: "名称", data: "name" },
+              { title: "日期", data: "date" },
+              {
+                title: "操作",
+                data: (data) => {
+                  const html = `
                   <div class="d-grid gap-2 d-flex justify-content-center align-items-center">
                   <a href="${data.file}" download="${data.fullName}" class="text-decoration-none">下载</a>
                   <div class="dropdown">
@@ -1732,15 +1564,80 @@
                   <button class="btn btn-link text-decoration-none p-0" id="delClient">删除</button>
                   </div>
                   `;
-                    return html;
-                  },
+                  return html;
+                },
+              },
+            ],
+            order: [[1, "desc"]],
+            buttons: {
+              dom: {
+                button: { className: "btn btn-sm" },
+              },
+              buttons: [
+                {
+                  text: "添加",
+                  className: "btn-primary",
+                  action: () => $("#addClientModal").modal("show"),
                 },
               ],
-            });
+            },
+            dom:
+              "<'d-flex justify-content-between align-items-center'fB>" +
+              "<'row'<'col-sm-12'tr>>" +
+              "<'d-flex justify-content-between align-items-center'lip>",
+            ajax: function (data, callback, settings) {
+              request.get("/ovpn/client").then((data) => callback({ data }));
+            },
+          },
+        };
+
+        const initTable = (id) => {
+          if (id === "status") {
+            $("#serverTable").show();
+          } else {
+            $("#serverTable").hide();
           }
+
+          if (vtable) {
+            vtable.destroy();
+            $("#vtable").empty();
+          }
+
+          vtable = $("#vtable").DataTable({
+            language: {
+              url: "/static/zh.json",
+              loadingRecords: "数据加载中...",
+            },
+            columnDefs: [{ className: "dt-center", targets: "_all" }],
+            drawCallback: function () {
+              $("ul.pagination").addClass("pagination-sm");
+            },
+            ...tables[id],
+          });
+        };
+
+        initTable("status");
+
+        $("#showUser").click(function () {
+          initTable("user");
         });
 
-        $("#renewcert").click(function () {
+        $("#showHistory").click(function () {
+          now = new Date();
+          lastMonth = new Date(now);
+          lastMonth.setMonth(now.getMonth() - 1);
+          lastMonth.setHours(0, 0, 0, 0);
+          now.setHours(23, 59, 59, 0);
+
+          qt = [Date.parse(lastMonth) / 1000, Date.parse(now) / 1000];
+          initTable("history");
+        });
+
+        $("#showClient").click(function () {
+          initTable("client");
+        });
+
+        $("#renewCert").click(function () {
           $("#renewCertModal").modal("show");
         });
 
@@ -1792,7 +1689,7 @@
           request
             .post("/ovpn/user", { name, username, password, ipAddr })
             .then((data) => {
-              utable.ajax.reload(null, false);
+              vtable.ajax.reload(null, false);
               $("#addUserModal form").trigger("reset");
               $("#addUserModal").modal("hide");
             });
@@ -1839,7 +1736,7 @@
           request
             .post("/ovpn/client", { name, serverAddr, config, ccdConfig })
             .then((data) => {
-              ctable.ajax.reload(null, false);
+              vtable.ajax.reload(null, false);
               $("#addClientModal").modal("hide");
               $("#addClientModal form").trigger("reset");
               message.success(data.message);
@@ -1848,26 +1745,34 @@
           return false;
         });
 
+        $(document).on("click", "#killClient", function () {
+          const id = vtable.row($(this).parents("tr")).data().id;
+
+          request.post("/ovpn/kill", { cid: id }).then(() => {
+            vtable.cell(this).row().remove().draw();
+          });
+        });
+
         $(document).on("click", "#delUser", function () {
-          const id = utable.row($(this).parents("tr")).data().id;
+          const id = vtable.row($(this).parents("tr")).data().id;
 
           request.delete(`/ovpn/user/${id}`).then((data) => {
             message.success(data.message);
-            utable.ajax.reload(null, false);
+            vtable.ajax.reload(null, false);
           });
         });
 
         $(document).on("click", "#delClient", function () {
-          const name = ctable.row($(this).parents("tr")).data().name;
+          const name = vtable.row($(this).parents("tr")).data().name;
 
           request.delete(`/ovpn/client/${name}`).then((data) => {
             message.success(data.message);
-            ctable.ajax.reload(null, false);
+            vtable.ajax.reload(null, false);
           });
         });
 
         $(document).on("click", "#editClient", function () {
-          const name = ctable.row($(this).parents("tr")).data().name;
+          const name = vtable.row($(this).parents("tr")).data().name;
           $('#editClientModal input[name="name"]').val(`clients/${name}.ovpn`);
 
           request
@@ -1879,7 +1784,7 @@
         });
 
         $(document).on("click", "#editCCD", function () {
-          const name = ctable.row($(this).parents("tr")).data().name;
+          const name = vtable.row($(this).parents("tr")).data().name;
           $('#editClientModal input[name="name"]').val(`ccd/${name}`);
 
           request
@@ -1901,28 +1806,28 @@
         });
 
         $(document).on("click", "#disableUser", function () {
-          const id = utable.row($(this).parents("tr")).data().id;
+          const id = vtable.row($(this).parents("tr")).data().id;
 
           request.patch("/ovpn/user", { id, isEnable: false }).then((data) => {
             message.success(data.message);
-            utable.ajax.reload(null, false);
+            vtable.ajax.reload(null, false);
           });
         });
 
         $(document).on("click", "#enableUser", function () {
-          const id = utable.row($(this).parents("tr")).data().id;
+          const id = vtable.row($(this).parents("tr")).data().id;
 
           request.patch("/ovpn/user", { id, isEnable: true }).then((data) => {
             message.success(data.message);
-            utable.ajax.reload(null, false);
+            vtable.ajax.reload(null, false);
           });
         });
 
         $(document).on("click", "#editUser", function () {
-          const id = utable.row($(this).parents("tr")).data().id;
-          const name = utable.row($(this).parents("tr")).data().name;
-          const username = utable.row($(this).parents("tr")).data().username;
-          const ipAddr = utable.row($(this).parents("tr")).data().ipAddr;
+          const id = vtable.row($(this).parents("tr")).data().id;
+          const name = vtable.row($(this).parents("tr")).data().name;
+          const username = vtable.row($(this).parents("tr")).data().username;
+          const ipAddr = vtable.row($(this).parents("tr")).data().ipAddr;
 
           $('#editUserModal input[name="id"]').val(id);
           $('#editUserModal input[name="name"]').val(name);
@@ -1941,7 +1846,7 @@
           request
             .patch("/ovpn/user", { id, name, username, ipAddr })
             .then((data) => {
-              utable.ajax.reload(null, false);
+              vtable.ajax.reload(null, false);
               $("#editUserModal").modal("hide");
               message.success(data.message);
             });
@@ -1976,8 +1881,8 @@
         );
 
         $(document).on("click", "#resetPass", function () {
-          const id = utable.row($(this).parents("tr")).data().id;
-          const username = utable.row($(this).parents("tr")).data().username;
+          const id = vtable.row($(this).parents("tr")).data().id;
+          const username = vtable.row($(this).parents("tr")).data().username;
           $('#resetPassModal input[name="id"]').val(id);
           $('#resetPassModal input[name="username"]').val(username);
 
@@ -2034,7 +1939,7 @@
           const newPass = $('#resetPassModal input[name="newPassAgain"]').val();
 
           request.patch("/ovpn/user", { id, password: newPass }).then(() => {
-            utable.ajax.reload(null, false);
+            vtable.ajax.reload(null, false);
             $("#resetPassModal form").trigger("reset");
             $("#resetPassModal").modal("hide");
             message.success("密码重置成功");

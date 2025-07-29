@@ -318,13 +318,13 @@ func main() {
 
 	// r.Use(gin.Recovery())
 
-	templ := template.Must(template.New("").ParseFS(FS, "templates/*.tmpl"))
+	templ := template.Must(template.New("").ParseFS(FS, "templates/*.html"))
 	r.SetHTMLTemplate(templ)
 	f, _ := fs.Sub(FS, "templates/static")
 	r.StaticFS("/static", http.FS(f))
 
 	r.GET("/login", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "login.tmpl", gin.H{})
+		c.HTML(http.StatusOK, "login.html", gin.H{})
 	})
 
 	r.POST("/login", func(c *gin.Context) {
@@ -368,7 +368,7 @@ func main() {
 	r.Use(AuthMiddleWare())
 
 	r.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.tmpl", gin.H{
+		c.HTML(http.StatusOK, "index.html", gin.H{
 			"server":  ov.getServer(),
 			"sysUser": os.Getenv("ADMIN_USERNAME"),
 		})
