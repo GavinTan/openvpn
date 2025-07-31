@@ -388,24 +388,21 @@
                     </span>
                   </li>
                   <li>
-                    <span class="dropdown-item" role="button" id="renewCert">
+                    <span class="dropdown-item" role="button" id="manageCert">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         width="1em"
                         height="1em"
                         fill="currentColor"
-                        class="bi bi-opencollective"
+                        class="bi bi-shield-shaded"
                         viewBox="0 0 16 16"
                       >
                         <path
-                          fill-opacity=".4"
-                          d="M12.995 8.195c0 .937-.312 1.912-.78 2.693l1.99 1.99c.976-1.327 1.6-2.966 1.6-4.683 0-1.795-.624-3.434-1.561-4.76l-2.068 2.028c.468.781.78 1.679.78 2.732z"
-                        />
-                        <path
-                          d="M8 13.151a4.995 4.995 0 1 1 0-9.99c1.015 0 1.951.273 2.732.82l1.95-2.03a7.805 7.805 0 1 0 .04 12.449l-1.951-2.03a5.07 5.07 0 0 1-2.732.781z"
+                          fill-rule="evenodd"
+                          d="M8 14.933a1 1 0 0 0 .1-.025q.114-.034.294-.118c.24-.113.547-.29.893-.533a10.7 10.7 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.465 9.99a11.8 11.8 0 0 1-2.517 2.453 7 7 0 0 1-1.048.625c-.28.132-.581.24-.829.24s-.548-.108-.829-.24a7 7 0 0 1-1.048-.625 11.8 11.8 0 0 1-2.517-2.453C1.928 10.487.545 7.169 1.141 2.692A1.54 1.54 0 0 1 2.185 1.43 63 63 0 0 1 5.072.56"
                         />
                       </svg>
-                      更新证书
+                      管理证书
                     </span>
                   </li>
                 </ul>
@@ -886,7 +883,7 @@
         <div class="modal-content">
           <form>
             <div class="modal-header">
-              <h5 class="modal-title">提示</h5>
+              <h5 class="modal-title">确认更新OpenVPN证书?</h5>
               <button
                 type="button"
                 class="btn-close"
@@ -894,11 +891,19 @@
                 aria-label="Close"
               ></button>
             </div>
-            <div class="modal-body" style="text-align: center">
-              <h4>确认更新openvpn证书?</h4>
-              <span style="font-size: 14px; color: red"
-                >注: 更新证书会重启服务</span
-              >
+            <div class="modal-body text-center">
+              <div class="mb-3">
+                <label for="day">有效期(天):</label>
+                <input
+                  type="number"
+                  class="form-control form-control-sm d-inline ms-3 w-25"
+                  name="day"
+                  value="3650"
+                />
+              </div>
+              <span style="font-size: 14px; color: red">
+                注: 会同时更新CA证书和服务器证书
+              </span>
             </div>
             <div class="modal-footer">
               <button
@@ -911,7 +916,7 @@
               <button
                 type="submit"
                 class="btn btn-primary"
-                id="renewcertSumbit"
+                id="renewCertSumbit"
               >
                 确认
               </button>
@@ -1589,6 +1594,47 @@
               request.get("/ovpn/client").then((data) => callback({ data }));
             },
           },
+          cert: {
+            columns: [
+              { title: "名称", data: "name" },
+              { title: "类型", data: "type" },
+              {
+                title: "状态",
+                data: (data) => {
+                  let badgeClass = "text-bg-success";
+                  if (data.status === "已过期") {
+                    badgeClass = "text-bg-danger";
+                  } else if (data.status === "即将过期") {
+                    badgeClass = "text-bg-warning";
+                  }
+                  return `<span class="badge ${badgeClass}">${data.status}</span>`;
+                },
+              },
+              { title: "颁发时间", data: "notBefore" },
+              { title: "过期时间", data: "notAfter" },
+              { title: "剩余天数", data: "expiresIn" },
+            ],
+            order: [[3, "desc"]],
+            buttons: {
+              dom: {
+                button: { className: "btn btn-sm" },
+              },
+              buttons: [
+                {
+                  text: "更新证书",
+                  className: "btn-primary",
+                  action: () => $("#renewCertModal").modal("show"),
+                },
+              ],
+            },
+            dom:
+              "<'d-flex justify-content-between align-items-center'fB>" +
+              "<'row'<'col-sm-12'tr>>" +
+              "<'d-flex justify-content-between align-items-center'lip>",
+            ajax: function (data, callback, settings) {
+              request.get("/ovpn/certs").then((data) => callback({ data }));
+            },
+          },
         };
 
         const initTable = (id) => {
@@ -1637,15 +1683,21 @@
           initTable("client");
         });
 
-        $("#renewCert").click(function () {
-          $("#renewCertModal").modal("show");
+        $("#manageCert").click(function () {
+          initTable("cert");
         });
 
         $("#renewCertModal form").submit(function () {
+          const day = $('#renewCertModal input[name="day"]').val();
+
           $("#renewCertModal").modal("hide");
-          request.post("/ovpn/server", { action: "renewcert" }).then((data) => {
-            message.success(data.message);
-          });
+
+          request
+            .post("/ovpn/server", { action: "renewCert", day })
+            .then((data) => {
+              message.success(data.message);
+              vtable.ajax.reload(null, false);
+            });
           return false;
         });
 

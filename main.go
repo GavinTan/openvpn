@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"crypto/x509"
 	"embed"
+	"encoding/pem"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -67,6 +69,18 @@ type Params struct {
 	Order       string `json:"order" form:"order"`
 	Search      string `json:"search" form:"search"`
 	Qt          string `json:"qt" form:"qt"`
+}
+
+type CertData struct {
+	Name      string `json:"name"`
+	Type      string `json:"type"`
+	Subject   string `json:"subject"`
+	Issuer    string `json:"issuer"`
+	NotBefore string `json:"notBefore"`
+	NotAfter  string `json:"notAfter"`
+	ExpiresIn string `json:"expiresIn"`
+	Status    string `json:"status"`
+	SerialNo  string `json:"serialNo"`
 }
 
 type ovpn struct {
@@ -224,6 +238,142 @@ func (ov *ovpn) getServer() ServerData {
 
 func (ov *ovpn) killClient(cid string) {
 	ov.sendCommand(fmt.Sprintf("client-kill %s HALT", cid))
+}
+
+func parseCrl(crlPath string) (*CertData, error) {
+	crlData, err := os.ReadFile(crlPath)
+	if err != nil {
+		return nil, err
+	}
+
+	block, _ := pem.Decode(crlData)
+	if block == nil {
+		return nil, fmt.Errorf("无法解析证书文件")
+	}
+
+	crl, err := x509.ParseRevocationList(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+	expiresIn := crl.NextUpdate.Sub(now)
+
+	var status string
+	var expiresInStr string
+
+	if now.After(crl.NextUpdate) {
+		status = "已过期"
+		expiresInStr = fmt.Sprintf("已过期 %d 天", int(now.Sub(crl.NextUpdate).Hours()/24))
+	} else if expiresIn < 30*24*time.Hour {
+		status = "即将过期"
+		expiresInStr = fmt.Sprintf("%d 天后过期", int(expiresIn.Hours()/24))
+	} else {
+		status = "正常"
+		expiresInStr = fmt.Sprintf("%d 天后过期", int(expiresIn.Hours()/24))
+	}
+
+	return &CertData{
+		Name:      strings.TrimSuffix(filepath.Base(crlPath), filepath.Ext(crlPath)),
+		Type:      "CRL证书",
+		Subject:   "",
+		Issuer:    crl.Issuer.String(),
+		NotBefore: crl.ThisUpdate.Local().Format("2006-01-02 15:04:05"),
+		NotAfter:  crl.NextUpdate.Local().Format("2006-01-02 15:04:05"),
+		ExpiresIn: expiresInStr,
+		Status:    status,
+		SerialNo:  "",
+	}, nil
+}
+
+func parseCert(certPath string) (*CertData, error) {
+	certData, err := os.ReadFile(certPath)
+	if err != nil {
+		return nil, err
+	}
+
+	block, _ := pem.Decode(certData)
+	if block == nil {
+		return nil, fmt.Errorf("无法解析证书文件")
+	}
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+	expiresIn := cert.NotAfter.Sub(now)
+
+	var status string
+	var expiresInStr string
+
+	if now.After(cert.NotAfter) {
+		status = "已过期"
+		expiresInStr = fmt.Sprintf("已过期 %d 天", int(now.Sub(cert.NotAfter).Hours()/24))
+	} else if expiresIn < 30*24*time.Hour {
+		status = "即将过期"
+		expiresInStr = fmt.Sprintf("%d 天后过期", int(expiresIn.Hours()/24))
+	} else {
+		status = "正常"
+		expiresInStr = fmt.Sprintf("%d 天后过期", int(expiresIn.Hours()/24))
+	}
+
+	certType := "客户端证书"
+	if cert.IsCA {
+		certType = "CA证书"
+	} else if strings.Contains(cert.Subject.CommonName, "server") {
+		certType = "服务器证书"
+	}
+
+	return &CertData{
+		Name:      strings.TrimSuffix(filepath.Base(certPath), filepath.Ext(certPath)),
+		Type:      certType,
+		Subject:   cert.Subject.String(),
+		Issuer:    cert.Issuer.String(),
+		NotBefore: cert.NotBefore.Local().Format("2006-01-02 15:04:05"),
+		NotAfter:  cert.NotAfter.Local().Format("2006-01-02 15:04:05"),
+		ExpiresIn: expiresInStr,
+		Status:    status,
+		SerialNo:  cert.SerialNumber.String(),
+	}, nil
+}
+
+func getCerts(ovData string) []CertData {
+	cers := make([]CertData, 0)
+	pkiDir := filepath.Join(ovData, "pki")
+
+	caPath := filepath.Join(pkiDir, "ca.crt")
+	if cert, err := parseCert(caPath); err == nil {
+		cers = append(cers, *cert)
+	} else {
+		logger.Error(context.Background(), err.Error())
+	}
+
+	crlPath := filepath.Join(pkiDir, "crl.pem")
+	if cert, err := parseCrl(crlPath); err == nil {
+		cers = append(cers, *cert)
+	} else {
+		logger.Error(context.Background(), err.Error())
+	}
+
+	issuedDir := filepath.Join(pkiDir, "issued")
+	if files, err := os.ReadDir(issuedDir); err == nil {
+		for _, file := range files {
+			if strings.HasSuffix(file.Name(), ".crt") {
+				certPath := filepath.Join(issuedDir, file.Name())
+				if cert, err := parseCert(certPath); err == nil {
+					cers = append(cers, *cert)
+				} else {
+					logger.Error(context.Background(), err.Error())
+				}
+			}
+		}
+	} else {
+		logger.Error(context.Background(), err.Error())
+	}
+
+	return cers
 }
 
 func AuthMiddleWare() gin.HandlerFunc {
@@ -415,8 +565,10 @@ func main() {
 						c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("%s用户认证成功", msg)})
 					}
 				}
-			case "renewcert":
-				cmd := exec.Command("sh", "-c", "/usr/bin/docker-entrypoint.sh renewcert")
+			case "renewCert":
+				day := c.PostForm("day")
+
+				cmd := exec.Command("sh", "-c", fmt.Sprintf("/usr/bin/docker-entrypoint.sh renewcert %v", day))
 				if out, err := cmd.CombinedOutput(); err != nil {
 					if out == nil {
 						out = []byte(err.Error())
@@ -695,6 +847,10 @@ func main() {
 			} else {
 				c.JSON(http.StatusOK, gin.H{"message": "添加记录成功"})
 			}
+		})
+
+		ovpn.GET("/certs", func(c *gin.Context) {
+			c.JSON(http.StatusOK, getCerts(ovData))
 		})
 	}
 
