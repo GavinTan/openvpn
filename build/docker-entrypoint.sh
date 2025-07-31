@@ -328,7 +328,7 @@ client_connect() {
     cc_file="$1"
     sql="SELECT ip_addr FROM user WHERE username='$username'"
     ipaddr=$(sqlite3 $ovpn_data/ovpn.db "$sql")
-    [ -n "$ipaddr" ] && echo "ifconfig-push $ipaddr $ifconfig_netmask" > $cc_file
+    [ -n "$ipaddr" ] && echo "ifconfig-push $ipaddr $ifconfig_netmask" > $cc_file || true
 }
 
 ################################################################################################
