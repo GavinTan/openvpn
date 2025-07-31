@@ -5,7 +5,7 @@ init_env() {
     cat << EOF > $OVPN_DATA/pki/vars
 EASYRSA_PKI=$OVPN_DATA/pki
 EASYRSA_CA_EXPIRE=3650
-EASYRSA_CERT_EXPIRE=3650
+EASYRSA_CERT_EXPIRE=365
 EASYRSA_CRL_DAYS=3650
 EASYRSA_ALGO=ec
 EASYRSA_CURVE=prime256v1
@@ -222,10 +222,10 @@ renew_cert() {
     source $OVPN_DATA/pki/vars
 
     cd $OVPN_DATA/pki
-    openssl x509 -in ca.crt -days $EASYRSA_CA_EXPIRE -out ca.crt -signkey private/ca.key
-    /usr/share/easy-rsa/easyrsa --batch renew $SERVER_NAME
+    openssl x509 -in ca.crt -days $1 -out ca.crt -signkey private/ca.key
+    /usr/share/easy-rsa/easyrsa --batch --days=$1 renew $SERVER_NAME
     /usr/share/easy-rsa/easyrsa --batch revoke-renewed $SERVER_NAME
-    /usr/share/easy-rsa/easyrsa gen-crl
+    /usr/share/easy-rsa/easyrsa --batch gen-crl
 }
 
 auth() {
@@ -365,7 +365,7 @@ case $1 in
         exit 0
         ;;
     "renewcert")
-        renew_cert
+        renew_cert $2
         exit 0
         ;;
     "/usr/sbin/openvpn")
