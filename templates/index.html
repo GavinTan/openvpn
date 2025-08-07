@@ -1637,11 +1637,20 @@
           },
         };
 
-        const initTable = (id) => {
-          if (id === "status") {
+        const initTable = (tab) => {
+          if (tab === "status") {
             $("#serverTable").show();
           } else {
             $("#serverTable").hide();
+          }
+
+          if (tab === "history") {
+            now = new Date();
+            lastMonth = new Date(now);
+            lastMonth.setMonth(now.getMonth() - 1);
+            lastMonth.setHours(0, 0, 0, 0);
+            now.setHours(23, 59, 59, 0);
+            qt = [Date.parse(lastMonth) / 1000, Date.parse(now) / 1000];
           }
 
           if (vtable) {
@@ -1658,33 +1667,33 @@
             drawCallback: function () {
               $("ul.pagination").addClass("pagination-sm");
             },
-            ...tables[id],
+            ...tables[tab],
           });
         };
 
-        initTable("status");
+        const urlParams = new URLSearchParams(window.location.search);
+        const tabs = Object.keys(tables);
+
+        if (tabs.includes(urlParams.get("tab"))) {
+          initTable(urlParams.get("tab"));
+        } else {
+          initTable("status");
+        }
 
         $("#showUser").click(function () {
-          initTable("user");
+          window.location.href = "?tab=user";
         });
 
         $("#showHistory").click(function () {
-          now = new Date();
-          lastMonth = new Date(now);
-          lastMonth.setMonth(now.getMonth() - 1);
-          lastMonth.setHours(0, 0, 0, 0);
-          now.setHours(23, 59, 59, 0);
-
-          qt = [Date.parse(lastMonth) / 1000, Date.parse(now) / 1000];
-          initTable("history");
+          window.location.href = "?tab=history";
         });
 
         $("#showClient").click(function () {
-          initTable("client");
+          window.location.href = "?tab=client";
         });
 
         $("#manageCert").click(function () {
-          initTable("cert");
+          window.location.href = "?tab=cert";
         });
 
         $("#renewCertModal form").submit(function () {
