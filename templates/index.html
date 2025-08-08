@@ -570,6 +570,15 @@
                 />
               </div>
               <div class="form-group mb-3">
+                <label>到期时间</label>
+                <input
+                  type="text"
+                  class="form-control form-control-sm float-end w-75"
+                  name="expireDate"
+                  placeholder="选择日期"
+                />
+              </div>
+              <div class="form-group mb-3">
                 <label>
                   IP地址
                   <svg
@@ -657,6 +666,15 @@
                   class="form-control form-control-sm float-end w-75"
                   name="name"
                   required
+                />
+              </div>
+              <div class="form-group mb-3">
+                <label>到期时间</label>
+                <input
+                  type="text"
+                  class="form-control form-control-sm float-end w-75"
+                  name="expireDate"
+                  placeholder="选择日期"
                 />
               </div>
               <div class="form-group mb-3">
@@ -1392,11 +1410,17 @@
               {
                 title: "状态",
                 data: (data) => {
-                  if (data.isEnable) {
-                    return `<span class="badge text-bg-success">启用</span>`;
-                  } else {
-                    return `<span class="badge text-bg-secondary">禁用</span>`;
+                  const ed = new Date(data.expireDate);
+                  const now = new Date();
+                  ed.setHours(0, 0, 0, 0);
+                  now.setHours(0, 0, 0, 0);
+                  if (ed < now) {
+                    return `<span class="badge text-bg-danger">已过期</span>`;
                   }
+
+                  return data.isEnable
+                    ? `<span class="badge text-bg-success">启用</span>`
+                    : `<span class="badge text-bg-secondary">禁用</span>`;
                 },
               },
               { title: "姓名", data: "name" },
@@ -1432,7 +1456,21 @@
                 {
                   text: "添加",
                   className: "btn-primary",
-                  action: () => $("#addUserModal").modal("show"),
+                  action: () => {
+                    const elem = document.querySelector(
+                      '#addUserModal input[name="expireDate"]'
+                    );
+                    const datepicker = new Datepicker(elem, {
+                      buttonClass: "btn",
+                      format: "yyyy-mm-dd",
+                      autohide: true,
+                      language: "zh-CN",
+                      orientation: "top",
+                      minDate: new Date(),
+                    });
+
+                    $("#addUserModal").modal("show");
+                  },
                 },
               ],
             },
@@ -1746,9 +1784,16 @@
           const username = $('#addUserModal input[name="username"]').val();
           const password = $('#addUserModal input[name="password"]').val();
           const ipAddr = $('#addUserModal input[name="ipAddr"]').val();
+          const expireDate = $('#addUserModal input[name="expireDate"]').val();
 
           request
-            .post("/ovpn/user", { name, username, password, ipAddr })
+            .post("/ovpn/user", {
+              name,
+              username,
+              password,
+              ipAddr,
+              expireDate,
+            })
             .then((data) => {
               vtable.ajax.reload(null, false);
               $("#addUserModal form").trigger("reset");
@@ -1889,11 +1934,29 @@
           const name = vtable.row($(this).parents("tr")).data().name;
           const username = vtable.row($(this).parents("tr")).data().username;
           const ipAddr = vtable.row($(this).parents("tr")).data().ipAddr;
+          const expireDate = vtable
+            .row($(this).parents("tr"))
+            .data().expireDate;
 
           $('#editUserModal input[name="id"]').val(id);
           $('#editUserModal input[name="name"]').val(name);
           $('#editUserModal input[name="username"]').val(username);
           $('#editUserModal input[name="ipAddr"]').val(ipAddr);
+          $('#editUserModal input[name="expireDate"]').val(expireDate);
+
+          const elem = document.querySelector(
+            '#editUserModal input[name="expireDate"]'
+          );
+          const datepicker = new Datepicker(elem, {
+            buttonClass: "btn",
+            format: "yyyy-mm-dd",
+            autohide: true,
+            language: "zh-CN",
+            orientation: "top",
+            minDate: new Date(),
+          });
+
+          datepicker.setDate(new Date(expireDate));
 
           $("#editUserModal").modal("show");
         });
@@ -1903,9 +1966,10 @@
           const name = $('#editUserModal input[name="name"]').val();
           const username = $('#editUserModal input[name="username"]').val();
           const ipAddr = $('#editUserModal input[name="ipAddr"]').val();
+          const expireDate = $('#editUserModal input[name="expireDate"]').val();
 
           request
-            .patch("/ovpn/user", { id, name, username, ipAddr })
+            .patch("/ovpn/user", { id, name, username, ipAddr, expireDate })
             .then((data) => {
               vtable.ajax.reload(null, false);
               $("#editUserModal").modal("hide");

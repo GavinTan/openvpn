@@ -680,6 +680,12 @@ func main() {
 				}
 			}
 
+			if expireDate, ok := c.Request.PostForm["expireDate"]; ok {
+				if expireDate[0] == "" {
+					db.Model(&u).Update("expire_date", nil)
+				}
+			}
+
 			err := u.Update()
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})

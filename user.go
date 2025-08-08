@@ -12,14 +12,15 @@ import (
 )
 
 type User struct {
-	ID        uint      `gorm:"primarykey" json:"id" form:"id"`
-	Username  string    `gorm:"uniqueIndex;column:username" json:"username" form:"username"`
-	Password  string    `form:"password" json:"password"`
-	IsEnable  *bool     `gorm:"default:true" form:"isEnable" json:"isEnable"`
-	Name      string    `json:"name" form:"name"`
-	IpAddr    string    `gorm:"uniqueIndex;default:NULL" json:"ipAddr" form:"ipAddr"`
-	CreatedAt time.Time `json:"createdAt,omitempty" form:"createdAt,omitempty"`
-	UpdatedAt time.Time `json:"updatedAt,omitempty" form:"updatedAt,omitempty"`
+	ID         uint      `gorm:"primarykey" json:"id" form:"id"`
+	Username   string    `gorm:"uniqueIndex;column:username" json:"username" form:"username"`
+	Password   string    `form:"password" json:"password"`
+	IsEnable   *bool     `gorm:"default:true" form:"isEnable" json:"isEnable"`
+	Name       string    `json:"name" form:"name"`
+	ExpireDate string    `gorm:"default:NULL" json:"expireDate" form:"expireDate"`
+	IpAddr     string    `gorm:"uniqueIndex;default:NULL" json:"ipAddr" form:"ipAddr"`
+	CreatedAt  time.Time `json:"createdAt,omitempty" form:"createdAt,omitempty"`
+	UpdatedAt  time.Time `json:"updatedAt,omitempty" form:"updatedAt,omitempty"`
 }
 
 func (u *User) BeforeSave(tx *gorm.DB) (err error) {
@@ -81,6 +82,13 @@ func (u *User) Login() error {
 
 	if !*u.IsEnable {
 		return fmt.Errorf("账号已禁用")
+	}
+
+	if u.ExpireDate != "" {
+		ed, _ := time.Parse("2006-01-02", u.ExpireDate)
+		if ed.Before(time.Now()) {
+			return fmt.Errorf("账号已过期")
+		}
 	}
 
 	if u.Password != pass {
