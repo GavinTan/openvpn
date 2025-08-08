@@ -494,7 +494,11 @@
     </nav>
 
     <div class="container-fluid">
-      <div id="serverTable" class="my-3 p-3 bg-body rounded shadow-sm">
+      <div
+        id="serverTable"
+        class="my-3 p-3 bg-body rounded shadow-sm"
+        style="display: none"
+      >
         <table class="table table-borderless m-0 text-center">
           <thead class="border-bottom border-2">
             <tr>
@@ -517,7 +521,7 @@
         </table>
       </div>
 
-      <div class="my-5 p-3 bg-body rounded shadow-sm">
+      <div id="vtableContainer" class="my-5 p-3 bg-body rounded shadow-sm">
         <table
           id="vtable"
           class="table table-striped"
@@ -1677,8 +1681,10 @@
 
         const initTable = (tab) => {
           if (tab === "status") {
+            $("#vtableContainer").removeClass("my-3").addClass("my-5");
             $("#serverTable").show();
           } else {
+            $("#vtableContainer").removeClass("my-5").addClass("my-3");
             $("#serverTable").hide();
           }
 
@@ -1719,19 +1725,23 @@
         }
 
         $("#showUser").click(function () {
-          window.location.href = "?tab=user";
+          window.history.pushState(null, "", "?tab=user");
+          initTable("user");
         });
 
         $("#showHistory").click(function () {
-          window.location.href = "?tab=history";
+          window.history.pushState(null, "", "?tab=history");
+          initTable("history");
         });
 
         $("#showClient").click(function () {
-          window.location.href = "?tab=client";
+          window.history.pushState(null, "", "?tab=client");
+          initTable("client");
         });
 
         $("#manageCert").click(function () {
-          window.location.href = "?tab=cert";
+          window.history.pushState(null, "", "?tab=cert");
+          initTable("cert");
         });
 
         $("#renewCertModal form").submit(function () {
