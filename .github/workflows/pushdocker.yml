@@ -1,7 +1,9 @@
-name: pushdocker
+name: build-verification
 
 on:
   push:
+    branches:
+      - '*'
     tags:
       - '*'
 
@@ -12,31 +14,35 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       
-      - uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Setup QEMU
-        uses: docker/setup-qemu-action@v2
-
       - name: Setup Buildx
         uses: docker/setup-buildx-action@v2
 
       - name: Set Version
         run: echo VERSION=`git describe --tags --always` >> $GITHUB_ENV
 
-      - name: Build and push
+      - name: Build Docker image
         uses: docker/build-push-action@v3
         with:
           context: ./build
           file: ./build/Dockerfile
-          push: true
+          push: false
+          load: true
           platforms: |
             linux/amd64
-            linux/arm64
           build-args: |
             VERSION=${{ env.VERSION }}
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/openvpn:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/openvpn:${{ env.VERSION }}
+            openvpn:latest
+            openvpn:${{ env.VERSION }}
+
+      - name: Export Docker image
+        run: |
+          docker save openvpn:${{ env.VERSION }} | gzip > openvpn-${{ env.VERSION }}.tar.gz
+          ls -lh openvpn-${{ env.VERSION }}.tar.gz
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: openvpn-docker-image-${{ env.VERSION }}
+          path: openvpn-${{ env.VERSION }}.tar.gz
+          retention-days: 30
