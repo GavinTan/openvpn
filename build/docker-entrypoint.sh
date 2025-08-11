@@ -331,6 +331,55 @@ client_connect() {
     [ -n "$ipaddr" ] && echo "ifconfig-push $ipaddr $ifconfig_netmask" > $cc_file || true
 }
 
+next_clientaddr() {
+    # 获取子网基础 IP
+    subnet_ip=$(echo -e $OVPN_SUBNET | awk -F/ '{print $1}')
+    subnet_as_int=$(echo $subnet_ip | awk -F. '{print ($1*256^3)+($2*256^2)+($3*256)+$4}')
+    
+    # 服务器 IP 是子网 IP + 1
+    server_as_int=$((subnet_as_int + 1))
+    
+    # 获取已分配的 IP 列表
+    allocated_ips=""
+    if [ -d "$OVPN_DATA/ccd" ]; then
+        # 提取所有 ccd 文件中的 IP 地址
+        allocated_ips=$(grep -r "ifconfig-push" $OVPN_DATA/ccd 2>/dev/null | awk '{print $2}')
+    fi
+    
+    # 获取子网掩码中的网络位数
+    prefix=$(echo $OVPN_SUBNET | cut -d'/' -f2)
+    
+    # 计算可用主机数量上限（减去网络地址、广播地址和服务器地址）
+    max_hosts=$((2**(32-prefix) - 3))
+    
+    # 从 2 开始尝试（服务器是 1）
+    for i in $(seq 1 $max_hosts); do
+        # 计算当前尝试的 IP 地址
+        current_as_int=$((server_as_int + i))
+        
+        # 转换为 IP 地址格式
+        current_ip=$(echo $current_as_int | awk '{printf("%d.%d.%d.%d", ($1/256^3)%256, ($1/256^2)%256, ($1/256)%256, $1%256)}')
+        
+        # 检查 IP 是否已分配
+        if ! echo "$allocated_ips" | grep -q "$current_ip"; then
+            # 找到未分配的 IP
+            echo $current_ip
+            return 0
+        fi
+    done
+    
+    # 如果所有 IP 都已分配，返回错误
+    echo "Error: No available IP addresses in subnet $OVPN_SUBNET" >&2
+    return 1
+}
+
+get_ccd() {
+    netmask=$(getsubnet $OVPN_SUBNET | awk -F' ' '{print $2}')
+    client_addr=$(next_clientaddr)
+    ccd="ifconfig-push $client_addr $netmask"
+    echo $ccd
+}
+
 ################################################################################################
 
 if [ "$1" == "--init" ]; then
