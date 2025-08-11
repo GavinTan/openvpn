@@ -401,10 +401,13 @@ case $1 in
             exit 1
         fi
 
-        if [ -n "$5" ]; then
-            mkdir -p $OVPN_DATA/ccd
-            echo -e "$5" > $OVPN_DATA/ccd/$2
-        fi
+        # if [ -n "$5" ]; then
+            # mkdir -p $OVPN_DATA/ccd
+            # echo -e "$5" > $OVPN_DATA/ccd/$2
+        # fi
+        ccd=$(get_ccd)
+        mkdir -p $OVPN_DATA/ccd
+        echo -e "$ccd" > $OVPN_DATA/ccd/$2
 
         genclient $2 $3 "$4"
         exit 0
