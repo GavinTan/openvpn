@@ -1,4 +1,4 @@
-FROM alpine:3.22.1
+FROM python:3.12.8-alpine
 
 RUN apk add --no-cache easy-rsa openvpn iptables iptables-legacy bash supervisor curl sqlite grep
 RUN ln -s /usr/share/easy-rsa/easyrsa /usr/local/bin
