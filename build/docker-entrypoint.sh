@@ -310,17 +310,17 @@ check_config() {
 
 add_history() {
     #https://build.openvpn.net/man/openvpn-2.6/openvpn.8.html#environmental-variables
+    set +e
     data="vip=$ifconfig_pool_remote_ip&rip=$trusted_ip&common_name=$common_name&username=$username&bytes_received=$bytes_received&bytes_sent=$bytes_sent&time_unix=$time_unix&time_duration=$time_duration"
     status=$(curl -w "%{http_code}" --connect-timeout 5 -s -X POST -o /dev/null -d $data $ovpn_history_api)
-
-    [ $status -ne 200 ] && echo "[CLIENT-DISCONNECT] $0:$LINENO 保存历史记录出错，请检查！" || true
+    if [[ $? -ne 0 || $status -ne 200  ]]; then
+        echo "[CLIENT-DISCONNECT] $0:$LINENO 保存历史记录出错，请检查！"
+    fi
+    set -e
 }
 
 client_disconnect() {
-    set +e
     add_history
-    [ $? -ne 0 ] && echo "[CLIENT-DISCONNECT] $0:$LINENO 保存历史记录出错，请检查！"
-    set -e
 }
 
 client_connect() {
