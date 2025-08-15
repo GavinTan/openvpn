@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"time"
 
 	"github.com/gavintan/gopkg/aes"
@@ -73,30 +74,48 @@ func (u *User) Delete(id string) error {
 }
 
 func (u *User) Login() error {
+	user := u.Username
 	pass := u.Password
-	result := db.First(&u, "username = ?", u.Username)
 
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		return fmt.Errorf("用户名不存在")
-	}
-
-	if !*u.IsEnable {
-		return fmt.Errorf("账号已禁用")
-	}
-
-	if u.ExpireDate != "" {
-		ed, _ := time.Parse("2006-01-02", u.ExpireDate)
-		if ed.Before(time.Now()) {
-			return fmt.Errorf("账号已过期")
+	if ovpn_ldap_auth := os.Getenv("OVPN_LDAP_AUTH"); ovpn_ldap_auth == "true" {
+		l, err := InitLdap()
+		if err != nil {
+			return err
 		}
+
+		return l.Auth(user, pass)
+	} else {
+		result := db.First(&u, "username = ?", user)
+
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("用户名不存在")
+		}
+
+		if !*u.IsEnable {
+			return fmt.Errorf("账号已禁用")
+		}
+
+		if u.ExpireDate != "" {
+			ed, _ := time.Parse("2006-01-02", u.ExpireDate)
+			if ed.Before(time.Now()) {
+				return fmt.Errorf("账号已过期")
+			}
+		}
+
+		if u.Password != pass {
+			return fmt.Errorf("密码错误")
+		}
+
+		if u.IpAddr != "" {
+			ovData, ok := os.LookupEnv("OVPN_DATA")
+			if !ok {
+				ovData = "/data"
+			}
+			os.WriteFile(path.Join(ovData, ".ovip"), []byte(u.IpAddr), 0644)
+		}
+
+		return nil
 	}
-
-	if u.Password != pass {
-		return fmt.Errorf("密码错误")
-	}
-
-	return nil
-
 }
 
 func (User) TableName() string {
