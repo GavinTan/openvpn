@@ -121,22 +121,39 @@ networks:
     enable_ipv6: true
 ```
 
+## LDAP
+
+部分参数说明：
+
+- LDAP_URL：ldap连接TLS 例：ldaps://example.org:636
+- LDAP_USER_ATTRIBUTE：根据当前使用的LDAP服务器设置，例：OpenLDAP：uid ； Windows AD: sAMAccountName
+- LDAP_USER_ATTR_IPADDR_NAME：可在ldap服务器添加ipaddr自定义字段，也可以设置为ldap已经存在其他的未使用字段 例：mobile、homePhone
+
 
 
 ## 环境变量参数
 
-|       环境变量        |             说明             |          默认值          |
-| :-------------------: | :--------------------------: | :----------------------: |
-|     **OVPN_DATA**     |         数据存放目录         |          /data           |
-|    **OVPN_SUBNET**    |           vpn子网            |       10.8.0.0/24        |
-|   **OVPN_SUBNET6**    |         vpn ipv6子网         | fdaf:f178:e916:6dd0::/64 |
-|    **OVPN_PROTO**     |      协议 tcp(6)/udp(6)      |           udp            |
-|     **OVPN_PORT**     |         vpn连接端口          |           1194           |
-|  **OVPN_MAXCLIENTS**  |     vpn最大客户端连接数      |           200            |
-|  **OVPN_MANAGEMENT**  |   openvpn管理接口监听地址    |      127.0.0.1:7505      |
-|     **OVPN_IPV6**     |           启用ipv6           |          false           |
-|   **OVPN_GATEWAY**    |   启用vpn网关所有流量走vpn   |          false           |
-|     **WEB_PORT**      |           web端口            |           8833           |
-|  **ADMIN_USERNAME**   |         web登录账号          |          admin           |
-|  **ADMIN_PASSWORD**   |         web登录密码          |          admin           |
-| **ENV_UPDATE_CONFIG** | 启用环境变量自动更新配置文件 |           true           |
+|            环境变量            |             说明             |               默认值               |
+| :----------------------------: | :--------------------------: | :--------------------------------: |
+|         **OVPN_DATA**          |         数据存放目录         |               /data                |
+|        **OVPN_SUBNET**         |           vpn子网            |            10.8.0.0/24             |
+|        **OVPN_SUBNET6**        |         vpn ipv6子网         |      fdaf:f178:e916:6dd0::/64      |
+|         **OVPN_PROTO**         |      协议 tcp(6)/udp(6)      |                udp                 |
+|         **OVPN_PORT**          |         vpn连接端口          |                1194                |
+|      **OVPN_MAXCLIENTS**       |     vpn最大客户端连接数      |                200                 |
+|      **OVPN_MANAGEMENT**       |   openvpn管理接口监听地址    |           127.0.0.1:7505           |
+|         **OVPN_IPV6**          |           启用ipv6           |               false                |
+|        **OVPN_GATEWAY**        |   启用vpn网关所有流量走vpn   |               false                |
+|          **WEB_PORT**          |           web端口            |                8833                |
+|       **ADMIN_USERNAME**       |         web登录账号          |               admin                |
+|       **ADMIN_PASSWORD**       |         web登录密码          |               admin                |
+|     **ENV_UPDATE_CONFIG**      | 启用环境变量自动更新配置文件 |                true                |
+|       **OVPN_LDAP_AUTH**       |       启用LDAP用户认证       |               false                |
+|          **LDAP_URL**          |         LDAP连接URL          |       ldap://example.org:389       |
+|        **LDAP_BASE_DN**        |         LDAP 基础 DN         |         dc=example,dc=org          |
+|    **LDAP_USER_ATTRIBUTE**     |   匹配用户名的LDAP属性字段   |                uid                 |
+|   **LDAP_USER_GROUP_FILTER**   |      启用用户所属组过滤      |               false                |
+|     **LDAP_USER_GROUP_DN**     |          所属组的DN          | cn=vpn,ou=groups,dc=example,dc=org |
+| **LDAP_USER_ATTR_IPADDR_NAME** | 设置vpn固定ip的用户属性字段  |               ipaddr               |
+|     **LDAP_BIND_USER_DN**      |       LDAP 绑定用户 DN       |     cn=admin,dc=example,dc=org     |
+|     **LDAP_BIND_PASSWORD**     |      LDAP 绑定用户密码       |           adminpassword            |
