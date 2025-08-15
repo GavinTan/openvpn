@@ -319,16 +319,25 @@ add_history() {
     set -e
 }
 
+set_ovip() {
+    cc_file="$1"
+    ip_file="$ovpn_data/.ovip"
+
+    if [ -f "$ip_file" ]; then
+        ipaddr=$(cat $ip_file)
+        if [ -n "$ipaddr" ]; then
+            echo "ifconfig-push $ipaddr $ifconfig_netmask" > $cc_file
+            rm -rf $ip_file
+        fi
+    fi
+}
+
 client_disconnect() {
     add_history
 }
 
 client_connect() {
-    #set static ip
-    cc_file="$1"
-    sql="SELECT ip_addr FROM user WHERE username='$username'"
-    ipaddr=$(sqlite3 $ovpn_data/ovpn.db "$sql")
-    [ -n "$ipaddr" ] && echo "ifconfig-push $ipaddr $ifconfig_netmask" > $cc_file || true
+    set_ovip "$1"
 }
 
 ################################################################################################
