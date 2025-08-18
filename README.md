@@ -123,6 +123,8 @@ networks:
 
 ## LDAP
 
+> 添加OVPN_LDAP_AUTH环境变量启用LDAP认证，启用LDAP认证后本地的VPN账号将不在工作。
+
 部分参数说明：
 
 - LDAP_URL：ldap连接TLS 例：ldaps://example.org:636
@@ -157,3 +159,4 @@ networks:
 | **LDAP_USER_ATTR_IPADDR_NAME** | 设置vpn固定ip的用户属性字段  |               ipaddr               |
 |     **LDAP_BIND_USER_DN**      |       LDAP 绑定用户 DN       |     cn=admin,dc=example,dc=org     |
 |     **LDAP_BIND_PASSWORD**     |      LDAP 绑定用户密码       |           adminpassword            |
+
