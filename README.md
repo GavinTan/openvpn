@@ -1,8 +1,6 @@
 # openvpn
 
-**docker 版[openvpn](https://hub.docker.com/r/yyxx/openvpn)，支持 web 管理。**
-
-openvpn 安全与加密相关配置参考于[openvpn-install](https://github.com/angristan/openvpn-install?tab=readme-ov-file#security-and-encryption)的Security and Encryption部分。
+**openvpn 安全与加密相关配置参考于[openvpn-install](https://github.com/angristan/openvpn-install?tab=readme-ov-file#security-and-encryption)的Security and Encryption部分。**
 
 ![image-20240529110841439](https://raw.githubusercontent.com/GavinTan/files/master/picgo/image-20240529110841439.png)
 
@@ -25,6 +23,19 @@ openvpn 安全与加密相关配置参考于[openvpn-install](https://github.com
 > 1. 默认禁用vpn网关，如果需要客户端所有流量都走 openvpn 请使用环境变量`OVPN_GATEWAY=true`。
 > 2. 在创建客户端后关闭账号验证客户端的配置文件存在auth-user-pass参数客户端会依旧弹出登录，登录信息可以随便输入不会做验证，若有弹窗困扰的建议手动编辑客户端配置文件注释掉参数或重新生成客户端配置文件。
 
+## 支持功能
+
+- 账号管理
+- 证书管理
+- ipv6支持
+- ldap支持
+- mfa支持
+- 连接历史记录
+- vpn账号固定ip
+- 在线编辑server.conf
+- 在线重启openvpn服务
+- 一键生成客户端 & CCD配置文件
+
 ## Quick Start
 
 初始化生成证书及配置文件
@@ -42,6 +53,7 @@ docker run -d \
   -p 8833:8833 \
   -e ADMIN_USERNAME=admin \
   -e ADMIN_PASSWORD=admin \
+  -e OVPN_GATEWAY=false \
   -v $(pwd)/data:/data \
   yyxx/openvpn
 ```
@@ -69,6 +81,7 @@ docker run -d \
       environment:
         - ADMIN_USERNAME=admin
         - ADMIN_PASSWORD=admin
+        - OVPN_GATEWAY=false
       volumes:
         - ./data:/data
         - /etc/localtime:/etc/localtime:ro

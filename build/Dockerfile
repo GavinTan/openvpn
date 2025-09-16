@@ -39,6 +39,8 @@ ENV LDAP_USER_GROUP_DN=cn=vpn,ou=groups,dc=example,dc=org
 ENV LDAP_USER_ATTR_IPADDR_NAME=ipaddr
 ENV LDAP_BIND_USER_DN=cn=admin,dc=example,dc=org
 ENV LDAP_BIND_PASSWORD=adminpassword
+#fix https://github.com/GavinTan/openvpn/issues/27
+ENV move_req_and_key=true
 
 EXPOSE 1194/udp 8833
 

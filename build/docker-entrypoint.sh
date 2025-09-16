@@ -282,6 +282,7 @@ tls-version-min 1.2
 tls-cipher TLS-ECDHE-ECDSA-WITH-AES-128-GCM-SHA256
 verb 3
 $([[ "$OVPN_PROTO" =~ "udp" ]] && echo "explicit-exit-notify")
+$([[ "$4" == "true" ]] && echo 'static-challenge "Enter MFA code" 1')
 
 ## Custom configuration ##
 $(echo -e $3)
@@ -366,7 +367,7 @@ case $1 in
             echo -e "$5" > $OVPN_DATA/ccd/$2
         fi
 
-        genclient $2 $3 "$4"
+        genclient $2 $3 "$4" $6
         exit 0
         ;;
     "auth")
