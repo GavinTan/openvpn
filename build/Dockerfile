@@ -7,8 +7,8 @@ RUN ln -s /usr/share/easy-rsa/easyrsa /usr/local/bin
 COPY docker-entrypoint.sh /usr/bin
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-RUN wget https://github.com/gavintan/openvpn-web/releases/latest/download/openvpn-web-$(uname -s)-$(uname -m) -O /usr/local/bin/openvpn-web
-RUN wget https://github.com/gavintan/openvpn-auth/releases/latest/download/openvpn-auth-$(uname -s)-$(uname -m) -O /usr/lib/openvpn/plugins/openvpn-auth
+RUN wget https://github.com/gavintan/openvpn/releases/latest/download/openvpn-web-$(uname -s)-$(uname -m) -O /usr/local/bin/openvpn-web
+RUN wget https://github.com/gavintan/openvpn/releases/latest/download/openvpn-auth-$(uname -s)-$(uname -m) -O /usr/lib/openvpn/plugins/openvpn-auth
 RUN chmod +x /usr/local/bin/openvpn-web /usr/bin/docker-entrypoint.sh /usr/lib/openvpn/plugins/openvpn-auth
 
 VOLUME ["/data"]

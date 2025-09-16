@@ -18,13 +18,13 @@ builds:
 archives:
   - format: binary
     name_template: >-
-      {{- .ProjectName }}-
+      openvpn-web-
       {{- .Os }}-
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "arm64" }}aarch64
       {{- else }}{{ .Arch }}{{ end }}
 checksum:
-  name_template: "{{ .ProjectName }}_sha256_checksums.txt"
+  name_template: 'openvpn-web_sha256_checksums.txt'
   algorithm: sha256
 upx:
   - enabled: true

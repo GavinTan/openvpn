@@ -1,0 +1,66 @@
+name: goreleaser
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.1'
+
+      - name: Build openvpn-auth
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          workdir: src/openvpn-auth
+          distribution: goreleaser
+          version: '~> v2'
+          args: release --clean --skip=validate
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACTION_TOKEN }}
+
+      - name: Build openvpn-web
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          workdir: src/openvpn-web
+          distribution: goreleaser
+          version: '~> v2'
+          args: release --clean --skip=validate
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACTION_TOKEN }}
+
+      - uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Set Version
+        run: echo VERSION=`git describe --tags --always` >> $GITHUB_ENV
+
+      - name: Build and push image
+        uses: docker/build-push-action@v3
+        with:
+          context: ./build
+          file: ./build/Dockerfile
+          push: true
+          platforms: |
+            linux/amd64
+            linux/arm64
+          build-args: |
+            VERSION=${{ env.VERSION }}
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/openvpn:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/openvpn:${{ env.VERSION }}
