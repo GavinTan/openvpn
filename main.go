@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"crypto/x509"
 	"embed"
@@ -16,6 +17,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -394,6 +396,16 @@ func AuthMiddleWare() gin.HandlerFunc {
 			return
 		}
 
+		var su SysUser
+		if user, ok := user.(string); ok {
+			su.Username = user
+			if c.Request.URL.Path != "/" && !strings.HasPrefix(c.Request.URL.Path, "/client") && !su.IsAdmin() {
+				c.Redirect(302, "/")
+				c.Abort()
+				return
+			}
+		}
+
 		c.Next()
 	}
 }
@@ -478,33 +490,46 @@ func main() {
 	})
 
 	r.POST("/login", func(c *gin.Context) {
-		var u SysUser
-		c.ShouldBind(&u)
+		var err error
 
+		session := sessions.Default(c)
 		remember7d := c.PostForm("remember7d")
 
-		err := u.Login()
-		if err == nil {
-			session := sessions.Default(c)
-			session.Set("user", u.Username)
-
-			if remember7d == "on" {
-				session.Options(sessions.Options{
-					MaxAge: 3600 * 24 * 7,
-				})
-			} else {
-				session.Options(sessions.Options{
-					MaxAge: 3600 * 1,
-				})
-			}
-			session.Save()
-
-			c.JSON(200, gin.H{"message": "登录成功"})
-			return
+		if remember7d == "on" {
+			session.Options(sessions.Options{
+				MaxAge: 3600 * 24 * 7,
+			})
+		} else {
+			session.Options(sessions.Options{
+				MaxAge: 3600 * 1,
+			})
 		}
 
-		c.JSON(401, gin.H{"message": "用户名或密码错误"})
+		var su SysUser
+		c.ShouldBind(&su)
 
+		if su.IsAdmin() {
+			if err = su.Login(); err == nil {
+				session.Set("user", su.Username)
+				session.Save()
+
+				c.JSON(200, gin.H{"message": "登录成功", "redirect": "/admin"})
+				return
+			}
+		} else {
+			var u User
+			c.ShouldBind(&u)
+
+			if err = u.Login(false); err == nil {
+				session.Set("user", u.Username)
+				session.Save()
+
+				c.JSON(200, gin.H{"message": "登录成功", "redirect": "/"})
+				return
+			}
+		}
+
+		c.JSON(401, gin.H{"message": err.Error()})
 	})
 
 	r.GET("/logout", func(c *gin.Context) {
@@ -518,9 +543,38 @@ func main() {
 	r.Use(AuthMiddleWare())
 
 	r.GET("/", func(c *gin.Context) {
+		var su SysUser
+
+		session := sessions.Default(c)
+		if user, ok := session.Get("user").(string); ok {
+			su.Username = user
+
+			if su.IsAdmin() {
+				c.Redirect(302, "/admin")
+				return
+			}
+		}
+
+		c.HTML(http.StatusOK, "client.html", gin.H{})
+	})
+
+	r.GET("/admin", func(c *gin.Context) {
+		var su SysUser
+
+		session := sessions.Default(c)
+		if user, ok := session.Get("user").(string); ok {
+			su.Username = user
+
+			if !su.IsAdmin() {
+				c.Redirect(302, "/")
+				return
+			}
+		}
+
 		c.HTML(http.StatusOK, "index.html", gin.H{
-			"server":  ov.getServer(),
-			"sysUser": os.Getenv("ADMIN_USERNAME"),
+			"server":   ov.getServer(),
+			"sysUser":  os.Getenv("ADMIN_USERNAME"),
+			"ldapAuth": os.Getenv("OVPN_LDAP_AUTH"),
 		})
 	})
 
@@ -632,7 +686,7 @@ func main() {
 		ovpn.POST("/login", func(c *gin.Context) {
 			var u User
 			c.ShouldBind(&u)
-			err := u.Login()
+			err := u.Login(true)
 			if err != nil {
 				c.JSON(http.StatusUnauthorized, gin.H{"message": err.Error()})
 			} else {
@@ -708,8 +762,8 @@ func main() {
 
 		ovpn.GET("/client", func(c *gin.Context) {
 			a := c.Query("a")
-
-			if a == "getConfig" {
+			switch a {
+			case "getConfig":
 				f := c.Query("file")
 
 				data, err := os.ReadFile(path.Join(ovData, f))
@@ -723,7 +777,9 @@ func main() {
 				}
 
 				c.JSON(http.StatusOK, gin.H{"content": string(data)})
-			} else {
+
+				return
+			default:
 				ccd := make([]ClientConfigData, 0)
 
 				files, _ := os.ReadDir(path.Join(ovData, "clients"))
@@ -738,6 +794,10 @@ func main() {
 					}
 					ccd = append(ccd, f)
 				}
+
+				sort.Slice(ccd, func(i, j int) bool {
+					return ccd[i].Date < ccd[j].Date
+				})
 
 				c.JSON(http.StatusOK, ccd)
 			}
@@ -795,10 +855,11 @@ func main() {
 			serverAddr := c.PostForm("serverAddr")
 			config := c.PostForm("config")
 			ccdConfig := c.PostForm("ccdConfig")
+			mfa := c.PostForm("mfa")
 
 			_, err := os.Stat(path.Join(ovData, "clients", fmt.Sprintf("%s.ovpn", name)))
 			if err != nil {
-				cmd := exec.Command("sh", "-c", fmt.Sprintf("/usr/bin/docker-entrypoint.sh genclient %s %s %#v %#v", name, serverAddr, config, ccdConfig))
+				cmd := exec.Command("sh", "-c", fmt.Sprintf("/usr/bin/docker-entrypoint.sh genclient %s %s %#v %#v %s", name, serverAddr, config, ccdConfig, mfa))
 				if out, err := cmd.CombinedOutput(); err != nil {
 					if out == nil {
 						out = []byte(err.Error())
@@ -857,6 +918,146 @@ func main() {
 
 		ovpn.GET("/certs", func(c *gin.Context) {
 			c.JSON(http.StatusOK, getCerts(ovData))
+		})
+	}
+
+	client := r.Group("/client")
+	{
+		client.GET("/userinfo", func(c *gin.Context) {
+			var u User
+
+			session := sessions.Default(c)
+			if user, ok := session.Get("user").(string); ok {
+				u.Username = user
+			}
+
+			c.JSON(http.StatusOK, u.Info())
+		})
+
+		client.POST("/modifyPass", func(c *gin.Context) {
+			var u User
+			c.ShouldBind(&u)
+
+			if currentPass, ok := c.Request.PostForm["currentPass"]; ok {
+				if u.Info().Password != currentPass[0] {
+					c.JSON(http.StatusUnauthorized, gin.H{"message": "当前密码错误"})
+					return
+				}
+			}
+
+			err := u.UpdatePassword()
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			} else {
+				c.JSON(http.StatusOK, gin.H{"message": "密码修改成功"})
+			}
+		})
+
+		client.GET("/userConfig", func(c *gin.Context) {
+			var u User
+			session := sessions.Default(c)
+			if user, ok := session.Get("user").(string); ok {
+				u.Username = user
+			}
+
+			u = u.Info()
+			configName := u.OvpnConfig
+			configFile := path.Join(ovData, "clients", configName)
+			hasAuth := func() bool {
+				file, err := os.Open(path.Join(ovData, "server.conf"))
+				if err != nil {
+					return false
+				}
+				defer file.Close()
+
+				scanner := bufio.NewScanner(file)
+				for scanner.Scan() {
+					line := strings.TrimSpace(scanner.Text())
+					if strings.HasPrefix(line, "auth-user-pass-verify") {
+						return true
+					}
+				}
+				if err := scanner.Err(); err != nil {
+					return false
+				}
+				return false
+			}
+
+			if configName == "" {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": "该账号未指定配置文件，请联系管理员"})
+				return
+			}
+
+			data, err := os.ReadFile(configFile)
+			if err != nil {
+				logger.Error(context.Background(), err.Error())
+				c.JSON(http.StatusInternalServerError, gin.H{"message": "读取配置文件失败"})
+				return
+			}
+
+			challengeLine := `static-challenge "Enter MFA code" 1`
+			content := string(data)
+
+			if u.MfaSecret != "" {
+				if !strings.Contains(content, challengeLine) {
+					if !strings.HasSuffix(content, "\n") {
+						content += "\n"
+					}
+					content += challengeLine + "\n"
+				}
+			} else {
+				content = strings.ReplaceAll(content, challengeLine+"\n", "")
+			}
+
+			if !hasAuth() {
+				content = strings.ReplaceAll(content, "auth-user-pass\n", "")
+			}
+
+			c.JSON(http.StatusOK, gin.H{"filename": configName, "content": content})
+		})
+
+		client.GET("/mfa", func(c *gin.Context) {
+			var u User
+
+			session := sessions.Default(c)
+			if user, ok := session.Get("user").(string); ok {
+				u.Username = user
+			}
+
+			u = u.Info()
+			if u.MfaSecret == "" {
+				secret, err := GenMfa(u.Username)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"message": fmt.Errorf("MFA: %w", err).Error()})
+				} else {
+					u.MfaSecret = secret
+					c.JSON(http.StatusOK, gin.H{"mfaEnable": false, "user": u})
+				}
+			} else {
+				c.JSON(http.StatusOK, gin.H{"mfaEnable": true, "user": u})
+			}
+		})
+
+		client.POST("/mfa", func(c *gin.Context) {
+			var u User
+			c.ShouldBind(&u)
+
+			passcode := c.PostForm("passcode")
+
+			vaild := ValidateMfa(passcode, u.MfaSecret)
+			if !vaild {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": "验证码错误"})
+			} else {
+				u.Update()
+				c.JSON(http.StatusOK, gin.H{"message": "MFA已启用"})
+			}
+		})
+
+		client.DELETE("/mfa/:id", func(c *gin.Context) {
+			id := c.Param("id")
+			db.Model(&User{}).Where("id = ?", id).Update("mfa_secret", nil)
+
+			c.JSON(http.StatusOK, gin.H{"message": "MFA已停用"})
 		})
 	}
 

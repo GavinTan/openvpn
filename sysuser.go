@@ -57,6 +57,16 @@ func (u SysUser) Login() error {
 
 }
 
+func (u SysUser) IsAdmin() bool {
+	result := db.Table(u.TableName()).WithContext(context.Background()).First(&u, "username = ?", u.Username)
+
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return u.Username == os.Getenv("ADMIN_USERNAME")
+	}
+
+	return result.Error == nil
+}
+
 func (SysUser) TableName() string {
 	return "system_user"
 }

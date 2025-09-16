@@ -1,0 +1,177 @@
+.message {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    color: rgba(0, 0, 0, 0.85);
+    font-size: 14px;
+    font-variant: tabular-nums;
+    line-height: 1.5715;
+    list-style: none;
+    font-feature-settings: "tnum", "tnum";
+    position: fixed;
+    top: 8px;
+    left: 0;
+    z-index: 99999;
+    width: 100%;
+    pointer-events: none;
+  }
+
+  .message svg {
+    vertical-align: baseline;
+  }
+
+  .message .move-up-enter {
+    -webkit-animation-duration: 0.2s;
+    animation-duration: 0.2s;
+    -webkit-animation-fill-mode: both;
+    animation-fill-mode: both;
+    -webkit-animation-play-state: paused;
+    animation-play-state: paused;
+    opacity: 0;
+    -webkit-animation-timing-function: cubic-bezier(0.08, 0.82, 0.17, 1);
+    animation-timing-function: cubic-bezier(0.08, 0.82, 0.17, 1);
+    -webkit-animation-name: antMoveUpIn;
+    animation-name: antMoveUpIn;
+    -webkit-animation-play-state: running;
+    animation-play-state: running;
+  }
+
+  @-webkit-keyframes antMoveUpIn {
+    0% {
+      -webkit-transform: translateY(-100%);
+      transform: translateY(-100%);
+      -webkit-transform-origin: 0 0;
+      transform-origin: 0 0;
+      opacity: 0;
+    }
+
+    100% {
+      -webkit-transform: translateY(0%);
+      transform: translateY(0%);
+      -webkit-transform-origin: 0 0;
+      transform-origin: 0 0;
+      opacity: 1;
+    }
+  }
+
+  @keyframes antMoveUpIn {
+    0% {
+      -webkit-transform: translateY(-100%);
+      transform: translateY(-100%);
+      -webkit-transform-origin: 0 0;
+      transform-origin: 0 0;
+      opacity: 0;
+    }
+
+    100% {
+      -webkit-transform: translateY(0%);
+      transform: translateY(0%);
+      -webkit-transform-origin: 0 0;
+      transform-origin: 0 0;
+      opacity: 1;
+    }
+  }
+
+  .message .move-up-leave {
+    -webkit-animation-fill-mode: both;
+    animation-fill-mode: both;
+    -webkit-animation-play-state: paused;
+    animation-play-state: paused;
+    -webkit-animation-timing-function: cubic-bezier(0.6, 0.04, 0.98, 0.34);
+    animation-timing-function: cubic-bezier(0.6, 0.04, 0.98, 0.34);
+    -webkit-animation-play-state: running;
+    animation-play-state: running;
+    pointer-events: none;
+    -webkit-animation-name: MessageMoveOut;
+    animation-name: MessageMoveOut;
+    -webkit-animation-duration: 0.3s;
+    animation-duration: 0.3s;
+  }
+
+  @-webkit-keyframes MessageMoveOut {
+    0% {
+      max-height: 150px;
+      padding: 8px;
+      opacity: 1;
+    }
+
+    100% {
+      max-height: 0;
+      padding: 0;
+      opacity: 0;
+    }
+  }
+
+  @keyframes MessageMoveOut {
+    0% {
+      max-height: 150px;
+      padding: 8px;
+      opacity: 1;
+    }
+
+    100% {
+      max-height: 0;
+      padding: 0;
+      opacity: 0;
+    }
+  }
+
+  .message .message-notice {
+    padding: 8px;
+    text-align: center;
+  }
+
+  .message .message-notice:first-child {
+    margin-top: -8px;
+  }
+
+  .message .message-content {
+    display: inline-block;
+    padding: 10px 16px;
+    background: #fff;
+    border-radius: 2px;
+    box-shadow: 0 3px 6px -4px rgb(0 0 0 / 12%),
+      0 6px 16px 0 rgb(0 0 0 / 8%), 0 9px 28px 8px rgb(0 0 0 / 5%);
+    pointer-events: all;
+  }
+
+  .message-anticon {
+    display: inline-block;
+    color: inherit;
+    font-style: normal;
+    line-height: 0;
+    text-align: center;
+    text-transform: none;
+    vertical-align: -0.125em;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .message .message-anticon {
+    position: relative;
+    top: 1px;
+    margin-right: 8px;
+    font-size: 16px;
+  }
+
+  .message .message-success .message-anticon {
+    color: #52c41a;
+  }
+
+  .message .message-info .message-anticon {
+    color: #1890ff;
+  }
+
+  .message .message-warning .message-anticon {
+    color: #faad14;
+  }
+
+  .message .message-error .message-anticon {
+    color: #ff4d4f;
+  }
+
+
+  .dropdown-toggle::after {
+    margin-left: 0;
+  }

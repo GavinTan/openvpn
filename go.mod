@@ -1,19 +1,21 @@
 module openvpn-web
 
-go 1.23.1
+go 1.25.1
 
 require (
 	github.com/gavintan/gopkg v0.0.0-20221029081336-5f39c14da84b
-	github.com/gin-contrib/sessions v1.0.3
-	github.com/gin-gonic/gin v1.10.0
+	github.com/gin-contrib/sessions v1.0.4
+	github.com/gin-gonic/gin v1.10.1
 	github.com/glebarez/sqlite v1.11.0
 	github.com/go-ldap/ldap/v3 v3.4.11
 	github.com/joho/godotenv v1.5.1
-	gorm.io/gorm v1.26.0
+	github.com/pquerna/otp v1.5.0
+	gorm.io/gorm v1.30.5
 )
 
 require (
 	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
+	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
 	github.com/bytedance/sonic v1.13.2 // indirect
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
 	github.com/cloudwego/base64x v0.1.5 // indirect

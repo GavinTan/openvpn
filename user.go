@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/gavintan/gopkg/aes"
@@ -20,6 +22,8 @@ type User struct {
 	Name       string    `json:"name" form:"name"`
 	ExpireDate string    `gorm:"default:NULL" json:"expireDate" form:"expireDate"`
 	IpAddr     string    `gorm:"uniqueIndex;default:NULL" json:"ipAddr" form:"ipAddr"`
+	OvpnConfig string    `json:"ovpnConfig" form:"ovpnConfig"`
+	MfaSecret  string    `json:"mfaSecret" form:"mfaSecret"`
 	CreatedAt  time.Time `json:"createdAt,omitempty" form:"createdAt,omitempty"`
 	UpdatedAt  time.Time `json:"updatedAt,omitempty" form:"updatedAt,omitempty"`
 }
@@ -73,7 +77,12 @@ func (u *User) Delete(id string) error {
 	return result.Error
 }
 
-func (u *User) Login() error {
+func (u *User) UpdatePassword() error {
+	result := db.Model(&u).Updates(User{Password: u.Password})
+	return result.Error
+}
+
+func (u *User) Login(clogin bool) error {
 	user := u.Username
 	pass := u.Password
 
@@ -102,6 +111,39 @@ func (u *User) Login() error {
 			}
 		}
 
+		if clogin {
+			if u.MfaSecret != "" && !strings.HasPrefix(pass, "SCRV1:") {
+				return fmt.Errorf("未获取到MFA验证码")
+			}
+
+			var passcode string
+			if strings.HasPrefix(pass, "SCRV1:") {
+				parts := strings.Split(pass, ":")
+				if len(parts) == 3 {
+					p, err := base64.StdEncoding.DecodeString(parts[1])
+					if err != nil {
+						return fmt.Errorf("passwd解码错误：%w", err)
+					}
+
+					pass = string(p)
+
+					k, err := base64.StdEncoding.DecodeString(parts[2])
+					if err != nil {
+						return fmt.Errorf("key解码错误：%w", err)
+					}
+
+					passcode = string(k)
+				}
+			}
+
+			if u.MfaSecret != "" {
+				vaild := ValidateMfa(passcode, u.MfaSecret)
+				if !vaild {
+					return fmt.Errorf("MFA验证失败")
+				}
+			}
+		}
+
 		if u.Password != pass {
 			return fmt.Errorf("密码错误")
 		}
@@ -116,6 +158,16 @@ func (u *User) Login() error {
 
 		return nil
 	}
+}
+
+func (u User) Info() User {
+	if u.Username != "" {
+		db.First(&u, "username = ?", u.Username)
+	} else {
+		db.First(&u)
+	}
+
+	return u
 }
 
 func (User) TableName() string {
