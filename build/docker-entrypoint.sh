@@ -265,7 +265,7 @@ genclient() {
     cat << EOF > $OVPN_DATA/clients/$1.ovpn
 client
 proto $([[ "$OVPN_IPV6" == "true" ]] && [[ ! "$OVPN_PROTO" =~ 6 ]] && echo "${OVPN_PROTO}6" || echo $OVPN_PROTO)
-remote ${2:-$([[ "$OVPN_IPV6" == "true" ]] && ip -6 route get 2001:4860:4860::8888 | grep -oP 'src \K\S+' || ip -4 route get 8.8.8.8 | grep -oP 'src \K\S+')} $OVPN_PORT
+remote ${2:-$([[ "$OVPN_IPV6" == "true" ]] && ip -6 route get 2001:4860:4860::8888 | grep -oP 'src \K\S+' || ip -4 route get 8.8.8.8 | grep -oP 'src \K\S+')} ${3:-$OVPN_PORT}
 dev tun
 resolv-retry infinite
 nobind
@@ -282,10 +282,10 @@ tls-version-min 1.2
 tls-cipher TLS-ECDHE-ECDSA-WITH-AES-128-GCM-SHA256
 verb 3
 $([[ "$OVPN_PROTO" =~ "udp" ]] && echo "explicit-exit-notify")
-$([[ "$4" == "true" ]] && echo 'static-challenge "Enter MFA code" 1')
+$([[ "$5" == "true" ]] && echo 'static-challenge "Enter MFA code" 1')
 
 ## Custom configuration ##
-$(echo -e $3)
+$(echo -e $4)
 ## end ##
 
 <ca>
@@ -362,12 +362,12 @@ case $1 in
             exit 1
         fi
 
-        if [ -n "$5" ]; then
+        if [ -n "$6" ]; then
             mkdir -p $OVPN_DATA/ccd
-            echo -e "$5" > $OVPN_DATA/ccd/$2
+            echo -e "$6" > $OVPN_DATA/ccd/$2
         fi
 
-        genclient $2 $3 "$4" $6
+        genclient $2 $3 $4 "$5" $7
         exit 0
         ;;
     "auth")

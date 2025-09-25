@@ -853,13 +853,14 @@ func main() {
 		ovpn.POST("/client", func(c *gin.Context) {
 			name := c.PostForm("name")
 			serverAddr := c.PostForm("serverAddr")
+			serverPort := c.PostForm("serverPort")
 			config := c.PostForm("config")
 			ccdConfig := c.PostForm("ccdConfig")
 			mfa := c.PostForm("mfa")
 
 			_, err := os.Stat(path.Join(ovData, "clients", fmt.Sprintf("%s.ovpn", name)))
 			if err != nil {
-				cmd := exec.Command("sh", "-c", fmt.Sprintf("/usr/bin/docker-entrypoint.sh genclient %s %s %#v %#v %s", name, serverAddr, config, ccdConfig, mfa))
+				cmd := exec.Command("sh", "-c", fmt.Sprintf("/usr/bin/docker-entrypoint.sh genclient %s %s %s %#v %#v %s", name, serverAddr, serverPort, config, ccdConfig, mfa))
 				if out, err := cmd.CombinedOutput(); err != nil {
 					if out == nil {
 						out = []byte(err.Error())

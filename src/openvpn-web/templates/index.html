@@ -511,12 +511,25 @@
               <div class="row">
                 <label class="col-sm-3 col-form-label">VPNServer</label>
                 <div class="col-sm-9">
-                  <input
-                    type="text"
-                    class="form-control form-control-sm"
-                    name="serverAddr"
-                    placeholder="VPN服务器外网IP或域名"
-                  />
+                  <div class="row">
+                    <div class="col-sm-8">
+                      <input
+                        type="text"
+                        class="form-control form-control-sm"
+                        name="serverAddr"
+                        placeholder="VPN服务器外网IP或域名"
+                      />
+                    </div>
+                    <div class="col-sm-4">
+                      <input
+                        type="text"
+                        class="form-control form-control-sm"
+                        name="serverPort"
+                        placeholder="端口"
+                        oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
               <div class="row mb-2">
@@ -1332,11 +1345,12 @@
         $('#addClientModal form').submit(function () {
           const name = $('#addClientModal input[name="name"]').val();
           const serverAddr = $('#addClientModal input[name="serverAddr"]').val() || location.hostname;
+          const serverPort = $('#addClientModal input[name="serverPort"]').val();
           const config = $('#addClientModal textarea[name="config"]').val();
           const ccdConfig = $('#addClientModal textarea[name="ccdConfig"]').val();
           const mfa = $('#addClientModal input[name="mfa"]').is(':checked');
 
-          request.post('/ovpn/client', { name, serverAddr, config, ccdConfig, mfa }).then((data) => {
+          request.post('/ovpn/client', { name, serverAddr, serverPort, config, ccdConfig, mfa }).then((data) => {
             vtable.ajax.reload(null, false);
             $('#addClientModal').modal('hide');
             $('#addClientModal form').trigger('reset');
