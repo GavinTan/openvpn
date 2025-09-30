@@ -65,9 +65,9 @@ management ${OVPN_MANAGEMENT/:/ }
 verb 2
 $([[ "$OVPN_PROTO" =~ "udp" ]]  && echo "explicit-exit-notify 1")
 setenv ovpn_data ${OVPN_DATA:-/data}
-setenv auth_api ${AUTH_API:-http://127.0.0.1/login}
-setenv ovpn_auth_api ${OVPN_AUTH_API:-http://127.0.0.1/ovpn/login}
-setenv ovpn_history_api ${OVPN_HISTORY_API:-http://127.0.0.1:8833/ovpn/history}
+setenv auth_api http://127.0.0.1:$WEB_PORT/login
+setenv ovpn_auth_api http://127.0.0.1:$WEB_PORT/ovpn/login
+setenv ovpn_history_api http://127.0.0.1:$WEB_PORT/ovpn/history
 EOF
 }
 
@@ -99,6 +99,7 @@ update_config() {
     source $OVPN_DATA/.vars
 
     config=$OVPN_DATA/server.conf
+    web_api="http://127.0.0.1:$WEB_PORT"
     auth_api=$(grep '^setenv auth_api' $config | cut -d' ' -f3)
     ovpn_auth_api=$(grep '^setenv ovpn_auth_api' $config | cut -d' ' -f3)
     ovpn_history_api=$(grep '^setenv ovpn_history_api' $config | cut -d' ' -f3)
@@ -110,27 +111,27 @@ update_config() {
     ovpn_port=$(grep '^port' $config | cut -d' ' -f2)
     ovpn_management=$(grep '^management' $config | cut -d' ' -f2,3)
 
-    if [ "$auth_api" != "$AUTH_API" ]; then
+    if [ "$auth_api" != "$web_api/login" ]; then
         if [ -z "$auth_api" ]; then
-            echo "setenv auth_api $AUTH_API" >> $config
+            echo "setenv auth_api $web_api/login" >> $config
         else
-            sed -i "s|^setenv auth_api .*|setenv auth_api $AUTH_API|" $config
+            sed -i "s|^setenv auth_api .*|setenv auth_api $web_api/login|" $config
         fi
     fi
 
-    if [ "$ovpn_auth_api" != "$OVPN_AUTH_API" ]; then
+    if [ "$ovpn_auth_api" != "$web_api/ovpn/login" ]; then
         if [ -z "$ovpn_auth_api" ]; then
-            echo "setenv ovpn_auth_api $OVPN_AUTH_API" >> $config
+            echo "setenv ovpn_auth_api $web_api/ovpn/login" >> $config
         else
-            sed -i "s|^setenv ovpn_auth_api .*|setenv ovpn_auth_api $OVPN_AUTH_API|" $config
+            sed -i "s|^setenv ovpn_auth_api .*|setenv ovpn_auth_api $web_api/ovpn/login|" $config
         fi
     fi
 
-    if [ "$ovpn_history_api" != "$OVPN_HISTORY_API" ]; then
+    if [ "$ovpn_history_api" != "$web_api/ovpn/history" ]; then
         if [ -z "$ovpn_history_api" ]; then
-            echo "setenv ovpn_history_api $OVPN_HISTORY_API" >> $config
+            echo "setenv ovpn_history_api $web_api/ovpn/history" >> $config
         else
-            sed -i "s|^setenv ovpn_history_api .*|setenv ovpn_history_api $OVPN_HISTORY_API|" $config
+            sed -i "s|^setenv ovpn_history_api .*|setenv ovpn_history_api $web_api/ovpn/history|" $config
         fi
     fi
 
