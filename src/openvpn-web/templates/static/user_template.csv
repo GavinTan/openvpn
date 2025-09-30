@@ -1,0 +1,3 @@
+﻿username,password,name,is_enable,expire_date,ip_addr,ovpn_config
+zhangsan,123456,张三,1,2025-12-01/00:00:00,10.8.0.222,tt-gz.ovpn
+lisi,123456,李四,0,,,tt-sh.ovpn

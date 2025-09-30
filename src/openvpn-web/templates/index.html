@@ -71,6 +71,18 @@
         white-space: normal;
         color: #212529;
       }
+
+      .file-drop-zone {
+        border: 2px dashed #ccc;
+        border-radius: 8px;
+        padding: 40px;
+        text-align: center;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+      .file-drop-zone .bg-light {
+        background-color: #f8f9fa;
+      }
     </style>
   </head>
 
@@ -486,6 +498,31 @@
       </div>
     </div>
 
+    <div class="modal fade" tabindex="-1" id="importUserModal" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">导入账号</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3 text-center">
+              <a class="text-decoration-none" href="/static/user_template.csv" download>下载模板</a>
+            </div>
+            <div class="file-drop-zone">
+              <p class="mb-0">点击或拖拽文件到这里上传</p>
+              <input name="fileInput" type="file" accept=".csv" hidden />
+            </div>
+            <div class="file-list mt-3"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+            <button type="submit" class="btn btn-primary" id="importUserSubmit" disabled>导入</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="modal fade" tabindex="-1" id="addClientModal" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -843,6 +880,75 @@
         const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
         const tooltipList = [...tooltipTriggerList].map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
 
+        let files = [];
+        const uploadFile = new FormData();
+        const importUserFileDropZone = document.querySelector('#importUserModal .file-drop-zone');
+        const importUserFileInput = document.querySelector('#importUserModal input[name="fileInput"]');
+        const importUserFileList = document.querySelector('#importUserModal .file-list');
+        const renderFileList = () => {
+          importUserFileList.innerHTML = '';
+          files.forEach((f, index) => {
+            const div = document.createElement('div');
+            const flieSpan = document.createElement('span');
+            const delBtn = document.createElement('button');
+
+            div.className = 'd-flex align-items-center';
+            flieSpan.textContent = `📄 ${f.name}`;
+            delBtn.type = 'button';
+            delBtn.className = 'ms-4 btn-close';
+            delBtn.setAttribute('style', 'font-size: 0.8rem;');
+            delBtn.setAttribute('aria-label', 'Close');
+            delBtn.addEventListener('click', () => {
+              files.splice(index, 1);
+              renderFileList();
+              $('#importUserSubmit').attr('disabled', true);
+            });
+
+            div.appendChild(flieSpan);
+            div.appendChild(delBtn);
+            importUserFileList.appendChild(div);
+          });
+        };
+
+        importUserFileDropZone.addEventListener('click', () => importUserFileInput.click());
+        importUserFileDropZone.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          $(this).addClass('bg-light');
+        });
+        importUserFileDropZone.addEventListener('dragleave', (e) => {
+          e.preventDefault();
+          $(this).removeClass('bg-light');
+        });
+        importUserFileDropZone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          $(this).removeClass('bg-light');
+
+          files = Array.from(e.dataTransfer.files).filter((f) => f.name.endsWith('.csv'));
+          if (files.length > 1) {
+            message.error('不支持多个文件导入');
+            return;
+          }
+          if (files.length === 0) {
+            message.error('只允许上传csv文件');
+            return;
+          }
+
+          $('#importUserSubmit').attr('disabled', false);
+          uploadFile.set('file', files[0]);
+          renderFileList();
+        });
+        importUserFileInput.addEventListener('change', (e) => {
+          files = Array.from(e.target.files).filter((f) => f.name.endsWith('.csv'));
+          if (files.length === 0) {
+            message.error('只允许上传csv文件');
+            return;
+          }
+
+          $('#importUserSubmit').attr('disabled', false);
+          uploadFile.set('file', files[0]);
+          renderFileList();
+        });
+
         const tables = {
           status: {
             columns: [
@@ -968,8 +1074,15 @@
               },
               buttons: [
                 {
+                  text: '导入',
+                  className: 'btn-primary border-end',
+                  action: () => {
+                    $('#importUserModal').modal('show');
+                  },
+                },
+                {
                   text: '添加',
-                  className: 'btn-primary',
+                  className: 'btn-primary border-start',
                   action: () => {
                     const elem = document.querySelector('#addUserModal input[name="expireDate"]');
                     const datepicker = new Datepicker(elem, {
@@ -1692,6 +1805,39 @@
 
           $('#userOffcanvas .offcanvas-body').html(html);
           oc.show();
+        });
+
+        $('#importUserSubmit').click(function () {
+          fetch('/ovpn/user', {
+            method: 'POST',
+            body: uploadFile,
+          })
+            .then(async (response) => {
+              const body = await response.json();
+              if (!response.ok) {
+                throw new Error(body?.message || response.text || response.statusText);
+              }
+
+              return body;
+            })
+            .then((data) => {
+              $('#importUserModal').modal('hide');
+              message.success(data.message);
+              vtable.ajax.reload(null, false);
+              uploadFile.delete('file');
+            })
+            .catch((error) => {
+              switch (true) {
+                case error.message.includes('UNIQUE constraint failed: user.ip_addr'):
+                  message.error('导入文件有IP已经使用');
+                  break;
+                case error.message.includes('UNIQUE constraint failed: user.username'):
+                  message.error('导入文件有用户名已存在');
+                  break;
+                default:
+                  message.error(error.message);
+              }
+            });
         });
       });
     </script>
