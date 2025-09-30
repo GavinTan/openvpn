@@ -1,15 +1,16 @@
 FROM alpine:3.22.1
 
-RUN apk add --no-cache easy-rsa openvpn iptables iptables-legacy bash supervisor curl sqlite grep
-RUN ln -s /usr/share/easy-rsa/easyrsa /usr/local/bin
+RUN apk add --no-cache openssl openvpn iptables iptables-legacy bash supervisor curl sqlite grep
 #RUN mkdir /lib64 && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2
 
 COPY docker-entrypoint.sh /usr/bin
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
+RUN wget https://github.com/OpenVPN/easy-rsa/releases/download/v3.2.4/EasyRSA-3.2.4.tgz && tar -ozxf EasyRSA-3.2.4.tgz && mv EasyRSA-3.2.4 /usr/share/easy-rsa && rm -rf EasyRSA-3.2.4.tgz
 RUN wget https://github.com/gavintan/openvpn/releases/latest/download/openvpn-web-$(uname -s)-$(uname -m) -O /usr/local/bin/openvpn-web
 RUN wget https://github.com/gavintan/openvpn/releases/latest/download/openvpn-auth-$(uname -s)-$(uname -m) -O /usr/lib/openvpn/plugins/openvpn-auth
 RUN chmod +x /usr/local/bin/openvpn-web /usr/bin/docker-entrypoint.sh /usr/lib/openvpn/plugins/openvpn-auth
+RUN ln -s /usr/share/easy-rsa/easyrsa /usr/local/bin
 
 VOLUME ["/data"]
 
@@ -39,8 +40,7 @@ ENV LDAP_USER_GROUP_DN=cn=vpn,ou=groups,dc=example,dc=org
 ENV LDAP_USER_ATTR_IPADDR_NAME=ipaddr
 ENV LDAP_BIND_USER_DN=cn=admin,dc=example,dc=org
 ENV LDAP_BIND_PASSWORD=adminpassword
-#fix https://github.com/GavinTan/openvpn/issues/27
-ENV move_req_and_key=true
+
 
 EXPOSE 1194/udp 8833
 
