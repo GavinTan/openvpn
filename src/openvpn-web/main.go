@@ -5,9 +5,11 @@ import (
 	"context"
 	"crypto/x509"
 	"embed"
+	"encoding/csv"
 	"encoding/pem"
 	"fmt"
 	"html/template"
+	"io"
 	"io/fs"
 	"log"
 	"net"
@@ -716,7 +718,64 @@ func main() {
 			var u User
 			c.ShouldBind(&u)
 
-			err := u.Create()
+			file, err := c.FormFile("file")
+			if err != nil {
+				if strings.Contains(err.Error(), "no such file") {
+					c.JSON(http.StatusInternalServerError, gin.H{"message": "没有上传文件"})
+					return
+				}
+			} else {
+				f, _ := file.Open()
+
+				defer f.Close()
+
+				reader := csv.NewReader(f)
+
+				header, err := reader.Read()
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+					return
+				}
+
+				if len(header) != 7 {
+					c.JSON(http.StatusInternalServerError, gin.H{"message": "导入文件格式错误"})
+					return
+				}
+
+				for {
+					record, err := reader.Read()
+					if err == io.EOF {
+						break
+					}
+
+					if err != nil {
+						c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+						return
+					}
+
+					enable := record[3] == "1"
+					u := User{
+						Username:   record[0],
+						Password:   record[1],
+						Name:       record[2],
+						IsEnable:   &enable,
+						ExpireDate: strings.Replace(record[4], "/", " ", 1),
+						IpAddr:     record[5],
+						OvpnConfig: record[6],
+					}
+
+					err = u.Create()
+					if err != nil {
+						c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+						return
+					}
+				}
+
+				c.JSON(http.StatusOK, gin.H{"message": "导入用户成功"})
+				return
+			}
+
+			err = u.Create()
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 			} else {

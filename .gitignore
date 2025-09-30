@@ -3,5 +3,5 @@
 
 bin
 ovpn.db
-openvpn-web
-openvpn-auth
+/src/openvpn-web/openvpn-web
+/src/openvpn-auth/openvpn-auth
