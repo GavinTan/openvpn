@@ -71,6 +71,19 @@ setenv ovpn_history_api http://127.0.0.1:$WEB_PORT/ovpn/history
 EOF
 }
 
+# 检查是否需要初始化
+check_and_init() {
+    if [ ! -e "$OVPN_DATA/.vars" ] || [ ! -e "$OVPN_DATA/server.conf" ] || [ ! -d "$OVPN_DATA/pki" ]; then
+        echo "检测到未初始化，开始自动初始化..."
+        mkdir -p $OVPN_DATA/ccd
+        init_pki
+        init_config
+        echo "初始化完成！"
+    else
+        echo "检测到已初始化，跳过初始化步骤"
+    fi
+}
+
 run_server() {
     mkdir -p /dev/net
     if [ ! -c /dev/net/tun ]; then
@@ -381,15 +394,13 @@ case $1 in
         exit 0
         ;;
     "/usr/sbin/openvpn")
+        check_and_init
         [[ "$ENV_UPDATE_CONFIG" == "true" ]] && update_config
         check_config
         run_server
         ;;
     "/usr/bin/supervisord")
-        if [ ! -e $OVPN_DATA/.vars ]; then
-            echo "请执行命令docker-compose run --rm openvpn --init进行初始化配置！"
-            exit 1
-        fi
+        check_and_init
         /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
         ;;
 esac
