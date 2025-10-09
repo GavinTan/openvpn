@@ -16,16 +16,6 @@ jobs:
         with:
           go-version: '1.25.1'
 
-      - name: Build openvpn-auth
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          workdir: src/openvpn-auth
-          distribution: goreleaser
-          version: '~> v2'
-          args: release --clean --skip=validate
-        env:
-          GITHUB_TOKEN: ${{ secrets.ACTION_TOKEN }}
-
       - name: Build openvpn-web
         uses: goreleaser/goreleaser-action@v6
         with:
