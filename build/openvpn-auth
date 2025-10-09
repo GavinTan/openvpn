@@ -1,0 +1,23 @@
+#!/bin/bash
+
+log_prefix="[OPENVPN-AUTH] $(date '+%Y-%m-%d %H:%M:%S.%3N')"
+
+
+if ! resp=$(curl -w "\n%{http_code}" --connect-timeout 5 -s -X POST "$ovpn_auth_api" -d "username=$username" -d "password=$password"); then
+    echo "$log_prefix [$username] 请求登录接口失败"
+    exit 1
+fi
+
+body=$(echo "$resp" | head -n -1)
+http_code=$(echo "$resp" | tail -n 1)
+message=$(echo "$body" | jq -r '.message // "请求异常"')
+
+
+echo "$log_prefix [$username] $message"
+
+
+if [[ "$http_code" -ne 200 ]]; then
+    exit 1
+fi
+
+exit 0
