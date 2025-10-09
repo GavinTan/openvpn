@@ -30,6 +30,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
 	"github.com/joho/godotenv"
+	"github.com/patrickmn/go-cache"
 	"gorm.io/gorm"
 	gLogger "gorm.io/gorm/logger"
 )
@@ -451,6 +452,7 @@ func main() {
 	}
 
 	store := gormsessions.NewStore(db, true, []byte(secretKey))
+	cc := cache.New(5*time.Minute, 10*time.Minute)
 
 	db.AutoMigrate(&User{}, &History{}, &SysUser{})
 
@@ -521,8 +523,35 @@ func main() {
 		} else {
 			var u User
 			c.ShouldBind(&u)
+			passcode := c.PostForm("passcode")
+
+			if passcode != "" {
+				if validUser, ok := cc.Get("valid_user"); ok {
+					if u.Username == validUser.(string) {
+						if ValidateMfa(passcode, u.Info().MfaSecret) {
+							cc.Delete("valid_user")
+							session.Set("user", u.Username)
+							session.Save()
+							c.JSON(200, gin.H{"message": "登录成功", "redirect": "/"})
+						} else {
+							c.JSON(401, gin.H{"message": "MFA验证失败"})
+						}
+
+						return
+					}
+				}
+
+				c.JSON(401, gin.H{"message": "登录超时", "redirect": "/login"})
+				return
+			}
 
 			if err = u.Login(false); err == nil {
+				if u.Info().MfaSecret != "" {
+					cc.Set("valid_user", u.Username, 1*time.Minute)
+					c.JSON(200, gin.H{"message": "需要MFA验证"})
+					return
+				}
+
 				session.Set("user", u.Username)
 				session.Save()
 

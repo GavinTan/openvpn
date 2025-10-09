@@ -87,9 +87,45 @@
         </div>
       </div>
     </section>
+
+    <div
+      class="modal fade"
+      data-bs-backdrop="static"
+      data-bs-keyboard="false"
+      tabindex="-1"
+      id="mfaValidateModal"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <form>
+            <div class="modal-header">
+              <h5 class="modal-title">MFA</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex flex-column align-items-center">
+              <p>输入来自您的验证器 App 的代码</p>
+
+              <input
+                type="text"
+                class="form-control form-control-lg w-50"
+                name="passcode"
+                placeholder="xxxxxx"
+                required
+              />
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+              <button type="submit" class="btn btn-primary">确认</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
   </body>
   <script type="text/javascript" src="static/js/jquery.min.js"></script>
   <script type="text/javascript" src="static/js/js.cookie.min.js"></script>
+  <script type="text/javascript" src="static/js/bootstrap.bundle.min.js"></script>
   <script type="text/javascript" src="static/js/index.js"></script>
 
   <script type="text/javascript">
@@ -112,10 +148,32 @@
         const remember7d = $('#remember7d').is(':checked') ? 'on' : 'off';
 
         $.post('/login', { username, password, remember7d }, function (data) {
+          if (data.message === '需要MFA验证') {
+            $('#mfaValidateModal').modal('show');
+          } else {
+            location.assign(data.redirect);
+            message.success(data.message);
+          }
+        }).fail(function (xhr) {
+          message.error(xhr.responseJSON?.message || xhr.responseText || xhr.statusText);
+        });
+
+        return false;
+      });
+
+      $('#mfaValidateModal form').submit(function () {
+        const username = $('#login input[name="username"]').val();
+        const remember7d = $('#remember7d').is(':checked') ? 'on' : 'off';
+        const passcode = $('#mfaValidateModal input[name="passcode"]').val();
+
+        $.post('/login', { username, passcode, remember7d }, function (data) {
           location.assign(data.redirect);
           message.success(data.message);
         }).fail(function (xhr) {
           message.error(xhr.responseJSON?.message || xhr.responseText || xhr.statusText);
+          if (xhr.responseJSON?.redirect) {
+            location.assign(xhr.responseJSON.redirect);
+          }
         });
 
         return false;
