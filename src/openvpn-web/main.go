@@ -381,6 +381,32 @@ func getCerts(ovData string) []CertData {
 	return cers
 }
 
+func isValidPassword(pw string) bool {
+	lower := regexp.MustCompile(`[a-z]`)
+	upper := regexp.MustCompile(`[A-Z]`)
+	digit := regexp.MustCompile(`[0-9]`)
+	special := regexp.MustCompile(`[!@#\$%\^&\*()_+\-=\[\]{};':"\\|,.<>\/?]`)
+
+	count := 0
+	if len(pw) >= 12 {
+		count++
+	}
+	if lower.MatchString(pw) {
+		count++
+	}
+	if upper.MatchString(pw) {
+		count++
+	}
+	if digit.MatchString(pw) {
+		count++
+	}
+	if special.MatchString(pw) {
+		count++
+	}
+
+	return count == 5
+}
+
 func AuthMiddleWare() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
@@ -1026,6 +1052,11 @@ func main() {
 		client.POST("/modifyPass", func(c *gin.Context) {
 			var u User
 			c.ShouldBind(&u)
+
+			if !isValidPassword(u.Password) {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": "密码不满足要求（长度12位，包含大小写字母、数字、特殊字符）"})
+				return
+			}
 
 			if currentPass, ok := c.Request.PostForm["currentPass"]; ok {
 				if u.Info().Password != currentPass[0] {
