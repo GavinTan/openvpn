@@ -287,6 +287,7 @@ tls-client
 tls-version-min 1.2
 tls-cipher TLS-ECDHE-ECDSA-WITH-AES-128-GCM-SHA256
 verb 3
+$([[ "$OVPN_IPV6" == "true" ]] && echo -e "tun-mtu 1400\nmssfix 1360")
 $([[ "$OVPN_PROTO" =~ "udp" ]] && echo "explicit-exit-notify")
 $([[ "$5" == "true" ]] && echo 'static-challenge "Enter MFA code" 1')
 
