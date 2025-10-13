@@ -1,7 +1,9 @@
 version: 2
 
 builds:
-  - goos:
+  - id: openvpn-web
+    binary: openvpn-web
+    goos:
       - linux
       - windows
       - darwin
@@ -16,7 +18,7 @@ builds:
     ldflags:
       - -s -w -extldflags "-static"
 archives:
-  - format: binary
+  - formats: ['binary']
     name_template: >-
       openvpn-web-
       {{- .Os }}-
