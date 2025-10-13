@@ -1503,7 +1503,7 @@
           const name = vtable.row($(this).parents('tr')).data().name;
           $('#editClientModal input[name="name"]').val(`clients/${name}.ovpn`);
 
-          request.get(`/ovpn/client?a=getConfig&file=clients/${name}.ovpn`).then((data) => {
+          request.get(`/ovpn/client?a=getConfig&file=clients/${encodeURIComponent(name)}.ovpn`).then((data) => {
             $('#editClientModal textarea[name="config"]').val(data.content);
             $('#editClientModal').modal('show');
           });
@@ -1513,7 +1513,7 @@
           const name = vtable.row($(this).parents('tr')).data().name;
           $('#editClientModal input[name="name"]').val(`ccd/${name}`);
 
-          request.get(`/ovpn/client?a=getConfig&file=ccd/${name}`).then((data) => {
+          request.get(`/ovpn/client?a=getConfig&file=ccd/${encodeURIComponent(name)}`).then((data) => {
             $('#editClientModal textarea[name="config"]').val(data.content);
             $('#editClientModal').modal('show');
           });
@@ -1524,7 +1524,7 @@
           const content = $('#editClientModal textarea[name="config"]').val();
 
           $('#editClientModal').modal('hide');
-          request.put(`/ovpn/client?file=${name}`, { content }).then((data) => {
+          request.put(`/ovpn/client?file=${encodeURIComponent(name)}`, { content }).then((data) => {
             message.success(data.message);
           });
         });
