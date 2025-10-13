@@ -82,13 +82,17 @@ run_server() {
         ipt="iptables-legacy"
     fi
 
-    $ipt -t nat -C POSTROUTING -s $OVPN_SUBNET -j MASQUERADE > /dev/null 2>&1 || {
-        $ipt -t nat -A POSTROUTING -s $OVPN_SUBNET -j MASQUERADE
+    config=$OVPN_DATA/server.conf
+
+    ovpn_subnet=$(awk '$1=="server"{print $2, $3}' $config)
+    $ipt -t nat -C POSTROUTING -s ${ovpn_subnet/ /\/} -j MASQUERADE > /dev/null 2>&1 || {
+        $ipt -t nat -A POSTROUTING -s ${ovpn_subnet/ /\/} -j MASQUERADE
     }
 
     if [ "$OVPN_IPV6" == "true" ]; then
-        ${ipt/iptables/ip6tables} -t nat -C POSTROUTING -s $OVPN_SUBNET6 -j MASQUERADE > /dev/null 2>&1 || {
-            ${ipt/iptables/ip6tables} -t nat -A POSTROUTING -s $OVPN_SUBNET6 -j MASQUERADE
+        ovpn_subnet6=$(awk '$1=="server-ipv6"{print $2, $3}' $config)
+        ${ipt/iptables/ip6tables} -t nat -C POSTROUTING -s $ovpn_subnet6 -j MASQUERADE > /dev/null 2>&1 || {
+            ${ipt/iptables/ip6tables} -t nat -A POSTROUTING -s $ovpn_subnet6 -j MASQUERADE
         }
     fi
 
@@ -104,8 +108,8 @@ update_config() {
     ovpn_auth_api=$(grep '^setenv ovpn_auth_api' $config | cut -d' ' -f3)
     ovpn_history_api=$(grep '^setenv ovpn_history_api' $config | cut -d' ' -f3)
     ovpn_data=$(grep '^setenv ovpn_data' $config | cut -d' ' -f3)
-    ovpn_subnet=$(grep '^server' $config | cut -d' ' -f2,3)
-    ovpn_subnet6=$(grep '^server-ipv6' $config | cut -d' ' -f2,3)
+    ovpn_subnet=$(awk '$1=="server"{print $2, $3}' $config)
+    ovpn_subnet6=$(awk '$1=="server-ipv6"{print $2}' $config)
     ovpn_maxclients=$(grep '^max-clients' $config | cut -d' ' -f2)
     ovpn_proto=$(grep '^proto' $config | cut -d' ' -f2)
     ovpn_port=$(grep '^port' $config | cut -d' ' -f2)
