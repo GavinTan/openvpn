@@ -12,16 +12,16 @@
 
 > 提示：
 >
-> 1. 登录账号密码默认`admin:admin`可通过环境变量修改
-> 2. web->管理->客户端里生成下载客户端配置文件
+> 1. 登录账号密码默认`admin:admin`，登录后可在系统设置里修改。
+> 2. web->管理->客户端里生成下载客户端配置文件。
 > 3. web->管理->VPN 账号里管理添加账号，默认启用账号验证可在 VPN 账号里开启或关闭。
 >
 > 
 >
 > 注意：
 >
-> 1. 默认禁用vpn网关，如果需要客户端所有流量都走 openvpn 请使用环境变量`OVPN_GATEWAY=true`。
-> 2. 默认启动容器时会自动通过环境变量更新配置文件，如果想保留自己手动编辑的server.conf请使用环境变量ENV_UPDATE_CONFIG=false。
+> 1. 系统设置里修改openvpn配置生效必须启用自动更新配置，如果要保留自己修改openvpn的server.conf配置则需要禁用自动更新配置。
+> 2. 默认禁用vpn网关，如果需要客户端所有流量都走 openvpn 需要在系统设置openvpn里启用vpn网关。
 > 3. 在创建客户端后关闭账号验证客户端的配置文件存在auth-user-pass参数客户端会依旧弹出登录，登录信息可以随便输入不会做验证，若有弹窗困扰的建议手动编辑客户端配置文件注释掉参数或重新生成客户端配置文件。
 
 ## 支持功能
@@ -52,9 +52,6 @@ docker run -d \
   --cap-add=NET_ADMIN \
   -p 1194:1194/udp \
   -p 8833:8833 \
-  -e ADMIN_USERNAME=admin \
-  -e ADMIN_PASSWORD=admin \
-  -e OVPN_GATEWAY=false \
   -v $(pwd)/data:/data \
   yyxx/openvpn
 ```
@@ -64,10 +61,9 @@ docker run -d \
 - 安装 docker-compose
 
   ```bash
-  curl -SL https://github.com/docker/compose/releases/download/v2.30.3/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
-  chmod +x /usr/local/bin/docker-compose
+  yum install -y docker-compose-plugin
   ```
-
+  
 - 创建 docker-compose.yml
 
   ```yaml
@@ -79,25 +75,15 @@ docker run -d \
       ports:
         - "1194:1194/udp"
         - "8833:8833"
-      environment:
-        - ADMIN_USERNAME=admin
-        - ADMIN_PASSWORD=admin
-        - OVPN_GATEWAY=false
       volumes:
         - ./data:/data
         - /etc/localtime:/etc/localtime:ro
   ```
   
-- 初始化生成证书及配置文件
-
-  ```bash
-  docker-compose run --rm openvpn --init
-  ```
-
 - 运行 openvpn
 
   ```bash
-  docker-compose up -d
+  docker compose up -d
   ```
 
 
@@ -106,9 +92,10 @@ docker run -d \
 
 >注意：
 >
->1. 启用ipv6后客户端跟服务器的proto需要都指定udp6/tcp6
->2. docker的网络需要启用ipv6支持
->3. 使用openvpn-connect客户端的需要使用3.4.1以后的版本
+>1. 需要在页面系统设置openvpn里启用ipv6（注意：修改openvpn配置需要系统里启用自动更新配置才会生效）
+>2. 启用ipv6后客户端跟服务器的proto需要都指定udp6/tcp6
+>3. docker的网络需要启用ipv6支持
+>4. 使用openvpn-connect客户端的需要使用3.4.1以后的版本
 
 ```bash
 services:
@@ -119,10 +106,6 @@ services:
     ports:
       - "1194:1194/udp"
       - "8833:8833"
-    environment:
-      - ADMIN_USERNAME=admin
-      - ADMIN_PASSWORD=admin
-      - OVPN_IPV6=true
     volumes:
       - ./data:/data
       - /etc/localtime:/etc/localtime:ro
@@ -137,40 +120,11 @@ networks:
 
 ## LDAP
 
-> 添加OVPN_LDAP_AUTH环境变量启用LDAP认证，启用LDAP认证后本地的VPN账号将不在工作。
+> 在系统设置里启用LDAP认证，启用LDAP认证后本地的VPN账号将不在工作。
 
 部分参数说明：
 
 - LDAP_URL：ldap连接TLS 例：ldaps://example.org:636
 - LDAP_USER_ATTRIBUTE：根据当前使用的LDAP服务器设置，例：OpenLDAP：uid ； Windows AD: sAMAccountName
 - LDAP_USER_ATTR_IPADDR_NAME：可在ldap服务器添加ipaddr自定义字段，也可以设置为ldap已经存在其他的未使用字段 例：mobile、homePhone
-
-
-
-## 环境变量参数
-
-|            环境变量            |             说明             |               默认值               |
-| :----------------------------: | :--------------------------: | :--------------------------------: |
-|         **OVPN_DATA**          |         数据存放目录         |               /data                |
-|        **OVPN_SUBNET**         |           vpn子网            |            10.8.0.0/24             |
-|        **OVPN_SUBNET6**        |         vpn ipv6子网         |      fdaf:f178:e916:6dd0::/64      |
-|         **OVPN_PROTO**         |      协议 tcp(6)/udp(6)      |                udp                 |
-|         **OVPN_PORT**          |         vpn连接端口          |                1194                |
-|      **OVPN_MAXCLIENTS**       |     vpn最大客户端连接数      |                200                 |
-|      **OVPN_MANAGEMENT**       |   openvpn管理接口监听地址    |           127.0.0.1:7505           |
-|         **OVPN_IPV6**          |           启用ipv6           |               false                |
-|        **OVPN_GATEWAY**        |   启用vpn网关所有流量走vpn   |               false                |
-|          **WEB_PORT**          |           web端口            |                8833                |
-|       **ADMIN_USERNAME**       |         web登录账号          |               admin                |
-|       **ADMIN_PASSWORD**       |         web登录密码          |               admin                |
-|     **ENV_UPDATE_CONFIG**      | 启用环境变量自动更新配置文件 |                true                |
-|       **OVPN_LDAP_AUTH**       |       启用LDAP用户认证       |               false                |
-|          **LDAP_URL**          |         LDAP连接URL          |       ldap://example.org:389       |
-|        **LDAP_BASE_DN**        |         LDAP 基础 DN         |         dc=example,dc=org          |
-|    **LDAP_USER_ATTRIBUTE**     |   匹配用户名的LDAP属性字段   |                uid                 |
-|   **LDAP_USER_GROUP_FILTER**   |      启用用户所属组过滤      |               false                |
-|     **LDAP_USER_GROUP_DN**     |          所属组的DN          | cn=vpn,ou=groups,dc=example,dc=org |
-| **LDAP_USER_ATTR_IPADDR_NAME** | 设置vpn固定ip的用户属性字段  |               ipaddr               |
-|     **LDAP_BIND_USER_DN**      |       LDAP 绑定用户 DN       |     cn=admin,dc=example,dc=org     |
-|     **LDAP_BIND_PASSWORD**     |      LDAP 绑定用户密码       |           adminpassword            |
-
+- LDAP_USER_ATTR_CONFIG_NAME：可在ldap服务器添加config自定义字段，也可以设置为ldap已经存在其他的未使用字段 例：mobile、homePhone

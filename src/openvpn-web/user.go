@@ -30,7 +30,7 @@ type User struct {
 
 func (u *User) BeforeSave(tx *gorm.DB) (err error) {
 	if u.Password != "" {
-		ep, _ := aes.AesEncrypt(u.Password, os.Getenv("SECRET_KEY"))
+		ep, _ := aes.AesEncrypt(u.Password, secretKey)
 		tx.Statement.SetColumn("Password", ep)
 	}
 
@@ -38,7 +38,7 @@ func (u *User) BeforeSave(tx *gorm.DB) (err error) {
 }
 
 func (u *User) AfterFind(tx *gorm.DB) (err error) {
-	dp, err := aes.AesDecrypt(u.Password, os.Getenv("SECRET_KEY"))
+	dp, err := aes.AesDecrypt(u.Password, secretKey)
 	if err == nil {
 		u.Password = dp
 	}
@@ -61,6 +61,10 @@ func (u *User) All() []User {
 func (u *User) Create() error {
 	if u.Username == "" || u.Password == "" {
 		return fmt.Errorf("非法请求")
+	}
+
+	if u.Username == adminUsername {
+		return fmt.Errorf("用户名与系统账户冲突")
 	}
 
 	result := db.Create(&u)
@@ -86,7 +90,7 @@ func (u *User) Login(clogin bool) error {
 	user := u.Username
 	pass := u.Password
 
-	if ovpn_ldap_auth := os.Getenv("OVPN_LDAP_AUTH"); ovpn_ldap_auth == "true" {
+	if ldapAuth {
 		l, err := InitLdap()
 		if err != nil {
 			return err
@@ -149,10 +153,6 @@ func (u *User) Login(clogin bool) error {
 		}
 
 		if u.IpAddr != "" {
-			ovData, ok := os.LookupEnv("OVPN_DATA")
-			if !ok {
-				ovData = "/data"
-			}
 			os.WriteFile(path.Join(ovData, ".ovip"), []byte(u.IpAddr), 0644)
 		}
 

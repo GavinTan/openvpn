@@ -1,26 +1,22 @@
 #!/bin/bash
 set -e
 
-init_env() {
-    cat << EOF > $OVPN_DATA/pki/vars
-EASYRSA_PKI=$OVPN_DATA/pki
-EASYRSA_CA_EXPIRE=365
-EASYRSA_CERT_EXPIRE=365
-EASYRSA_CRL_DAYS=365
-EASYRSA_ALGO=ec
-EASYRSA_CURVE=prime256v1
-EOF
-    [ ! -f "$OVPN_DATA/.vars" ] && cat << EOF > $OVPN_DATA/.vars
-SECRET_KEY=$(head /dev/urandom | tr -dc A-Za-z0-9 | fold -w 50 | head -n 1)
-SERVER_NAME=server_$(head /dev/urandom | tr -dc A-Za-z0-9 | fold -w 16 | head -n 1)
-SERVER_CN=ovpn_$(head /dev/urandom | tr -dc A-Za-z0-9 | fold -w 16 | head -n 1)
-EOF
-    source $OVPN_DATA/.vars
-}
+SYSTEM_CONFIG="/data/config.json"
 
 init_pki() {
+    SERVER_NAME=$(jq -r '.system.base.server_name // ""' $SYSTEM_CONFIG)
+    SERVER_CN=$(jq -r '.system.base.server_cn // ""' $SYSTEM_CONFIG ) 
     cd $OVPN_DATA && /usr/share/easy-rsa/easyrsa init-pki
-    init_env
+   
+    cat << EOF > $OVPN_DATA/pki/vars
+set_var EASYRSA $OVPN_DATA
+set_var EASYRSA_CA_EXPIRE 365
+set_var EASYRSA_CERT_EXPIRE 365
+set_var EASYRSA_CRL_DAYS 365
+set_var EASYRSA_ALGO ec
+set_var EASYRSA_CURVE prime256v1
+EOF
+
     /usr/share/easy-rsa/easyrsa --batch --req-cn="$SERVER_CN" build-ca nopass
     /usr/share/easy-rsa/easyrsa --batch build-server-full "$SERVER_NAME" nopass
     /usr/share/easy-rsa/easyrsa gen-crl
@@ -28,16 +24,25 @@ init_pki() {
 }
 
 init_config() {
+    SERVER_NAME=$(jq -r '.system.base.server_name // ""' $SYSTEM_CONFIG)
+    OVPN_PORT=$(jq -r '.openvpn.ovpn_port // "1194"' $SYSTEM_CONFIG)
+    OVPN_PROTO=$(jq -r '.openvpn.ovpn_proto // "udp"' $SYSTEM_CONFIG)
+    OVPN_MAXCLIENTS=$(jq -r '.openvpn.ovpn_maxclients // "200"' $SYSTEM_CONFIG)
+    OVPN_IPV6=$(jq -r '.openvpn.ovpn_ipv6 // "false"' $SYSTEM_CONFIG)
+    OVPN_GATEWAY=$(jq -r '.openvpn.ovpn_gateway // "false"' $SYSTEM_CONFIG)
+    OVPN_SUBNET=$(jq -r '.openvpn.ovpn_subnet // "10.8.0.0/24"' $SYSTEM_CONFIG)
+    OVPN_SUBNET6=$(jq -r '.openvpn.ovpn_subnet6 // "fdaf:f178:e916:6dd0::/64"' $SYSTEM_CONFIG)
+
     cat << EOF > $OVPN_DATA/server.conf
 port $OVPN_PORT
 proto $OVPN_PROTO
 dev tun
 persist-key
 persist-tun
-keepalive 10 120
+keepalive 10 60
 topology subnet
 $([[ "$OVPN_IPV6" == "true" ]] && echo -e "server $(getsubnet $OVPN_SUBNET)\nserver-ipv6 $OVPN_SUBNET6" || echo "server $(getsubnet $OVPN_SUBNET)")
-$([[ "$OVPN_GATEWAY" == "true" ]] && echo -e 'push "dhcp-option DNS 8.8.8.8"\npush "dhcp-option DNS 8.8.4.4"\npush "redirect-gateway def1 ipv6 bypass-dhcp"' || echo -e '#push "dhcp-option DNS 8.8.8.8"\n#push "dhcp-option DNS 8.8.4.4"\n#push "redirect-gateway def1 ipv6 bypass-dhcp"')
+$([[ "$OVPN_GATEWAY" == "true" ]] && echo -e 'push "dhcp-option DNS 8.8.8.8"\npush "dhcp-option DNS 2001:4860:4860::8888"\npush "redirect-gateway def1 ipv6 bypass-dhcp"' || echo -e '#push "dhcp-option DNS 8.8.8.8"\n#push "dhcp-option DNS 2001:4860:4860::8888"\n#push "redirect-gateway def1 ipv6 bypass-dhcp"')
 dh none
 tls-groups prime256v1
 tls-crypt $OVPN_DATA/pki/tc.key
@@ -57,7 +62,6 @@ client-connect /usr/bin/docker-entrypoint.sh
 script-security 3
 status $OVPN_DATA/openvpn-status.log
 client-config-dir $OVPN_DATA/ccd
-keepalive 10 60
 duplicate-cn
 client-to-client
 max-clients $OVPN_MAXCLIENTS
@@ -89,7 +93,8 @@ run_server() {
         $ipt -t nat -A POSTROUTING -s ${ovpn_subnet/ /\/} -j MASQUERADE
     }
 
-    if [ "$OVPN_IPV6" == "true" ]; then
+
+    if jq -e '.openvpn.ovpn_ipv6' $SYSTEM_CONFIG > /dev/null 2>&1; then
         ovpn_subnet6=$(awk '$1=="server-ipv6"{print $2, $3}' $config)
         ${ipt/iptables/ip6tables} -t nat -C POSTROUTING -s $ovpn_subnet6 -j MASQUERADE > /dev/null 2>&1 || {
             ${ipt/iptables/ip6tables} -t nat -A POSTROUTING -s $ovpn_subnet6 -j MASQUERADE
@@ -99,134 +104,10 @@ run_server() {
     /usr/sbin/openvpn $OVPN_DATA/server.conf
 }
 
-update_config() {
-    source $OVPN_DATA/.vars
-
-    config=$OVPN_DATA/server.conf
-    web_api="http://127.0.0.1:$WEB_PORT"
-    auth_api=$(grep '^setenv auth_api' $config | cut -d' ' -f3)
-    ovpn_auth_api=$(grep '^setenv ovpn_auth_api' $config | cut -d' ' -f3)
-    ovpn_history_api=$(grep '^setenv ovpn_history_api' $config | cut -d' ' -f3)
-    ovpn_data=$(grep '^setenv ovpn_data' $config | cut -d' ' -f3)
-    ovpn_subnet=$(awk '$1=="server"{print $2, $3}' $config)
-    ovpn_subnet6=$(awk '$1=="server-ipv6"{print $2}' $config)
-    ovpn_maxclients=$(grep '^max-clients' $config | cut -d' ' -f2)
-    ovpn_proto=$(grep '^proto' $config | cut -d' ' -f2)
-    ovpn_port=$(grep '^port' $config | cut -d' ' -f2)
-    ovpn_management=$(grep '^management' $config | cut -d' ' -f2,3)
-
-    if [ "$auth_api" != "$web_api/login" ]; then
-        if [ -z "$auth_api" ]; then
-            echo "setenv auth_api $web_api/login" >> $config
-        else
-            sed -i "s|^setenv auth_api .*|setenv auth_api $web_api/login|" $config
-        fi
-    fi
-
-    if [ "$ovpn_auth_api" != "$web_api/ovpn/login" ]; then
-        if [ -z "$ovpn_auth_api" ]; then
-            echo "setenv ovpn_auth_api $web_api/ovpn/login" >> $config
-        else
-            sed -i "s|^setenv ovpn_auth_api .*|setenv ovpn_auth_api $web_api/ovpn/login|" $config
-        fi
-    fi
-
-    if [ "$ovpn_history_api" != "$web_api/ovpn/history" ]; then
-        if [ -z "$ovpn_history_api" ]; then
-            echo "setenv ovpn_history_api $web_api/ovpn/history" >> $config
-        else
-            sed -i "s|^setenv ovpn_history_api .*|setenv ovpn_history_api $web_api/ovpn/history|" $config
-        fi
-    fi
-
-    if [ "$ovpn_data" != "$OVPN_DATA" ]; then
-        if [ -z "$ovpn_data" ]; then
-            echo "setenv ovpn_data $OVPN_DATA" >> $config
-        else
-            sed -i "s|^setenv ovpn_data .*|setenv ovpn_data $OVPN_DATA|" $config
-        fi
-    fi
-
-    if [ "$ovpn_subnet" != "$(getsubnet $OVPN_SUBNET)" ]; then
-        if [ -z "$ovpn_subnet" ]; then
-            echo "server $(getsubnet $OVPN_SUBNET)" >> $config
-        else
-            sed -i "s|^server .*|server $(getsubnet $OVPN_SUBNET)|" $config
-        fi
-    fi
-
-    if [ "$ovpn_maxclients" != "$OVPN_MAXCLIENTS" ]; then
-        if [ -z "$ovpn_maxclients" ]; then
-            echo "max-clients $OVPN_MAXCLIENTS" >> $config
-        else
-            sed -i "s|^max-clients .*|max-clients $OVPN_MAXCLIENTS|" $config
-        fi
-    fi
-
-    if [ "$ovpn_proto" != "$OVPN_PROTO" ]; then
-        if [ -z "$ovpn_proto" ]; then
-            echo "proto $OVPN_PROTO" >> $config
-        else
-            sed -i "s|^proto .*|proto $OVPN_PROTO|" $config
-        fi
-    fi
-
-    if [ "$ovpn_port" != "$OVPN_PORT" ]; then
-        if [ -z "$ovpn_port" ]; then
-            echo "port $OVPN_PORT" >> $config
-        else
-            sed -i "s|^port .*|port $OVPN_PORT|" $config
-        fi
-    fi
-
-    if [ "$ovpn_management" != "${OVPN_MANAGEMENT/:/ }" ]; then
-        if [ -z "$ovpn_management" ]; then
-            echo "management ${OVPN_MANAGEMENT/:/ }" >> $config
-        else
-            sed -i "s|^management .*|management ${OVPN_MANAGEMENT/:/ }|" $config
-        fi
-    fi
-
-    if [ "$OVPN_IPV6" == "true" ]; then
-        if [[ ! "$(grep '^proto' $config | cut -d' ' -f2)" =~ 6 ]]; then
-            sed -i "s|^proto .*|proto ${OVPN_PROTO}6|" $config
-        fi
-
-        if [ "$ovpn_subnet6" != "$OVPN_SUBNET6" ]; then
-            if [ -z "$ovpn_subnet6" ]; then
-                echo "server-ipv6 $OVPN_SUBNET6" >> $config
-            else
-                sed -i "s|^server-ipv6 .*|server-ipv6 $OVPN_SUBNET6|" $config
-            fi
-        fi
-    else
-        sed -i "/^server-ipv6/d" $config
-    fi
-
-    if [ "$OVPN_GATEWAY" == "true" ]; then
-        sed -i 's/^#\(push "dhcp-option DNS 8.8.8.8"\)/\1/' $config
-        sed -i 's/^#\(push "dhcp-option DNS 8.8.4.4"\)/\1/' $config
-        sed -i 's/^#\(push "redirect-gateway def1 ipv6 bypass-dhcp"\)/\1/' $config
-    else
-        sed -i 's/^push "dhcp-option DNS 8.8.8.8"/#&/' $config
-        sed -i 's/^push "dhcp-option DNS 8.8.4.4"/#&/' $config
-        sed -i 's/^push "redirect-gateway def1 ipv6 bypass-dhcp"/#&/' $config
-    fi
-
-    if [[ "$OVPN_PROTO" =~ "tcp" ]]; then
-        sed -i "/^explicit-exit-notify/d" $config
-    fi
-
-    if [[ "$OVPN_PROTO" =~ "udp" ]]; then
-        grep -q "^explicit-exit-notify" $config || echo "explicit-exit-notify 1" >> $config
-    fi
-}
-
 renew_cert() {
-    source $OVPN_DATA/.vars
-    source $OVPN_DATA/pki/vars
+    init_env
 
-    cd $OVPN_DATA/pki
+    #cd $OVPN_DATA/pki
     #openssl x509 -in ca.crt -days $1 -out ca.crt -signkey private/ca.key
     /usr/share/easy-rsa/easyrsa --batch --days=$1 renew-ca
     /usr/share/easy-rsa/easyrsa --batch --days=$1 renew $SERVER_NAME
@@ -264,6 +145,11 @@ getsubnet() {
 }
 
 genclient() {
+    SERVER_NAME=$(jq -r '.system.base.server_name // ""' $SYSTEM_CONFIG)
+    OVPN_PROTO=$(jq -r '.openvpn.ovpn_proto // "udp"' $SYSTEM_CONFIG)
+    OVPN_PORT=$(jq -r '.openvpn.ovpn_port // "1194"' $SYSTEM_CONFIG)
+    OVPN_IPV6=$(jq -r '.openvpn.ovpn_ipv6 // "false"' $SYSTEM_CONFIG)
+
     if [ ! -f "$EASYRSA_PKI/private/$1.key" ]; then
         /usr/share/easy-rsa/easyrsa --batch build-client-full $1 nopass > /dev/null
     fi
@@ -280,7 +166,6 @@ persist-tun
 remote-cert-tls server
 verify-x509-name $SERVER_NAME name
 auth SHA256
-auth-nocache
 $(grep -q '^auth-user-pass-verify' $OVPN_DATA/server.conf && echo 'auth-user-pass' || echo '#auth-user-pass')
 cipher AES-128-GCM
 tls-client
@@ -350,16 +235,8 @@ client_connect() {
 
 ################################################################################################
 
-if [ "$1" == "--init" ]; then
-    mkdir -p $OVPN_DATA/ccd
-
-    init_pki
-    init_config
-    exit 0
-fi
-
 if [ "${1#-}" != "$1" ]; then
-    set -- /usr/sbin/openvpn "$@"
+    /usr/sbin/openvpn "$@"
 fi
 
 case $1 in
@@ -370,11 +247,10 @@ case $1 in
         fi
 
         if [ -n "$6" ]; then
-            mkdir -p $OVPN_DATA/ccd
             echo -e "$6" > $OVPN_DATA/ccd/$2
         fi
 
-        genclient $2 $3 $4 "$5" $7
+        genclient "$2" "$3" "$4" "$5" "$7"
         exit 0
         ;;
     "auth")
@@ -386,15 +262,17 @@ case $1 in
         exit 0
         ;;
     "/usr/sbin/openvpn")
-        [[ "$ENV_UPDATE_CONFIG" == "true" ]] && update_config
+        if [ ! -f "$OVPN_DATA/server.conf" ]; then
+            mkdir -p $OVPN_DATA/ccd
+
+            init_pki
+            init_config
+        fi
+
         check_config
         run_server
         ;;
     "/usr/bin/supervisord")
-        if [ ! -e $OVPN_DATA/.vars ]; then
-            echo "请执行命令docker-compose run --rm openvpn --init进行初始化配置！"
-            exit 1
-        fi
         /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
         ;;
 esac

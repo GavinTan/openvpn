@@ -45,7 +45,7 @@
                   <p class="section-title">OpenVPN Connect 下载:</p>
 
                   <div class="d-flex justify-content-center mb-3">
-                    <a href="https://openvpn.net/downloads/openvpn-connect-v3-windows.msi" class="icon-circle mx-2">
+                    <a href="{{ .ClientUrl.Windows }}" class="icon-circle mx-2">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         width="2rem"
@@ -59,7 +59,7 @@
                         />
                       </svg>
                     </a>
-                    <a href="https://openvpn.net/downloads/openvpn-connect-v3-macos.dmg" class="icon-circle mx-2">
+                    <a href="{{ .ClientUrl.Macos }}" class="icon-circle mx-2">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         width="2rem"
@@ -76,7 +76,7 @@
                         />
                       </svg>
                     </a>
-                    <a target="_blank" href="https://openvpn.net/openvpn-client-for-linux/" class="icon-circle mx-2">
+                    <a target="_blank" href="{{ .ClientUrl.Linux }}" class="icon-circle mx-2">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         width="2rem"
@@ -97,11 +97,7 @@
                   </div>
 
                   <div class="d-flex justify-content-center">
-                    <a
-                      target="_blank"
-                      href="https://play.google.com/store/apps/details?id=net.openvpn.openvpn"
-                      class="icon-circle mx-2"
-                    >
+                    <a target="_blank" href="{{ .ClientUrl.Android }}" class="icon-circle mx-2">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         width="2rem"
@@ -117,7 +113,7 @@
                     </a>
                     <a
                       target="_blank"
-                      href="https://itunes.apple.com/us/app/openvpn-connect/id590379981?mt=8"
+                      href="{{ .ClientUrl.Ios }}"
                       class="icon-circle mx-2 ios-text text-decoration-none"
                     >
                       iOS
@@ -359,6 +355,10 @@
 
       $('#modifyPass').click(function () {
         request.get('/client/userinfo').then((data) => {
+          if (data.ldapAuth) {
+            message.error('LDAP用户不支持修改密码');
+            return;
+          }
           $('#modifyPassModal input[name="id"]').val(data.id);
           $('#modifyPassModal input[name="username"]').val(data.username);
 
