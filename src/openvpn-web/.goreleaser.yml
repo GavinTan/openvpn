@@ -16,7 +16,7 @@ builds:
     env:
       - CGO_ENABLED=0
     ldflags:
-      - -s -w -extldflags "-static"
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -X main.builtBy=goreleaser
 archives:
   - formats: ['binary']
     name_template: >-
