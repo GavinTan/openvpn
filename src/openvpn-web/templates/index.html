@@ -27,13 +27,13 @@
         padding-top: 0 !important;
       }
 
-      button.nav-link {
+      .offcanvas-body button.nav-link {
         color: rgba(255, 255, 255, 0.85) !important;
       }
 
-      button.nav-link:hover,
-      button.nav-link:focus,
-      button.nav-link:active {
+      .offcanvas-body button.nav-link:hover,
+      .offcanvas-body button.nav-link:focus,
+      .offcanvas-body button.nav-link:active {
         color: #fff !important;
       }
 
@@ -82,6 +82,16 @@
       }
       .file-drop-zone .bg-light {
         background-color: #f8f9fa;
+      }
+
+      .w-tooltip {
+        --bs-tooltip-bg: #0d6efd;
+        --bs-tooltip-color: var(--bs-white);
+      }
+
+      .tooltip-inner {
+        text-align: left;
+        word-break: break-all;
       }
     </style>
   </head>
@@ -268,20 +278,23 @@
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
                   <li>
-                    <a class="dropdown-item" role="button" id="modifyPass">
+                    <a class="dropdown-item" role="button" id="settings">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         width="1em"
                         height="1em"
                         fill="currentColor"
-                        class="bi bi-person-lock"
+                        class="bi bi-gear"
                         viewBox="0 0 16 16"
                       >
                         <path
-                          d="M11 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0M8 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4m0 5.996V14H3s-1 0-1-1 1-4 6-4q.845.002 1.544.107a4.5 4.5 0 0 0-.803.918A11 11 0 0 0 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664zM9 13a1 1 0 0 1 1-1v-1a2 2 0 1 1 4 0v1a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1zm3-3a1 1 0 0 0-1 1v1h2v-1a1 1 0 0 0-1-1"
+                          d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492M5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0"
+                        />
+                        <path
+                          d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115z"
                         />
                       </svg>
-                      修改密码
+                      系统设置
                     </a>
                   </li>
                   <li>
@@ -594,8 +607,8 @@
               <div class="row">
                 <span class="col-sm-3"></span>
                 <div class="col-sm-9">
-                  <input class="form-check-input" type="checkbox" name="mfa" />
-                  <label class="form-check-label">启用MFA</label>
+                  <input class="form-check-input" type="checkbox" id="mfa" name="mfa" />
+                  <label for="mfa" class="form-check-label">启用MFA</label>
                 </div>
               </div>
             </div>
@@ -681,46 +694,6 @@
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
               <button type="submit" class="btn btn-primary" id="renewCertSumbit">确认</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <div class="modal fade" tabindex="-1" id="modifyPassModal" aria-hidden="true">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <form>
-            <div class="modal-header">
-              <h5 class="modal-title">修改密码</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-              <div class="form-group mb-3">
-                <label>密码</label>
-                <input
-                  type="password"
-                  autocomplete="one-time-code"
-                  class="form-control form-control-sm float-end w-75"
-                  name="newPass"
-                  required
-                />
-              </div>
-              <div class="form-group mb-3">
-                <label>确认密码</label>
-                <input
-                  type="password"
-                  autocomplete="one-time-code"
-                  class="form-control form-control-sm float-end w-75"
-                  name="newPassAgain"
-                  required
-                />
-                <div class="form-text d-none mt-2" style="left: 27%; position: absolute"></div>
-              </div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-              <button type="submit" class="btn btn-primary" id="modifyPassSumbit">保存</button>
             </div>
           </form>
         </div>
@@ -828,6 +801,523 @@
       </div>
     </div>
 
+    <div
+      class="modal fade"
+      data-bs-backdrop="static"
+      data-bs-keyboard="false"
+      tabindex="-1"
+      id="settingsModal"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-lg" style="max-width: 1000px">
+        <div class="modal-content">
+          <div class="modal-header">
+            <ul class="nav nav-pills" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button
+                  class="nav-link active"
+                  id="pills-base-tab"
+                  data-bs-toggle="pill"
+                  data-bs-target="#pills-base"
+                  type="button"
+                  role="tab"
+                  aria-controls="pills-base"
+                  aria-selected="true"
+                >
+                  系统
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button
+                  class="nav-link"
+                  id="pills-client-tab"
+                  data-bs-toggle="pill"
+                  data-bs-target="#pills-client"
+                  type="button"
+                  role="tab"
+                  aria-controls="pills-client"
+                  aria-selected="false"
+                >
+                  客户端页
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button
+                  class="nav-link"
+                  id="pills-openvpn-tab"
+                  data-bs-toggle="pill"
+                  data-bs-target="#pills-openvpn"
+                  type="button"
+                  role="tab"
+                  aria-controls="pills-openvpn"
+                  aria-selected="false"
+                >
+                  openvpn
+                </button>
+              </li>
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body overflow-auto" style="height: 500px">
+            <div class="tab-content" id="pills-tabContent">
+              <div
+                class="tab-pane fade show active"
+                id="pills-base"
+                role="tabpanel"
+                aria-labelledby="pills-base-tab"
+                tabindex="0"
+              >
+                <div class="mx-5 my-3">
+                  <h6 class="mb-3 fw-bold">基本</h6>
+                  <div class="ms-5">
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">WEB端口</label>
+                      <div class="col-sm-9">
+                        <input
+                          type="number"
+                          oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="webPort"
+                          value="8833"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">管理员账号</label>
+                      <div class="col-sm-9">
+                        <input
+                          type="text"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="adminUsername"
+                          value="admin"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">管理员密码</label>
+                      <div class="col-sm-9">
+                        <input
+                          type="password"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="adminPassword"
+                        />
+
+                        <div class="progress" role="progressbar" style="margin-top: 1px; height: 4px">
+                          <div class="progress-bar bg-success" style="width: 0%"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="row mb-1 align-items-baseline">
+                      <label class="col-sm-3 col-form-label">
+                        自动更新配置
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          fill="currentColor"
+                          class="bi bi-question-circle"
+                          viewBox="0 0 16 16"
+                          data-bs-toggle="tooltip"
+                          data-bs-placement="right"
+                          data-bs-title="加载配置文件自动更新server.conf"
+                        >
+                          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"></path>
+                          <path
+                            d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286m1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94"
+                          ></path>
+                        </svg>
+                      </label>
+                      <div class="col-sm-9">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" value="" id="autoUpdateOvpnConfig" />
+                          <label class="form-check-label" for="autoUpdateOvpnConfig"> 启用 </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="mx-5 my-3">
+                  <h6 class="mb-3 fw-bold">LDAP配置</h6>
+                  <div class="ms-5">
+                    <div class="row mb-1 align-items-baseline">
+                      <label class="col-sm-3 col-form-label">LDAP</label>
+                      <div class="col-sm-9">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" value="" id="ldapAuth" />
+                          <label class="form-check-label" for="ldapAuth"> 启用 </label>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">LDAP地址</label>
+                      <div class="col-sm-9">
+                        <input type="text" class="form-control form-control-sm border-0 border-bottom" id="ldapUrl" />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">绑定DN</label>
+                      <div class="col-sm-9">
+                        <input
+                          type="text"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="ldapBindDn"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">密码</label>
+                      <div class="col-sm-9">
+                        <input
+                          type="password"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="ldapBindPassword"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">基础DN</label>
+                      <div class="col-sm-9">
+                        <input
+                          type="text"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="ldapBaseDn"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">
+                        用户属性
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          fill="currentColor"
+                          class="bi bi-question-circle"
+                          viewBox="0 0 16 16"
+                          data-bs-toggle="tooltip"
+                          data-bs-placement="right"
+                          data-bs-title="根据当前使用的LDAP服务器设置，例：OpenLDAP：uid ； Windows AD: sAMAccountName"
+                        >
+                          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"></path>
+                          <path
+                            d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286m1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94"
+                          ></path>
+                        </svg>
+                      </label>
+                      <div class="col-sm-9">
+                        <input
+                          type="text"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="ldapUserAttribute"
+                          value="uid"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">
+                        用户IP属性
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          fill="currentColor"
+                          class="bi bi-question-circle"
+                          viewBox="0 0 16 16"
+                          data-bs-toggle="tooltip"
+                          data-bs-placement="right"
+                          data-bs-title="用户固定ip的属性字段名称"
+                        >
+                          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"></path>
+                          <path
+                            d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286m1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94"
+                          ></path>
+                        </svg>
+                      </label>
+                      <div class="col-sm-9">
+                        <input
+                          type="text"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="ldapUserAttrIpaddrName"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">
+                        用户配置文件属性
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          fill="currentColor"
+                          class="bi bi-question-circle"
+                          viewBox="0 0 16 16"
+                          data-bs-toggle="tooltip"
+                          data-bs-placement="right"
+                          data-bs-title="用户vpn配置文件属性字段名称"
+                        >
+                          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"></path>
+                          <path
+                            d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286m1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94"
+                          ></path>
+                        </svg>
+                      </label>
+                      <div class="col-sm-9">
+                        <input
+                          type="text"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="ldapUserAttrConfigName"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1 align-items-baseline">
+                      <label class="col-sm-3 col-form-label">
+                        用户组过滤
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          fill="currentColor"
+                          class="bi bi-question-circle"
+                          viewBox="0 0 16 16"
+                          data-bs-toggle="tooltip"
+                          data-bs-placement="right"
+                          data-bs-title="通过用户组过滤用户"
+                        >
+                          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"></path>
+                          <path
+                            d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286m1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94"
+                          ></path>
+                        </svg>
+                      </label>
+                      <div class="col-sm-9">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" value="" id="ldapUserGroupFilter" />
+                          <label class="form-check-label" for="ldapUserGroupFilter"> 启用 </label>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <label class="col-sm-3 col-form-label">用户组DN</label>
+                      <div class="col-sm-9">
+                        <input
+                          type="text"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="ldapUserGroupDn"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div
+                class="tab-pane fade"
+                id="pills-client"
+                role="tabpanel"
+                aria-labelledby="pills-client-tab"
+                tabindex="0"
+              >
+                <div class="mx-5 my-3">
+                  <h6 class="mb-3 fw-bold">客户端链接</h6>
+                  <div class="ms-5">
+                    <div class="row mb-1">
+                      <label class="col-sm-2 col-form-label">windows</label>
+                      <div class="col-sm-10">
+                        <input
+                          type="text"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="windowsClientUrl"
+                          value="https://openvpn.net/downloads/openvpn-connect-v3-windows.msi"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-2 col-form-label">macos</label>
+                      <div class="col-sm-10">
+                        <input
+                          type="text"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="macosClientUrl"
+                          value="https://openvpn.net/downloads/openvpn-connect-v3-macos.dmg"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-2 col-form-label">linux</label>
+                      <div class="col-sm-10">
+                        <input
+                          type="text"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="linuxClientUrl"
+                          value="https://openvpn.net/openvpn-connect-v3-linux/"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-2 col-form-label">android</label>
+                      <div class="col-sm-10">
+                        <input
+                          type="text"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="androidClientUrl"
+                          value="https://play.google.com/store/apps/details?id=de.blinkt.openvpn"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-2 col-form-label">ios</label>
+                      <div class="col-sm-10">
+                        <input
+                          type="text"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="iosClientUrl"
+                          value="https://itunes.apple.com/us/app/openvpn-connect/id590379981?mt=8"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div
+                class="tab-pane fade"
+                id="pills-openvpn"
+                role="tabpanel"
+                aria-labelledby="pills-openvpn-tab"
+                tabindex="0"
+              >
+                <div class="mx-5 my-3">
+                  <h6 class="mb-3 fw-bold">配置</h6>
+                  <div class="ms-5">
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">端口</label>
+                      <div class="col-sm-9">
+                        <input
+                          type="number"
+                          oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="ovpnPort"
+                          value="1194"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">
+                        协议
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          fill="currentColor"
+                          class="bi bi-question-circle"
+                          viewBox="0 0 16 16"
+                          data-bs-toggle="tooltip"
+                          data-bs-placement="right"
+                          data-bs-title="启用ipv6后协议必须指定为udp6/tcp6"
+                        >
+                          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"></path>
+                          <path
+                            d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286m1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94"
+                          ></path>
+                        </svg>
+                      </label>
+                      <div class="col-sm-9">
+                        <input
+                          type="text"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="ovpnProto"
+                          value="udp"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">最大连接数</label>
+                      <div class="col-sm-9">
+                        <input
+                          type="number"
+                          oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="ovpnMaxClients"
+                          value="200"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1 align-items-baseline">
+                      <label class="col-sm-3 col-form-label">
+                        vpn网关
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          fill="currentColor"
+                          class="bi bi-question-circle"
+                          viewBox="0 0 16 16"
+                          data-bs-toggle="tooltip"
+                          data-bs-placement="right"
+                          data-bs-title="启用vpn网关后所有流量走vpn网络"
+                        >
+                          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"></path>
+                          <path
+                            d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286m1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94"
+                          ></path>
+                        </svg>
+                      </label>
+                      <div class="col-sm-9">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" value="" id="ovpnGateway" />
+                          <label class="form-check-label" for="ovpnGateway"> 启用 </label>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">子网</label>
+                      <div class="col-sm-9">
+                        <input
+                          type="text"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="ovpnSubnet"
+                          value="10.8.0.0/24"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">管理接口地址</label>
+                      <div class="col-sm-9">
+                        <input
+                          type="text"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="ovpnManagement"
+                          value="127.0.0.1:7505"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1 align-items-baseline">
+                      <label class="col-sm-3 col-form-label">ipv6</label>
+                      <div class="col-sm-9">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" value="" id="ovpnIpv6" />
+                          <label class="form-check-label" for="ovpnIpv6"> 启用 </label>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">ipv6子网</label>
+                      <div class="col-sm-9">
+                        <input
+                          type="text"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="ovpnSubnet6"
+                          value="fdaf:f178:e916:6dd0::/64"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
       <div id="alertToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="toast-header">
@@ -857,7 +1347,13 @@
       <div class="offcanvas-body"></div>
     </div>
 
-    <footer class="fixed-bottom border-top bg-light" style="font-size: 12px">{{ .server.Version }}</footer>
+    <footer
+      class="fixed-bottom border-top bg-light d-flex justify-content-between align-items-center px-1"
+      style="font-size: 12px"
+    >
+      <span>{{ .server.Version }}</span>
+      <span>{{ .version }}</span>
+    </footer>
     <script type="text/javascript" src="static/js/jquery.min.js"></script>
     <script type="text/javascript" src="static/js/bootstrap.bundle.min.js"></script>
     <script type="text/javascript" src="static/js/jquery.dataTables.min.js"></script>
@@ -869,6 +1365,7 @@
     <script type="text/javascript" src="static/js/datepicker.zh-CN.js"></script>
     <script type="text/javascript" src="static/js/dayjs.min.js"></script>
     <script type="text/javascript" src="static/js/index.js"></script>
+    <script type="text/javascript" src="static/js/settings.js"></script>
 
     <script type="text/javascript">
       $(document).ready(function () {
@@ -1115,7 +1612,7 @@
                   <input class="form-check-input" type="checkbox" role="switch" id="authUser" style="cursor: pointer;" ${
                     data.authUser ? 'checked' : ''
                   }>
-                  <label class="form-check-label" for="authUser">账号启用: </label>
+                  <label class="form-check-label">账号启用: </label>
                 </div>
                 `
               );
@@ -1677,39 +2174,6 @@
             $('#resetPassModal form').trigger('reset');
             $('#resetPassModal').modal('hide');
             message.success('密码重置成功');
-          });
-
-          return false;
-        });
-
-        $(document).on('click', '#modifyPass', function () {
-          $('#modifyPassModal').modal('show');
-        });
-
-        $(document).on('keyup', '#modifyPassModal input[name="newPassAgain"]', function () {
-          const newPss = $('#modifyPassModal input[name="newPass"]').val();
-          const newPassAgain = $('#modifyPassModal input[name="newPassAgain"]').val();
-
-          if (newPassAgain == newPss) {
-            $('#modifyPassModal .form-text').addClass('d-none');
-            $('#modifyPassModal input[name="newPassAgain"]').removeClass('border border-danger');
-            $('#modifyPassSumbit').removeAttr('disabled');
-          } else {
-            $('#modifyPassModal .form-text').text('密码不一致！');
-            $('#modifyPassModal .form-text').addClass('text-danger');
-            $('#modifyPassModal input[name="newPassAgain"]').addClass('border border-danger');
-            $('#modifyPassModal .form-text').removeClass('d-none');
-            $('#modifyPassSumbit').attr('disabled', true);
-          }
-        });
-
-        $('#modifyPassModal form').submit(function () {
-          let newPass = $('#modifyPassModal input[name="newPassAgain"]').val();
-
-          request.post('/user', { username: '{{ .sysUser }}', password: newPass }).then(() => {
-            $('#modifyPassModal form').trigger('reset');
-            $('#modifyPassModal').modal('hide');
-            message.success('密码修改成功');
           });
 
           return false;

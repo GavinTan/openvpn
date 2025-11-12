@@ -12,6 +12,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -24,13 +25,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gavintan/gopkg/aes"
 	"github.com/gavintan/gopkg/tools"
 	"github.com/gin-contrib/sessions"
 	gormsessions "github.com/gin-contrib/sessions/gorm"
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
-	"github.com/joho/godotenv"
 	"github.com/patrickmn/go-cache"
+	"github.com/spf13/viper"
 	"gorm.io/gorm"
 	gLogger "gorm.io/gorm/logger"
 )
@@ -93,6 +95,7 @@ type ovpn struct {
 }
 
 var (
+	version = "1.0.0"
 	//go:embed templates
 	FS embed.FS
 
@@ -106,6 +109,7 @@ var (
 			Colorful:                  true,
 		},
 	)
+	ovData = os.Getenv("OVPN_DATA")
 )
 
 func (ov *ovpn) sendCommand(command string) (string, error) {
@@ -407,13 +411,23 @@ func isValidPassword(pw string) bool {
 	return count == 5
 }
 
+func genRandomString(length int) string {
+	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	result := make([]byte, length)
+	for i := range result {
+		result[i] = charset[r.Intn(len(charset))]
+	}
+	return string(result)
+}
+
 func AuthMiddleWare() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
 		user := session.Get("user")
 
 		if c.Request.URL.Path == "/ovpn/login" || c.Request.URL.Path == "/ovpn/history" {
-			if strings.Contains(c.Request.Host, "127.0.0.1") {
+			if c.ClientIP() == "127.0.0.1" || c.ClientIP() == "::1" {
 				c.Next()
 				return
 			}
@@ -425,10 +439,8 @@ func AuthMiddleWare() gin.HandlerFunc {
 			return
 		}
 
-		var su SysUser
 		if user, ok := user.(string); ok {
-			su.Username = user
-			if c.Request.URL.Path != "/" && !strings.HasPrefix(c.Request.URL.Path, "/client") && !su.IsAdmin() {
+			if c.Request.URL.Path != "/" && !strings.HasPrefix(c.Request.URL.Path, "/client") && user != adminUsername {
 				c.Redirect(302, "/")
 				c.Abort()
 				return
@@ -440,30 +452,11 @@ func AuthMiddleWare() gin.HandlerFunc {
 }
 
 func init() {
-	godotenv.Load(path.Join(os.Getenv("OVPN_DATA"), ".vars"))
+	initConfig()
+	loadConfig()
 }
 
 func main() {
-	ovData, ok := os.LookupEnv("OVPN_DATA")
-	if !ok {
-		ovData = "/data"
-	}
-
-	ovManage, ok := os.LookupEnv("OVPN_MANAGEMENT")
-	if !ok {
-		ovManage = "127.0.0.1:7505"
-	}
-
-	webPort, ok := os.LookupEnv("WEB_PORT")
-	if !ok {
-		webPort = "8833"
-	}
-
-	secretKey, ok := os.LookupEnv("SECRET_KEY")
-	if !ok {
-		secretKey = "openvpn-web"
-	}
-
 	ov := ovpn{
 		address: ovManage,
 	}
@@ -480,7 +473,7 @@ func main() {
 	store := gormsessions.NewStore(db, true, []byte(secretKey))
 	cc := cache.New(5*time.Minute, 10*time.Minute)
 
-	db.AutoMigrate(&User{}, &History{}, &SysUser{})
+	db.AutoMigrate(&User{}, &History{})
 
 	r := gin.New()
 	r.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
@@ -535,20 +528,21 @@ func main() {
 			})
 		}
 
-		var su SysUser
-		c.ShouldBind(&su)
+		var u User
+		c.ShouldBind(&u)
 
-		if su.IsAdmin() {
-			if err = su.Login(); err == nil {
-				session.Set("user", su.Username)
+		if u.Username == adminUsername {
+			dp, _ := aes.AesDecrypt(adminPassword, secretKey)
+			if u.Password == dp {
+				session.Set("user", u.Username)
 				session.Save()
 
 				c.JSON(200, gin.H{"message": "登录成功", "redirect": "/admin"})
 				return
+			} else {
+				err = fmt.Errorf("密码错误")
 			}
 		} else {
-			var u User
-			c.ShouldBind(&u)
 			passcode := c.PostForm("passcode")
 
 			if passcode != "" {
@@ -600,29 +594,21 @@ func main() {
 	r.Use(AuthMiddleWare())
 
 	r.GET("/", func(c *gin.Context) {
-		var su SysUser
-
 		session := sessions.Default(c)
 		if user, ok := session.Get("user").(string); ok {
-			su.Username = user
-
-			if su.IsAdmin() {
+			if user == adminUsername {
 				c.Redirect(302, "/admin")
 				return
 			}
 		}
 
-		c.HTML(http.StatusOK, "client.html", gin.H{})
+		c.HTML(http.StatusOK, "client.html", getConfig().Client)
 	})
 
 	r.GET("/admin", func(c *gin.Context) {
-		var su SysUser
-
 		session := sessions.Default(c)
 		if user, ok := session.Get("user").(string); ok {
-			su.Username = user
-
-			if !su.IsAdmin() {
+			if user != adminUsername {
 				c.Redirect(302, "/")
 				return
 			}
@@ -630,21 +616,58 @@ func main() {
 
 		c.HTML(http.StatusOK, "index.html", gin.H{
 			"server":   ov.getServer(),
-			"sysUser":  os.Getenv("ADMIN_USERNAME"),
-			"ldapAuth": os.Getenv("OVPN_LDAP_AUTH"),
+			"sysUser":  adminUsername,
+			"ldapAuth": ldapAuth,
+			"version":  "v" + version,
 		})
 	})
 
-	r.POST("/user", func(c *gin.Context) {
-		var u SysUser
-		c.ShouldBind(&u)
+	r.GET("/settings", func(c *gin.Context) {
+		var conf config
+		viper.Unmarshal(&conf)
 
-		err := u.Create()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
-		} else {
-			c.JSON(http.StatusOK, gin.H{"message": "添加用户成功"})
+		c.JSON(http.StatusOK, conf)
+	})
+
+	r.POST("/settings", func(c *gin.Context) {
+		c.Request.ParseForm()
+		for k, vs := range c.Request.PostForm {
+			val := vs[0]
+
+			switch k {
+			case "system.base.admin_password":
+				val, _ = aes.AesEncrypt(val, secretKey)
+			case "openvpn.ovpn_subnet":
+				_, _, err := net.ParseCIDR(val)
+				if err != nil {
+					logger.Error(context.Background(), err.Error())
+					c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+					return
+				}
+			case "openvpn.ovpn_subnet6":
+				_, _, err := net.ParseCIDR(val)
+				if err != nil {
+					logger.Error(context.Background(), err.Error())
+					c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+					return
+				}
+			}
+
+			switch val {
+			case "true":
+				viper.Set(k, true)
+			case "false":
+				viper.Set(k, false)
+			default:
+				viper.Set(k, val)
+			}
 		}
+		if err := viper.WriteConfig(); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "更新成功"})
 	})
 
 	ovpn := r.Group("/ovpn")
@@ -759,7 +782,7 @@ func main() {
 			var auth bool
 			var u User
 
-			cmd := exec.Command("egrep", "^auth-user-pass-verify", path.Join(os.Getenv("OVPN_DATA"), "server.conf"))
+			cmd := exec.Command("egrep", "^auth-user-pass-verify", path.Join(ovData, "server.conf"))
 			if err := cmd.Run(); err != nil {
 				auth = false
 			} else {
@@ -974,7 +997,7 @@ func main() {
 
 			_, err := os.Stat(path.Join(ovData, "clients", fmt.Sprintf("%s.ovpn", name)))
 			if err != nil {
-				cmd := exec.Command("sh", "-c", fmt.Sprintf("/usr/bin/docker-entrypoint.sh genclient %s %s %s %#v %#v %s", name, serverAddr, serverPort, config, ccdConfig, mfa))
+				cmd := exec.Command("sh", "-c", fmt.Sprintf("/usr/bin/docker-entrypoint.sh genclient %#v %#v %#v %#v %#v %#v", name, serverAddr, serverPort, config, ccdConfig, mfa))
 				if out, err := cmd.CombinedOutput(); err != nil {
 					if out == nil {
 						out = []byte(err.Error())
@@ -1046,6 +1069,23 @@ func main() {
 				u.Username = user
 			}
 
+			if ldapAuth {
+				l, err := InitLdap()
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+					return
+				}
+
+				lu, err := l.Get(u.Username)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+					return
+				}
+
+				c.JSON(http.StatusOK, lu)
+				return
+			}
+
 			c.JSON(http.StatusOK, u.Info())
 		})
 
@@ -1082,6 +1122,23 @@ func main() {
 
 			u = u.Info()
 			configName := u.OvpnConfig
+
+			if ldapAuth {
+				l, err := InitLdap()
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+					return
+				}
+
+				lu, err := l.Get(u.Username)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+					return
+				}
+
+				configName = lu.OvpnConfig
+			}
+
 			configFile := path.Join(ovData, "clients", configName)
 			hasAuth := func() bool {
 				file, err := os.Open(path.Join(ovData, "server.conf"))
@@ -1129,14 +1186,25 @@ func main() {
 				content = strings.ReplaceAll(content, challengeLine+"\n", "")
 			}
 
-			if !hasAuth() {
-				content = strings.ReplaceAll(content, "auth-user-pass\n", "")
+			if hasAuth() {
+				if strings.Contains(content, "#auth-user-pass") {
+					content = strings.ReplaceAll(content, "#auth-user-pass", "auth-user-pass")
+				}
+			} else {
+				if !strings.Contains(content, "#auth-user-pass") {
+					content = strings.ReplaceAll(content, "auth-user-pass", "#auth-user-pass")
+				}
 			}
 
 			c.JSON(http.StatusOK, gin.H{"filename": configName, "content": content})
 		})
 
 		client.GET("/mfa", func(c *gin.Context) {
+			if ldapAuth {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": "LDAP用户不支持设置MFA"})
+				return
+			}
+
 			var u User
 
 			session := sessions.Default(c)

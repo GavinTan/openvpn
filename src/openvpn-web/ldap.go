@@ -11,18 +11,12 @@ import (
 	"github.com/go-ldap/ldap/v3"
 )
 
-var (
-	ldapURL  = os.Getenv("LDAP_URL")
-	baseDN   = os.Getenv("LDAP_BASE_DN")
-	userAttr = os.Getenv("LDAP_USER_ATTRIBUTE")
-
-	ugFilter = os.Getenv("LDAP_USER_GROUP_FILTER")
-	ugDN     = os.Getenv("LDAP_USER_GROUP_DN")
-	uIpaddr  = os.Getenv("LDAP_USER_ATTR_IPADDR_NAME")
-
-	bu = os.Getenv("LDAP_BIND_USER_DN")
-	bp = os.Getenv("LDAP_BIND_PASSWORD")
-)
+type LdapUserData struct {
+	Username   string `json:"username"`
+	LdapAuth   bool   `json:"ldapAuth"`
+	Ipaddr     string `json:"ipaddr"`
+	OvpnConfig string `json:"ovpnConfig"`
+}
 
 type LdapConn struct {
 	Conn *ldap.Conn
@@ -36,7 +30,7 @@ func InitLdap() (*LdapConn, error) {
 		return nil, fmt.Errorf("ldap connect error: %v", err)
 	}
 
-	err = l.Bind(bu, bp)
+	err = l.Bind(ldapBindUserDn, ldapBindPassword)
 	if err != nil {
 		return nil, fmt.Errorf("ldap bind error: %v", err)
 	}
@@ -45,16 +39,16 @@ func InitLdap() (*LdapConn, error) {
 }
 
 func (l *LdapConn) LdapSearch(username string) (*ldap.SearchResult, error) {
-	f := fmt.Sprintf("(%s=%s)", userAttr, ldap.EscapeFilter(username))
-	if ugFilter == "true" {
-		f = fmt.Sprintf("(&(%s=%s)(memberOf=%s))", userAttr, ldap.EscapeFilter(username), ldap.EscapeFilter(ugDN))
+	f := fmt.Sprintf("(%s=%s)", ldapUserAttribute, ldap.EscapeFilter(username))
+	if ldapUserGroupFilter {
+		f = fmt.Sprintf("(&(%s=%s)(memberOf=%s))", ldapUserAttribute, ldap.EscapeFilter(username), ldap.EscapeFilter(ldapUserGroupDn))
 	}
 
 	searchRequest := ldap.NewSearchRequest(
-		baseDN,
+		ldapBaseDn,
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
 		f,
-		[]string{"dn", uIpaddr},
+		[]string{"dn", ldapUserAttrIpaddrName, ldapUserAttrConfigName},
 		nil,
 	)
 
@@ -89,15 +83,24 @@ func (l *LdapConn) Auth(username, password string) error {
 
 	defer l.Conn.Close()
 
-	ipaddr := sr.Entries[0].GetAttributeValue(uIpaddr)
+	ipaddr := sr.Entries[0].GetAttributeValue(ldapUserAttrIpaddrName)
 	if ipaddr != "" {
-		ovData, ok := os.LookupEnv("OVPN_DATA")
-		if !ok {
-			ovData = "/data"
-		}
-
 		os.WriteFile(path.Join(ovData, ".ovip"), []byte(ipaddr), 0644)
 	}
 
 	return nil
+}
+
+func (l *LdapConn) Get(username string) (LdapUserData, error) {
+	sr, err := l.LdapSearch(username)
+	if err != nil {
+		return LdapUserData{}, err
+	}
+
+	return LdapUserData{
+		Username:   username,
+		LdapAuth:   ldapAuth,
+		Ipaddr:     sr.Entries[0].GetAttributeValue(ldapUserAttrIpaddrName),
+		OvpnConfig: sr.Entries[0].GetAttributeValue(ldapUserAttrConfigName),
+	}, nil
 }
