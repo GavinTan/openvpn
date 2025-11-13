@@ -28,10 +28,12 @@ init_config() {
     OVPN_PORT=$(jq -r '.openvpn.ovpn_port // "1194"' $SYSTEM_CONFIG)
     OVPN_PROTO=$(jq -r '.openvpn.ovpn_proto // "udp"' $SYSTEM_CONFIG)
     OVPN_MAXCLIENTS=$(jq -r '.openvpn.ovpn_maxclients // "200"' $SYSTEM_CONFIG)
+    OVPN_MANAGEMENT=$(jq -r '.openvpn.ovpn_management // "127.0.0.1:7505"' $SYSTEM_CONFIG)
     OVPN_IPV6=$(jq -r '.openvpn.ovpn_ipv6 // "false"' $SYSTEM_CONFIG)
     OVPN_GATEWAY=$(jq -r '.openvpn.ovpn_gateway // "false"' $SYSTEM_CONFIG)
     OVPN_SUBNET=$(jq -r '.openvpn.ovpn_subnet // "10.8.0.0/24"' $SYSTEM_CONFIG)
     OVPN_SUBNET6=$(jq -r '.openvpn.ovpn_subnet6 // "fdaf:f178:e916:6dd0::/64"' $SYSTEM_CONFIG)
+    WEB_PORT=$(jq -r '.system.base.web_port // "8833"' $SYSTEM_CONFIG)
 
     cat << EOF > $OVPN_DATA/server.conf
 port $OVPN_PORT
@@ -105,7 +107,7 @@ run_server() {
 }
 
 renew_cert() {
-    init_env
+    SERVER_NAME=$(jq -r '.system.base.server_name // ""' $SYSTEM_CONFIG)
 
     #cd $OVPN_DATA/pki
     #openssl x509 -in ca.crt -days $1 -out ca.crt -signkey private/ca.key
