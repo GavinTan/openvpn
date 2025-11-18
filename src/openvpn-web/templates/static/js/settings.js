@@ -24,6 +24,8 @@ $(document).on('click', '#settings', function () {
     $('#ovpnManagement').val(data.openvpn.ovpn_management);
     $('#ovpnIpv6').prop('checked', data.openvpn.ovpn_ipv6);
     $('#ovpnSubnet6').val(data.openvpn.ovpn_subnet6);
+    $('#ovpnPushDns1').val(data.openvpn.ovpn_push_dns1);
+    $('#ovpnPushDns2').val(data.openvpn.ovpn_push_dns2);
 
     $('#settingsModal').modal('show');
   });
@@ -436,6 +438,36 @@ $(document).on('blur', '#ovpnSubnet6', function () {
   if (oldValue === newValue) return;
 
   request.post('/settings', { 'openvpn.ovpn_subnet6': newValue }).then((data) => {
+    message.success(data.message);
+  });
+});
+
+$(document).on('focus', '#ovpnPushDns1', function () {
+  $(this).data('oldValue', $(this).val());
+});
+
+$(document).on('blur', '#ovpnPushDns1', function () {
+  const oldValue = $(this).data('oldValue');
+  const newValue = $(this).val();
+
+  if (oldValue === newValue) return;
+
+  request.post('/settings', { 'openvpn.ovpn_push_dns1': newValue }).then((data) => {
+    message.success(data.message);
+  });
+});
+
+$(document).on('focus', '#ovpnPushDns2', function () {
+  $(this).data('oldValue', $(this).val());
+});
+
+$(document).on('blur', '#ovpnPushDns2', function () {
+  const oldValue = $(this).data('oldValue');
+  const newValue = $(this).val();
+
+  if (oldValue === newValue) return;
+
+  request.post('/settings', { 'openvpn.ovpn_push_dns2': newValue }).then((data) => {
     message.success(data.message);
   });
 });

@@ -36,20 +36,31 @@ func initOvpnConfig() (*VPNConfig, error) {
 }
 
 func (cfg *VPNConfig) Set(key, value string) {
-	keyPrefix := key + " "
 	found := false
+	keyPrefix := key + " "
+	newLine := fmt.Sprintf("%s %s", key, value)
 
 	for i, line := range cfg.Lines {
 		trim := strings.TrimSpace(line)
 
+		isComment := false
+		if strings.HasPrefix(trim, "#") {
+			isComment = true
+			trim = strings.TrimSpace(trim[1:])
+		}
+
 		if key == "push" {
 			if keyPrefix+value == trim {
+				if isComment {
+					cfg.Lines[i] = newLine
+				}
+
 				found = true
 				break
 			}
 		} else {
 			if strings.HasPrefix(trim, keyPrefix) {
-				cfg.Lines[i] = fmt.Sprintf("%s %s", key, value)
+				cfg.Lines[i] = newLine
 				found = true
 				break
 			}
@@ -62,10 +73,18 @@ func (cfg *VPNConfig) Set(key, value string) {
 	}
 }
 
+func (cfg *VPNConfig) SetLine(index int, content string) {
+	if index >= 0 && index < len(cfg.Lines) {
+		cfg.Lines[index] = content
+	} else {
+		cfg.Lines = append(cfg.Lines, content)
+	}
+}
+
 func (cfg *VPNConfig) Delete(key string) {
 	keyPrefix := key + " "
-	var newLines []string
 
+	var newLines []string
 	for _, line := range cfg.Lines {
 		trim := strings.TrimSpace(line)
 
@@ -111,13 +130,13 @@ func (cfg *VPNConfig) Update(key string, val string) {
 		cfg.Save()
 	case "openvpn.ovpn_gateway":
 		if val == "true" {
-			cfg.Set("push", `"dhcp-option DNS 8.8.8.8"`)
-			cfg.Set("push", `"dhcp-option DNS 2001:4860:4860::8888"`)
+			cfg.Set("push", fmt.Sprintf(`"dhcp-option DNS %s"`, viper.GetString("openvpn.ovpn_push_dns1")))
+			cfg.Set("push", fmt.Sprintf(`"dhcp-option DNS %s"`, viper.GetString("openvpn.ovpn_push_dns2")))
 			cfg.Set("push", `"redirect-gateway def1 ipv6 bypass-dhcp"`)
 			cfg.Save()
 		} else {
-			cfg.Delete(`push "dhcp-option DNS 8.8.8.8"`)
-			cfg.Delete(`push "dhcp-option DNS 2001:4860:4860::8888"`)
+			cfg.Delete(fmt.Sprintf(`push "dhcp-option DNS %s"`, viper.GetString("openvpn.ovpn_push_dns1")))
+			cfg.Delete(fmt.Sprintf(`push "dhcp-option DNS %s"`, viper.GetString("openvpn.ovpn_push_dns2")))
 			cfg.Delete(`push "redirect-gateway def1 ipv6 bypass-dhcp"`)
 			cfg.Save()
 		}
@@ -139,5 +158,36 @@ func (cfg *VPNConfig) Update(key string, val string) {
 			cfg.Set("server-ipv6", val)
 			cfg.Save()
 		}
+	case "openvpn.ovpn_push_dns1":
+		var dnsLines []int
+		for i, line := range cfg.Lines {
+			if strings.Contains(line, "dhcp-option DNS") {
+				dnsLines = append(dnsLines, i)
+			}
+		}
+
+		if len(dnsLines) > 0 {
+			cfg.SetLine(dnsLines[0], fmt.Sprintf(`push "dhcp-option DNS %s"`, val))
+		} else {
+			cfg.SetLine(len(cfg.Lines), fmt.Sprintf(`push "dhcp-option DNS %s"`, val))
+		}
+
+		cfg.Save()
+
+	case "openvpn.ovpn_push_dns2":
+		var dnsLines []int
+		for i, line := range cfg.Lines {
+			if strings.Contains(line, "dhcp-option DNS") {
+				dnsLines = append(dnsLines, i)
+			}
+		}
+
+		if len(dnsLines) > 1 {
+			cfg.SetLine(dnsLines[1], fmt.Sprintf(`push "dhcp-option DNS %s"`, val))
+		} else {
+			cfg.SetLine(len(cfg.Lines), fmt.Sprintf(`push "dhcp-option DNS %s"`, val))
+		}
+
+		cfg.Save()
 	}
 }

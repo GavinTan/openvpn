@@ -50,6 +50,8 @@ type OvpnConfig struct {
 	OvpnManagement string `json:"ovpn_management" mapstructure:"ovpn_management"`
 	OvpnIpv6       bool   `json:"ovpn_ipv6" mapstructure:"ovpn_ipv6"`
 	OvpnSubnet6    string `json:"ovpn_subnet6" mapstructure:"ovpn_subnet6"`
+	OvpnPushDns1   string `json:"ovpn_push_dns1" mapstructure:"ovpn_push_dns1"`
+	OvpnPushDns2   string `json:"ovpn_push_dns2" mapstructure:"ovpn_push_dns2"`
 }
 
 type config struct {
@@ -118,6 +120,8 @@ func initConfig() {
 	viper.SetDefault("openvpn.ovpn_management", "127.0.0.1:7505")
 	viper.SetDefault("openvpn.ovpn_ipv6", false)
 	viper.SetDefault("openvpn.ovpn_subnet6", "fdaf:f178:e916:6dd0::/64")
+	viper.SetDefault("openvpn.ovpn_push_dns1", "8.8.8.8")
+	viper.SetDefault("openvpn.ovpn_push_dns2", "2001:4860:4860::8888")
 
 	viper.SetConfigName("config")
 	viper.SetConfigType("json")
