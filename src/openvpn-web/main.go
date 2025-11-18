@@ -637,18 +637,15 @@ func main() {
 			switch k {
 			case "system.base.admin_password":
 				val, _ = aes.AesEncrypt(val, secretKey)
-			case "openvpn.ovpn_subnet":
+			case "openvpn.ovpn_subnet", "openvpn.ovpn_subnet6":
 				_, _, err := net.ParseCIDR(val)
 				if err != nil {
-					logger.Error(context.Background(), err.Error())
 					c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 					return
 				}
-			case "openvpn.ovpn_subnet6":
-				_, _, err := net.ParseCIDR(val)
-				if err != nil {
-					logger.Error(context.Background(), err.Error())
-					c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			case "openvpn.ovpn_push_dns1", "openvpn.ovpn_push_dns2":
+				if net.ParseIP(val) == nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"message": "invalid IP address: " + val})
 					return
 				}
 			}
