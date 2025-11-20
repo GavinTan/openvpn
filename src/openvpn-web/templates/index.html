@@ -1571,7 +1571,9 @@
                       ? '<button class="btn btn-link text-decoration-none p-0" id="disableUser">禁用</button>'
                       : '<button class="btn btn-link text-decoration-none p-0" id="enableUser">启用</button>'
                   }
-                  <button class="btn btn-link text-decoration-none p-0" id="delUser">删除</button>
+                  <button class="btn btn-link text-decoration-none p-0 btn-delete" data-bs-toggle="popover" data-delete-type="user" data-delete-name="${
+                    data.username
+                  }">删除</button>
                   <div class="btn btn-link text-decoration-none p-0 dropdown">
                     <button class="btn btn-link text-decoration-none p-0 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                       更多
@@ -1638,6 +1640,29 @@
                 </div>
                 `
               );
+            },
+            drawCallback: function (settings) {
+              $('#vtable .btn-delete').popover('dispose');
+              $('#vtable .btn-delete').popover({
+                container: 'body',
+                placement: 'top',
+                html: true,
+                sanitize: false,
+                trigger: 'click',
+                title: '提示',
+                content: function () {
+                  const name = $(this).data('delete-name');
+                  return `
+                    <div>
+                      <p>确定删除 <strong>${name}</strong> 吗？</p>
+                      <div class="d-flex justify-content-center">
+                        <button class="btn btn-secondary btn-sm me-2 btn-popover-cancel">取消</button>
+                        <button class="btn btn-primary btn-sm btn-popover-confirm">确认</button>
+                      </div>
+                    </div>
+                  `;
+                },
+              });
             },
             ajax: function (data, callback, settings) {
               request.get('/ovpn/user').then((data) => callback({ data: data?.users, authUser: data?.authUser }));
@@ -1750,7 +1775,7 @@
                         <li><button type="button" class="dropdown-item" id="editClient">客户端配置</button></li>
                       </ul>
                     </div>
-                    <button class="btn btn-link text-decoration-none p-0" id="delClient">删除</button>
+                    <button class="btn btn-link text-decoration-none p-0 btn-delete" data-bs-toggle="popover" data-delete-type="client" data-delete-name="${data.name}">删除</button>
                   </div>
                   `;
                   return html;
@@ -1774,6 +1799,29 @@
               "<'d-flex justify-content-between align-items-center'fB>" +
               "<'row'<'col-sm-12'tr>>" +
               "<'d-flex justify-content-between align-items-center'lip>",
+            drawCallback: function (settings) {
+              $('#vtable .btn-delete').popover('dispose');
+              $('#vtable .btn-delete').popover({
+                container: 'body',
+                placement: 'top',
+                html: true,
+                sanitize: false,
+                trigger: 'click',
+                title: '提示',
+                content: function () {
+                  const name = $(this).data('delete-name');
+                  return `
+                    <div>
+                      <p>确定删除 <strong>${name}</strong> 吗？</p>
+                      <div class="d-flex justify-content-center">
+                        <button class="btn btn-secondary btn-sm me-2 btn-popover-cancel">取消</button>
+                        <button class="btn btn-primary btn-sm btn-popover-confirm">确认</button>
+                      </div>
+                    </div>
+                  `;
+                },
+              });
+            },
             ajax: function (data, callback, settings) {
               request.get('/ovpn/client').then((data) => callback({ data }));
             },
@@ -1840,6 +1888,7 @@
           }
 
           if (vtable) {
+            $('#vtable .btn-delete').popover('dispose');
             vtable.destroy();
             $('#vtable').empty();
           }
@@ -1865,6 +1914,66 @@
         } else {
           initTable('status');
         }
+
+        $('#vtable').on('shown.bs.popover', '.btn-delete', function () {
+          const popoverInstance = bootstrap.Popover.getInstance(this);
+          const popoverEl = $(popoverInstance.tip);
+          const row = vtable.row($(this).parents('tr')).data();
+          const delType = $(this).data('delete-type');
+
+          if (!popoverInstance) return;
+
+          popoverEl
+            .find('.btn-popover-confirm')
+            .off('click')
+            .on('click', function () {
+              switch (delType) {
+                case 'user':
+                  request.delete(`/ovpn/user/${row.id}`).then((data) => {
+                    popoverInstance.hide();
+                    message.success(data.message);
+                    vtable.ajax.reload(null, false);
+                  });
+                  break;
+                case 'client':
+                  request.delete(`/ovpn/client/${row.name}`).then((data) => {
+                    popoverInstance.hide();
+                    message.success(data.message);
+                    vtable.ajax.reload(null, false);
+                  });
+                  break;
+              }
+            });
+
+          popoverEl
+            .find('.btn-popover-cancel')
+            .off('click')
+            .on('click', function () {
+              popoverInstance.hide();
+            });
+        });
+
+        $('#vtable').on('show.bs.popover', '.btn-delete', function () {
+          $('.btn-delete')
+            .not(this)
+            .each(function () {
+              var popoverInstance = bootstrap.Popover.getInstance(this);
+              if (popoverInstance) {
+                popoverInstance.hide();
+              }
+            });
+        });
+
+        $(document).on('click', function (e) {
+          if (
+            $(e.target).data('toggle') !== 'popover' &&
+            $(e.target).parents('.popover.show').length === 0 &&
+            $(e.target).parents('.btn-delete').length === 0 &&
+            !$(e.target).hasClass('btn-delete')
+          ) {
+            $('.btn-delete').popover('hide');
+          }
+        });
 
         $('#showUser').click(function () {
           window.history.pushState(null, '', '?tab=user');
@@ -1949,7 +2058,7 @@
             })
             .then((data) => {
               vtable.ajax.reload(null, false);
-              vtable.columns.adjust().draw(false);
+              // vtable.columns.adjust().draw(false);
               $('#addUserModal form').trigger('reset');
               $('#addUserModal').modal('hide');
             });
@@ -1997,24 +2106,6 @@
 
           request.post('/ovpn/kill', { cid: id }).then(() => {
             vtable.cell(this).row().remove().draw();
-          });
-        });
-
-        $(document).on('click', '#delUser', function () {
-          const id = vtable.row($(this).parents('tr')).data().id;
-
-          request.delete(`/ovpn/user/${id}`).then((data) => {
-            message.success(data.message);
-            vtable.ajax.reload(null, false);
-          });
-        });
-
-        $(document).on('click', '#delClient', function () {
-          const name = vtable.row($(this).parents('tr')).data().name;
-
-          request.delete(`/ovpn/client/${name}`).then((data) => {
-            message.success(data.message);
-            vtable.ajax.reload(null, false);
           });
         });
 
