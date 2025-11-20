@@ -10,9 +10,17 @@ builds:
     goarch:
       - amd64
       - arm64
+      - arm
+    goarm:
+      - 6
+      - 7
     ignore:
       - goos: windows
         goarch: arm64
+      - goos: windows
+        goarch: arm
+      - goos: darwin
+        goarch: arm
     env:
       - CGO_ENABLED=0
     ldflags:
@@ -24,6 +32,7 @@ archives:
       {{- .Os }}-
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "arm64" }}aarch64
+      {{- else if eq .Arch "arm" }}armv{{ .Arm }}l
       {{- else }}{{ .Arch }}{{ end }}
 checksum:
   name_template: 'openvpn-web_sha256_checksums.txt'
