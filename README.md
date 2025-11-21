@@ -1,7 +1,5 @@
 # openvpn
 
-**openvpn 安全与加密相关配置参考于[openvpn-install](https://github.com/angristan/openvpn-install?tab=readme-ov-file#security-and-encryption)的Security and Encryption部分。**
-
 ![image-20240529110841439](https://raw.githubusercontent.com/GavinTan/files/master/picgo/image-20240529110841439.png)
 
 ![20220930173030](https://raw.githubusercontent.com/GavinTan/files/master/picgo/20220930173030.png)
@@ -9,6 +7,8 @@
 ![20220930173103](https://raw.githubusercontent.com/GavinTan/files/master/picgo/20220930173103.png)
 
 ![image-20241015170847764](https://raw.githubusercontent.com/GavinTan/files/master/picgo/image-20241015170847764.png)
+
+**openvpn 安全与加密相关配置参考于[openvpn-install](https://github.com/angristan/openvpn-install?tab=readme-ov-file#security-and-encryption)的Security and Encryption部分。**
 
 > 提示：
 >
@@ -38,12 +38,6 @@
 - 一键生成客户端 & CCD配置文件
 
 ## Quick Start
-
-初始化生成证书及配置文件
-
-```shell
-docker run -v $(pwd)/data:/data --rm yyxx/openvpn --init
-```
 
 运行 openvpn
 
