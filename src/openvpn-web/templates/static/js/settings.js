@@ -16,6 +16,12 @@ $(document).on('click', '#settings', function () {
     $('#ldapUserGroupFilter').prop('checked', data.system.ldap.ldap_user_group_filter);
     $('#ldapUserGroupDn').val(data.system.ldap.ldap_user_group_dn);
 
+    $('#windowsClientUrl').val(data.client.client_url.windows);
+    $('#macosClientUrl').val(data.client.client_url.macos);
+    $('#linuxClientUrl').val(data.client.client_url.linux);
+    $('#androidClientUrl').val(data.client.client_url.android);
+    $('#iosClientUrl').val(data.client.client_url.ios);
+
     $('#ovpnPort').val(data.openvpn.ovpn_port);
     $('#ovpnProto').val(data.openvpn.ovpn_proto);
     $('#ovpnGateway').prop('checked', data.openvpn.ovpn_gateway);
