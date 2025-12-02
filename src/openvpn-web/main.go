@@ -686,7 +686,7 @@ func main() {
 					}
 					cmd := exec.Command("sh", "-c", fmt.Sprintf("/usr/bin/docker-entrypoint.sh auth %s", v))
 					if out, err := cmd.CombinedOutput(); err != nil {
-						if out == nil {
+						if len(out) == 0 {
 							out = []byte(err.Error())
 						}
 						logger.Error(context.Background(), string(out))
@@ -701,7 +701,7 @@ func main() {
 
 				cmd := exec.Command("sh", "-c", fmt.Sprintf("/usr/bin/docker-entrypoint.sh renewcert %v", day))
 				if out, err := cmd.CombinedOutput(); err != nil {
-					if out == nil {
+					if len(out) == 0 {
 						out = []byte(err.Error())
 					}
 					logger.Error(context.Background(), string(out))
@@ -956,7 +956,7 @@ func main() {
 				if err != nil {
 					cmd := exec.Command("sh", "-c", fmt.Sprintf("echo 'client-config-dir %[1]s/ccd' >> %[1]s/server.conf", ovData))
 					if out, err := cmd.CombinedOutput(); err != nil {
-						if out == nil {
+						if len(out) == 0 {
 							out = []byte(err.Error())
 						}
 						logger.Error(context.Background(), string(out))
@@ -996,7 +996,7 @@ func main() {
 			if err != nil {
 				cmd := exec.Command("sh", "-c", fmt.Sprintf("/usr/bin/docker-entrypoint.sh genclient %#v %#v %#v %#v %#v %#v", name, serverAddr, serverPort, config, ccdConfig, mfa))
 				if out, err := cmd.CombinedOutput(); err != nil {
-					if out == nil {
+					if len(out) == 0 {
 						out = []byte(err.Error())
 					}
 					logger.Error(context.Background(), string(out))
@@ -1016,7 +1016,7 @@ func main() {
 
 			cmd := exec.Command("sh", "-c", fmt.Sprintf("easyrsa --batch revoke %s && easyrsa gen-crl", name))
 			if out, err := cmd.CombinedOutput(); err != nil {
-				if out == nil {
+				if len(out) == 0 {
 					out = []byte(err.Error())
 				}
 				logger.Error(context.Background(), string(out))

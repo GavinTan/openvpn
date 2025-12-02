@@ -109,8 +109,8 @@ func initConfig() {
 	viper.SetDefault("client.client_url.windows", "https://openvpn.net/downloads/openvpn-connect-v3-windows.msi")
 	viper.SetDefault("client.client_url.macos", "https://openvpn.net/downloads/openvpn-connect-v3-macos.dmg")
 	viper.SetDefault("client.client_url.linux", "https://openvpn.net/openvpn-client-for-linux/")
-	viper.SetDefault("client.client_url.ios", "https://play.google.com/store/apps/details?id=net.openvpn.openvpn")
-	viper.SetDefault("client.client_url.android", "https://itunes.apple.com/us/app/openvpn-connect/id590379981?mt=8")
+	viper.SetDefault("client.client_url.android", "https://play.google.com/store/apps/details?id=net.openvpn.openvpn")
+	viper.SetDefault("client.client_url.ios", "https://itunes.apple.com/us/app/openvpn-connect/id590379981?mt=8")
 
 	viper.SetDefault("openvpn.ovpn_port", 1194)
 	viper.SetDefault("openvpn.ovpn_proto", "udp")
