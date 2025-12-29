@@ -280,170 +280,169 @@
       </div>
     </div>
   </body>
-  <script type="text/javascript" src="static/js/jquery.min.js"></script>
-  <script type="text/javascript" src="static/js/bootstrap.bundle.min.js"></script>
-  <script type="text/javascript" src="static/js/qrious.min.js"></script>
-  <script type="text/javascript" src="static/js/index.js"></script>
+  <script type="text/javascript" src="static/js/lib/jquery.min.js"></script>
+  <script type="text/javascript" src="static/js/lib/bootstrap.bundle.min.js"></script>
+  <script type="text/javascript" src="static/js/lib/qrious.min.js"></script>
 
-  <script type="text/javascript">
-    $(document).ready(function () {
-      function downloadFile(filename, content) {
-        const blob = new Blob([content], { type: 'application/octet-stream' });
-        const url = URL.createObjectURL(blob);
+  <script type="module">
+    import '/static/js/utils.js';
 
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
+    function downloadFile(filename, content) {
+      const blob = new Blob([content], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
 
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function checkPassword(pw) {
+      let passed = 0;
+      const rules = {
+        length: (s) => s.length >= 12,
+        lower: (s) => /[a-z]/.test(s),
+        upper: (s) => /[A-Z]/.test(s),
+        digit: (s) => /[0-9]/.test(s),
+        special: (s) => /[!@#\$%\^&\*()_+\-=[\]{};':"\\|,.<>\/?]/.test(s),
+      };
+
+      for (const key in rules) {
+        if (rules[key](pw)) passed++;
       }
+      const percent = Math.round((passed / Object.keys(rules).length) * 100);
 
-      function checkPassword(pw) {
-        let passed = 0;
-        const rules = {
-          length: (s) => s.length >= 12,
-          lower: (s) => /[a-z]/.test(s),
-          upper: (s) => /[A-Z]/.test(s),
-          digit: (s) => /[0-9]/.test(s),
-          special: (s) => /[!@#\$%\^&\*()_+\-=[\]{};':"\\|,.<>\/?]/.test(s),
-        };
+      return percent;
+    }
 
-        for (const key in rules) {
-          if (rules[key](pw)) passed++;
-        }
-        const percent = Math.round((passed / Object.keys(rules).length) * 100);
+    $(document).on('keyup', '#modifyPassModal input[name="newPassAgain"]', function () {
+      const newPss = $('#modifyPassModal input[name="newPass"]').val();
+      const newPassAgain = $('#modifyPassModal input[name="newPassAgain"]').val();
 
-        return percent;
+      if (newPassAgain == newPss) {
+        $('#modifyPassModal .form-text').addClass('d-none');
+        $('#modifyPassModal input[name="newPassAgain"]').removeClass('border border-danger');
+        $('#modifyPassSumbit').removeAttr('disabled');
+      } else {
+        $('#modifyPassModal .form-text').text('密码不一致！');
+        $('#modifyPassModal .form-text').addClass('text-danger');
+        $('#modifyPassModal input[name="newPassAgain"]').addClass('border border-danger');
+        $('#modifyPassModal .form-text').removeClass('d-none');
+        $('#modifyPassSumbit').attr('disabled', true);
       }
+    });
 
-      $(document).on('keyup', '#modifyPassModal input[name="newPassAgain"]', function () {
-        const newPss = $('#modifyPassModal input[name="newPass"]').val();
-        const newPassAgain = $('#modifyPassModal input[name="newPassAgain"]').val();
+    $(document).on('input', '#modifyPassModal input[name="newPass"]', function (e) {
+      const percent = checkPassword(e.target.value);
+      const progressBar = $('#modifyPassModal .progress-bar');
 
-        if (newPassAgain == newPss) {
-          $('#modifyPassModal .form-text').addClass('d-none');
-          $('#modifyPassModal input[name="newPassAgain"]').removeClass('border border-danger');
-          $('#modifyPassSumbit').removeAttr('disabled');
-        } else {
-          $('#modifyPassModal .form-text').text('密码不一致！');
-          $('#modifyPassModal .form-text').addClass('text-danger');
-          $('#modifyPassModal input[name="newPassAgain"]').addClass('border border-danger');
-          $('#modifyPassModal .form-text').removeClass('d-none');
-          $('#modifyPassSumbit').attr('disabled', true);
+      progressBar.width(percent + '%');
+      progressBar.attr(
+        'class',
+        percent < 60
+          ? 'progress-bar text-bg-danger'
+          : 100 < percent > 60
+          ? 'progress-bar bg-warning'
+          : percent == 100
+          ? 'progress-bar bg-success'
+          : 'progress-bar bg-warning'
+      );
+    });
+
+    $('#modifyPass').click(function () {
+      request.get('/client/userinfo').then((data) => {
+        if (data.ldapAuth) {
+          message.error('LDAP用户不支持修改密码');
+          return;
         }
+        $('#modifyPassModal input[name="id"]').val(data.id);
+        $('#modifyPassModal input[name="username"]').val(data.username);
+
+        $('#modifyPassModal').modal('show');
       });
+    });
 
-      $(document).on('input', '#modifyPassModal input[name="newPass"]', function (e) {
-        const percent = checkPassword(e.target.value);
-        const progressBar = $('#modifyPassModal .progress-bar');
+    $('#modifyPassModal form').submit(function () {
+      const id = $('#modifyPassModal input[name="id"]').val();
+      const newPass = $('#modifyPassModal input[name="newPassAgain"]').val();
+      const currentPass = $('#modifyPassModal input[name="currentPass"]').val();
 
-        progressBar.width(percent + '%');
-        progressBar.attr(
-          'class',
-          percent < 60
-            ? 'progress-bar text-bg-danger'
-            : 100 < percent > 60
-            ? 'progress-bar bg-warning'
-            : percent == 100
-            ? 'progress-bar bg-success'
-            : 'progress-bar bg-warning'
-        );
-      });
-
-      $('#modifyPass').click(function () {
-        request.get('/client/userinfo').then((data) => {
-          if (data.ldapAuth) {
-            message.error('LDAP用户不支持修改密码');
-            return;
-          }
-          $('#modifyPassModal input[name="id"]').val(data.id);
-          $('#modifyPassModal input[name="username"]').val(data.username);
-
-          $('#modifyPassModal').modal('show');
-        });
-      });
-
-      $('#modifyPassModal form').submit(function () {
-        const id = $('#modifyPassModal input[name="id"]').val();
-        const newPass = $('#modifyPassModal input[name="newPassAgain"]').val();
-        const currentPass = $('#modifyPassModal input[name="currentPass"]').val();
-
-        if (checkPassword(newPass) != 100) {
-          message.error('密码不满足要求（长度12位，包含大小写字母、数字、特殊字符）');
-          return false;
-        }
-
-        request.post('/client/modifyPass', { id, currentPass, password: newPass }).then((data) => {
-          $('#modifyPassModal .progress-bar').width('0%');
-          $('#modifyPassModal form').trigger('reset');
-          $('#modifyPassModal').modal('hide');
-          message.success(data.message);
-        });
-
+      if (checkPassword(newPass) != 100) {
+        message.error('密码不满足要求（长度12位，包含大小写字母、数字、特殊字符）');
         return false;
+      }
+
+      request.post('/client/modifyPass', { id, currentPass, password: newPass }).then((data) => {
+        $('#modifyPassModal .progress-bar').width('0%');
+        $('#modifyPassModal form').trigger('reset');
+        $('#modifyPassModal').modal('hide');
+        message.success(data.message);
       });
 
-      $('#userConfig').click(function () {
-        request.get('/client/userConfig').then((data) => {
-          downloadFile(data.filename, data.content);
-        });
+      return false;
+    });
+
+    $('#userConfig').click(function () {
+      request.get('/client/userConfig').then((data) => {
+        downloadFile(data.filename, data.content);
       });
+    });
 
-      $('#mfa').click(function () {
-        request.get('/client/mfa').then((data) => {
-          if (data.mfaEnable) {
-            $('#mfaApp').hide();
-            $('#mfaModal input[name="passcode"]').hide();
-            $('#mfaAlert').show();
-            $('#enableMfa').text('禁用');
-            $('#enableMfa').attr('id', 'disableMfa');
-          } else {
-            $('#mfaApp').show();
-            $('#mfaModal input[name="passcode"]').show();
-            $('#mfaAlert').hide();
-            $('#disableMfa').text('启用');
-            $('#disableMfa').attr('id', 'enableMfa');
-          }
+    $('#mfa').click(function () {
+      request.get('/client/mfa').then((data) => {
+        if (data.mfaEnable) {
+          $('#mfaApp').hide();
+          $('#mfaModal input[name="passcode"]').hide();
+          $('#mfaAlert').show();
+          $('#enableMfa').text('禁用');
+          $('#enableMfa').attr('id', 'disableMfa');
+        } else {
+          $('#mfaApp').show();
+          $('#mfaModal input[name="passcode"]').show();
+          $('#mfaAlert').hide();
+          $('#disableMfa').text('启用');
+          $('#disableMfa').attr('id', 'enableMfa');
+        }
 
-          new QRious({
-            element: document.getElementById('qrcode'),
-            value:
-              'otpauth://totp/openvpn-web:' +
-              data.user.username +
-              '?algorithm=SHA1&digits=6&period=30&secret=' +
-              encodeURIComponent(data.user.mfaSecret) +
-              '&issuer=openvpn-web',
-            size: 200,
-          });
-
-          $('#mfaModal code[name="key"]').text(data.user.mfaSecret);
-          $('#mfaModal input[name="id"]').val(data.user.id);
-
-          $('#mfaModal').modal('show');
+        new QRious({
+          element: document.getElementById('qrcode'),
+          value:
+            'otpauth://totp/openvpn-web:' +
+            data.user.username +
+            '?algorithm=SHA1&digits=6&period=30&secret=' +
+            encodeURIComponent(data.user.mfaSecret) +
+            '&issuer=openvpn-web',
+          size: 200,
         });
+
+        $('#mfaModal code[name="key"]').text(data.user.mfaSecret);
+        $('#mfaModal input[name="id"]').val(data.user.id);
+
+        $('#mfaModal').modal('show');
       });
+    });
 
-      $(document).on('click', '#enableMfa', function () {
-        const id = $('#mfaModal input[name="id"]').val();
-        const passcode = $('#mfaModal input[name="passcode"]').val();
-        const mfaSecret = $('#mfaModal code[name="key"]').text();
+    $(document).on('click', '#enableMfa', function () {
+      const id = $('#mfaModal input[name="id"]').val();
+      const passcode = $('#mfaModal input[name="passcode"]').val();
+      const mfaSecret = $('#mfaModal code[name="key"]').text();
 
-        request.post('/client/mfa', { id, mfaSecret, passcode }).then((data) => {
-          $('#mfaModal').modal('hide');
-          message.success(data.message);
-        });
+      request.post('/client/mfa', { id, mfaSecret, passcode }).then((data) => {
+        $('#mfaModal').modal('hide');
+        message.success(data.message);
       });
+    });
 
-      $(document).on('click', '#disableMfa', function () {
-        const id = $('#mfaModal input[name="id"]').val();
+    $(document).on('click', '#disableMfa', function () {
+      const id = $('#mfaModal input[name="id"]').val();
 
-        request.delete('/client/mfa', { id }).then((data) => {
-          $('#mfaModal').modal('hide');
-          message.success(data.message);
-        });
+      request.delete('/client/mfa', { id }).then((data) => {
+        $('#mfaModal').modal('hide');
+        message.success(data.message);
       });
     });
   </script>

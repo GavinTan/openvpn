@@ -123,61 +123,60 @@
       </div>
     </div>
   </body>
-  <script type="text/javascript" src="static/js/jquery.min.js"></script>
-  <script type="text/javascript" src="static/js/js.cookie.min.js"></script>
-  <script type="text/javascript" src="static/js/bootstrap.bundle.min.js"></script>
-  <script type="text/javascript" src="static/js/index.js"></script>
+  <script type="text/javascript" src="static/js/lib/jquery.min.js"></script>
+  <script type="text/javascript" src="static/js/lib/js.cookie.min.js"></script>
+  <script type="text/javascript" src="static/js/lib/bootstrap.bundle.min.js"></script>
 
-  <script type="text/javascript">
-    $(document).ready(function () {
-      if (Cookies.get('remember7d') == 1) {
-        $('#remember7d').prop('checked', true);
+  <script type="module">
+    import '/static/js/utils.js';
+
+    if (Cookies.get('remember7d') == 1) {
+      $('#remember7d').prop('checked', true);
+    }
+
+    $('#remember7d').change(function () {
+      if ($(this).is(':checked')) {
+        Cookies.set('remember7d', 1, { expires: 7 });
+      } else {
+        Cookies.remove('remember7d');
       }
+    });
 
-      $('#remember7d').change(function () {
-        if ($(this).is(':checked')) {
-          Cookies.set('remember7d', 1, { expires: 7 });
+    $('#login form').submit(function () {
+      const username = $('#login input[name="username"]').val();
+      const password = $('#login input[name="password"]').val();
+      const remember7d = $('#remember7d').is(':checked') ? 'on' : 'off';
+
+      $.post('/login', { username, password, remember7d }, function (data) {
+        if (data.message === '需要MFA验证') {
+          $('#mfaValidateModal').modal('show');
         } else {
-          Cookies.remove('remember7d');
+          location.assign(data.redirect);
+          message.success(data.message);
+        }
+      }).fail(function (xhr) {
+        message.error(xhr.responseJSON?.message || xhr.responseText || xhr.statusText);
+      });
+
+      return false;
+    });
+
+    $('#mfaValidateModal form').submit(function () {
+      const username = $('#login input[name="username"]').val();
+      const remember7d = $('#remember7d').is(':checked') ? 'on' : 'off';
+      const passcode = $('#mfaValidateModal input[name="passcode"]').val();
+
+      $.post('/login', { username, passcode, remember7d }, function (data) {
+        location.assign(data.redirect);
+        message.success(data.message);
+      }).fail(function (xhr) {
+        message.error(xhr.responseJSON?.message || xhr.responseText || xhr.statusText);
+        if (xhr.responseJSON?.redirect) {
+          location.assign(xhr.responseJSON.redirect);
         }
       });
 
-      $('#login form').submit(function () {
-        const username = $('#login input[name="username"]').val();
-        const password = $('#login input[name="password"]').val();
-        const remember7d = $('#remember7d').is(':checked') ? 'on' : 'off';
-
-        $.post('/login', { username, password, remember7d }, function (data) {
-          if (data.message === '需要MFA验证') {
-            $('#mfaValidateModal').modal('show');
-          } else {
-            location.assign(data.redirect);
-            message.success(data.message);
-          }
-        }).fail(function (xhr) {
-          message.error(xhr.responseJSON?.message || xhr.responseText || xhr.statusText);
-        });
-
-        return false;
-      });
-
-      $('#mfaValidateModal form').submit(function () {
-        const username = $('#login input[name="username"]').val();
-        const remember7d = $('#remember7d').is(':checked') ? 'on' : 'off';
-        const passcode = $('#mfaValidateModal input[name="passcode"]').val();
-
-        $.post('/login', { username, passcode, remember7d }, function (data) {
-          location.assign(data.redirect);
-          message.success(data.message);
-        }).fail(function (xhr) {
-          message.error(xhr.responseJSON?.message || xhr.responseText || xhr.statusText);
-          if (xhr.responseJSON?.redirect) {
-            location.assign(xhr.responseJSON.redirect);
-          }
-        });
-
-        return false;
-      });
+      return false;
     });
   </script>
 </html>
