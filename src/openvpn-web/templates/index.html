@@ -374,6 +374,7 @@
                   type="text"
                   class="form-control form-control-sm float-end w-75"
                   name="username"
+                  autocomplete="username"
                   autofocus
                   required
                 />
@@ -382,7 +383,7 @@
                 <label>密码</label>
                 <input
                   type="password"
-                  autocomplete="one-time-code"
+                  autocomplete="new-password"
                   class="form-control form-control-sm float-end w-75"
                   name="password"
                   required
@@ -457,6 +458,7 @@
                   type="text"
                   class="form-control form-control-sm float-end w-75"
                   name="username"
+                  autocomplete="username"
                   autofocus
                   required
                 />
@@ -636,13 +638,19 @@
               </div>
               <div class="form-group mb-3">
                 <label>用户名</label>
-                <input type="text" class="form-control form-control-sm float-end w-75" name="username" disabled />
+                <input
+                  type="text"
+                  class="form-control form-control-sm float-end w-75"
+                  name="username"
+                  autocomplete="username"
+                  disabled
+                />
               </div>
               <div class="form-group mb-3">
                 <label>密码</label>
                 <input
                   type="password"
-                  autocomplete="one-time-code"
+                  autocomplete="new-password"
                   class="form-control form-control-sm float-end w-75"
                   name="newPass"
                   required
@@ -652,7 +660,7 @@
                 <label>确认密码</label>
                 <input
                   type="password"
-                  autocomplete="one-time-code"
+                  autocomplete="new-password"
                   class="form-control form-control-sm float-end w-75"
                   name="newPassAgain"
                   required
@@ -899,6 +907,7 @@
                         <input
                           type="password"
                           class="form-control form-control-sm border-0 border-bottom"
+                          autocomplete="new-password"
                           id="adminPassword"
                         />
 
@@ -970,6 +979,7 @@
                         <input
                           type="password"
                           class="form-control form-control-sm border-0 border-bottom"
+                          autocomplete="current-password"
                           id="ldapBindPassword"
                         />
                       </div>
