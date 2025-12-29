@@ -1051,6 +1051,69 @@ func main() {
 			}
 		})
 
+		ovpn.GET("/history/export", func(c *gin.Context) {
+			var p Params
+			c.ShouldBindQuery(&p)
+
+			fileName := fmt.Sprintf("history_%s.csv", time.Now().Format("20060102150405"))
+
+			c.Header("Content-Type", "text/csv; charset=utf-8")
+			c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fileName))
+			c.Header("Cache-Control", "no-cache")
+
+			c.Writer.Write([]byte{0xEF, 0xBB, 0xBF})
+
+			writer := csv.NewWriter(c.Writer)
+			header := []string{"ID", "用户名", "客户端", "VPN IP", "用户 IP", "下载流量", "上传流量", "上线时间", "在线时长", "创建时间"}
+			if err := writer.Write(header); err != nil {
+				logger.Error(context.Background(), err.Error())
+				return
+			}
+			writer.Flush()
+
+			query := db.Model(&History{})
+			if p.Qt != "" {
+				qt := strings.Split(p.Qt, ",")
+				if len(qt) == 2 {
+					query = query.Where("time_unix BETWEEN ? AND ?", qt[0], qt[1])
+				}
+			}
+
+			rows, err := query.Rows()
+			if err != nil {
+				return
+			}
+			defer rows.Close()
+
+			for rows.Next() {
+				var h History
+
+				db.ScanRows(rows, &h)
+				record := []string{
+					strconv.Itoa(int(h.ID)),
+					h.Username,
+					h.CommonName,
+					h.Vip,
+					h.Rip,
+					tools.FormatBytes(h.BytesReceived),
+					tools.FormatBytes(h.BytesSent),
+					time.Unix(h.TimeUnix, 0).Format("2006-01-02 15:04:05"),
+					(time.Duration(h.TimeDuration) * time.Second).String(),
+					h.CreatedAt.Format("2006-01-02 15:04:05"),
+				}
+
+				if err := writer.Write(record); err != nil {
+					logger.Error(context.Background(), err.Error())
+					return
+				}
+			}
+			writer.Flush()
+
+			if err := writer.Error(); err != nil {
+				logger.Error(context.Background(), err.Error())
+			}
+		})
+
 		ovpn.GET("/certs", func(c *gin.Context) {
 			c.JSON(http.StatusOK, getCerts(ovData))
 		})
