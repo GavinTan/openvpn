@@ -1,157 +1,215 @@
-!(function () {
-  'use strict';
+window.vtable = null;
+window.gid = null;
+window.tables = {};
+window.vtable = null;
+window.qt = null;
+window.now = null;
+window.lastMonth = null;
 
-  // Message 类 - 用于显示消息提示
-  class Message {
-    constructor() {
-      this.div = document.createElement('div');
-      this.div.id = 'message';
-      this.div.className = 'message';
+await import('/static/js/utils.js');
+await import('/static/js/settings.js');
+await import('/static/js/user.js');
+await import('/static/js/client.js');
+await import('/static/js/cert.js');
+await import('/static/js/history.js');
 
-      if (!document.getElementById('message')) {
-        document.body.appendChild(this.div);
+const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+const tooltipList = [...tooltipTriggerList].map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
+
+tables.status = {
+  columns: [
+    { title: '用户名/客户端', data: 'username' },
+    { title: 'VPN IP', data: 'vip' },
+    { title: '用户 IP', data: 'rip' },
+    { title: '下载流量', data: 'recvBytes' },
+    { title: '上传流量', data: 'sendBytes' },
+    { title: '上线时间', data: 'connDate' },
+    { title: '时长', data: 'onlineTime' },
+    {
+      title: '操作',
+      data: (data) => `<button type="button" class="btn btn-outline-danger btn-sm" id="killClient">断开</button>`,
+    },
+  ],
+  dom:
+    "<'d-flex justify-content-between'f<'toolbar'>>" +
+    "<'row'<'col-sm-12'tr>>" +
+    "<'d-flex justify-content-between align-items-center'lip>",
+  fnInitComplete: function () {
+    const interval = setInterval(() => {
+      if ($('#serverTable').is(':hidden')) {
+        clearInterval(interval);
+      } else {
+        vtable.ajax.reload(null, false);
       }
-    }
+    }, 30000);
+  },
+  ajax: function (data, callback, settings) {
+    request.get('/ovpn/online-client').then((data) => callback({ data }));
+  },
+};
 
-    open(type = 'info', content, duration, onClose) {
-      duration = duration == 0 ? duration : (duration || 3) * 1000;
-
-      const html = `
-    <div class="message-notice">
-      <div class="message-content message-${type}">
-        <span class="message-anticon">
-          ${this.icon}
-        </span>
-        <span>${content}</span>
-      </div>
-    </div>
-    `;
-
-      const $msgDiv = $(html).appendTo('#message');
-      $msgDiv.removeClass('move-up-leave').addClass('move-up-enter');
-      setTimeout(() => {
-        $msgDiv.removeClass('move-up-enter');
-      }, 300);
-      if (duration != 0) {
-        setTimeout(function () {
-          $msgDiv.removeClass('move-up-enter').addClass('move-up-leave');
-          setTimeout(() => {
-            $msgDiv.removeClass('move-up-leave').remove();
-          }, 300);
-          if (onClose && typeof onClose === 'function') {
-            onClose();
-          }
-        }, duration);
-      }
-    }
-
-    info(content, duration, onClose) {
-      this.icon = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16">
-      <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8 4a.905.905 0 0 0-.9.995l.35 3.507a.552.552 0 0 0 1.1 0l.35-3.507A.905.905 0 0 0 8 4zm.002 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
-    </svg>`;
-
-      this.open('info', content, duration, onClose);
-    }
-
-    success(content, duration, onClose) {
-      this.icon = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16">
-      <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
-    </svg>`;
-
-      this.open('success', content, duration, onClose);
-    }
-
-    warning(content, duration, onClose) {
-      this.icon = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16">
-      <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8 4a.905.905 0 0 0-.9.995l.35 3.507a.552.552 0 0 0 1.1 0l.35-3.507A.905.905 0 0 0 8 4zm.002 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
-    </svg>`;
-
-      this.open('warning', content, duration, onClose);
-    }
-
-    error(content, duration, onClose) {
-      this.icon = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16">
-      <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/>
-    </svg>
-    `;
-
-      this.open('error', content, duration, onClose);
-    }
+const initTable = (tab) => {
+  if (tab === 'status') {
+    $('#vtableContainer').removeClass('my-3').addClass('my-5');
+    $('#serverTable').show();
+  } else {
+    $('#vtableContainer').removeClass('my-5').addClass('my-3');
+    $('#serverTable').hide();
   }
 
-  // Request 类 - 用于处理HTTP请求
-  class Request {
-    async request(method, url, data = null) {
-      const options = {
-        method,
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-        },
-        redirect: 'manual',
-      };
-
-      if (data) {
-        options.body = new URLSearchParams(data);
-      }
-
-      try {
-        const response = await fetch(url, options);
-
-        if (response.type == 'opaqueredirect') {
-          window.location.href = response.url;
-          return;
-        }
-
-        const body = await response.json();
-        if (!response.ok) {
-          throw new Error(body?.message || response.text || response.statusText);
-        }
-
-        return body;
-      } catch (error) {
-        switch (true) {
-          case error.message.includes('UNIQUE constraint failed: user.ip_addr'):
-            message.error('IP已经使用');
-            break;
-          case error.message.includes('UNIQUE constraint failed: user.username'):
-            message.error('用户名已存在');
-            break;
-          default:
-            message.error(error.message);
-        }
-
-        throw error;
-      }
-    }
-
-    get(url) {
-      return this.request('GET', url);
-    }
-
-    put(url, data) {
-      return this.request('PUT', url, data);
-    }
-
-    post(url, data) {
-      return this.request('POST', url, data);
-    }
-
-    delete(url) {
-      return this.request('DELETE', url);
-    }
-
-    patch(url, data) {
-      return this.request('PATCH', url, data);
-    }
+  if (tab === 'history') {
+    now = new Date();
+    lastMonth = new Date(now);
+    lastMonth.setMonth(now.getMonth() - 1);
+    lastMonth.setHours(0, 0, 0, 0);
+    now.setHours(23, 59, 59, 0);
+    qt = [Date.parse(lastMonth) / 1000, Date.parse(now) / 1000];
   }
 
-  const message = new Message();
-  const request = new Request();
+  if (vtable) {
+    $('#vtable .btn-delete').popover('dispose');
+    vtable.destroy();
+    $('#vtable').empty();
+  }
 
-  window.message = message;
-  window.request = request;
-})();
+  vtable = $('#vtable').DataTable({
+    language: {
+      url: '/static/zh.json',
+      loadingRecords: '数据加载中...',
+    },
+    columnDefs: [{ className: 'dt-center', targets: '_all' }],
+    drawCallback: function () {
+      $('ul.pagination').addClass('pagination-sm');
+    },
+    ...tables[tab],
+  });
+};
+
+const urlParams = new URLSearchParams(window.location.search);
+const tabs = Object.keys(tables);
+
+if (tabs.includes(urlParams.get('tab'))) {
+  initTable(urlParams.get('tab'));
+} else {
+  initTable('status');
+}
+
+$('#vtable').on('shown.bs.popover', '.btn-delete', function () {
+  const popoverInstance = bootstrap.Popover.getInstance(this);
+  const popoverEl = $(popoverInstance.tip);
+  const row = vtable.row($(this).parents('tr')).data();
+  const delType = $(this).data('delete-type');
+
+  if (!popoverInstance) return;
+
+  popoverEl
+    .find('.btn-popover-confirm')
+    .off('click')
+    .on('click', function () {
+      switch (delType) {
+        case 'user':
+          request.delete(`/ovpn/user/${row.id}`).then((data) => {
+            popoverInstance.hide();
+            message.success(data.message);
+            vtable.ajax.reload(null, false);
+          });
+          break;
+        case 'client':
+          request.delete(`/ovpn/client/${row.name}`).then((data) => {
+            popoverInstance.hide();
+            message.success(data.message);
+            vtable.ajax.reload(null, false);
+          });
+          break;
+      }
+    });
+
+  popoverEl
+    .find('.btn-popover-cancel')
+    .off('click')
+    .on('click', function () {
+      popoverInstance.hide();
+    });
+});
+
+$('#vtable').on('show.bs.popover', '.btn-delete', function () {
+  $('.btn-delete')
+    .not(this)
+    .each(function () {
+      var popoverInstance = bootstrap.Popover.getInstance(this);
+      if (popoverInstance) {
+        popoverInstance.hide();
+      }
+    });
+});
+
+$(document).on('click', function (e) {
+  if (
+    $(e.target).data('toggle') !== 'popover' &&
+    $(e.target).parents('.popover.show').length === 0 &&
+    $(e.target).parents('.btn-delete').length === 0 &&
+    !$(e.target).hasClass('btn-delete')
+  ) {
+    $('.btn-delete').popover('hide');
+  }
+});
+
+$('#showUser').click(function () {
+  window.history.pushState(null, '', '?tab=user');
+  initTable('user');
+  if ('{{.ldapAuth}}' == 'true') {
+    const toast = $('#alertToast');
+    toast.find('.toast-body').text('已启用LDAP认证，本地VPN账号将不在工作！');
+    bootstrap.Toast.getOrCreateInstance(toast).show();
+  }
+});
+
+$('#showHistory').click(function () {
+  window.history.pushState(null, '', '?tab=history');
+  initTable('history');
+});
+
+$('#showClient').click(function () {
+  window.history.pushState(null, '', '?tab=client');
+  initTable('client');
+});
+
+$('#manageCert').click(function () {
+  window.history.pushState(null, '', '?tab=cert');
+  initTable('cert');
+});
+
+$('#restartSrv').click(function () {
+  $('#restartSrvModal').modal('show');
+});
+
+$('#restartSrvSumbit').click(function () {
+  request.post('/ovpn/server', { action: 'restartSrv' }).then((data) => {
+    $('#restartInfoModal').modal('hide');
+    message.success(data.message);
+  });
+});
+
+$('#sconfig').click(function () {
+  request.post('/ovpn/server', { action: 'getConfig' }).then((data) => {
+    $('#editServerModal textarea[name="config"]').val(data.content);
+    $('#editServerModal').modal('show');
+  });
+});
+
+$('#editServerSumbit').click(function () {
+  const content = $('#editServerModal textarea[name="config"]').val();
+
+  $('#editServerModal').modal('hide');
+  request.post('/ovpn/server', { action: 'updateConfig', content }).then((data) => {
+    message.success(data.message);
+  });
+});
+
+$(document).on('click', '#killClient', function () {
+  const id = vtable.row($(this).parents('tr')).data().id;
+
+  request.post('/ovpn/kill', { cid: id }).then(() => {
+    vtable.cell(this).row().remove().draw();
+  });
+});
