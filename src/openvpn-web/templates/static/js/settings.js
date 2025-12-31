@@ -4,6 +4,7 @@ $(document).on('click', '#settings', function () {
     $('#adminUsername').val(data.system.base.admin_username);
     $('#adminPassword').val(data.system.base.admin_password);
     $('#autoUpdateOvpnConfig').prop('checked', data.system.base.auto_update_ovpn_config);
+    $('#allowDuplicateLogin').prop('checked', data.system.base.allow_duplicate_login);
 
     $('#ldapAuth').prop('checked', data.system.ldap.ldap_auth);
     $('#ldapUrl').val(data.system.ldap.ldap_url);
@@ -132,6 +133,12 @@ $(document).on('blur', '#adminPassword', function () {
 
 $(document).on('change', '#autoUpdateOvpnConfig', function () {
   request.post('/settings', { 'system.base.auto_update_ovpn_config': $(this).prop('checked') }).then((data) => {
+    message.success(data.message);
+  });
+});
+
+$(document).on('change', '#allowDuplicateLogin', function () {
+  request.post('/settings', { 'system.base.allow_duplicate_login': $(this).prop('checked') }).then((data) => {
     message.success(data.message);
   });
 });

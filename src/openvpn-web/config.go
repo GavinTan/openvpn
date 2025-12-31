@@ -18,6 +18,7 @@ type SysBeseConfig struct {
 	AdminUsername        string `json:"admin_username" mapstructure:"admin_username"`
 	AdminPassword        string `json:"admin_password" mapstructure:"admin_password"`
 	AutoUpdateOvpnConfig bool   `json:"auto_update_ovpn_config" mapstructure:"auto_update_ovpn_config"`
+	AllowDuplicateLogin  bool   `json:"allow_duplicate_login" mapstructure:"allow_duplicate_login"`
 }
 
 type SysLdapConfig struct {
@@ -95,6 +96,7 @@ func initConfig() {
 	viper.SetDefault("system.base.admin_username", "admin")
 	viper.SetDefault("system.base.admin_password", dp)
 	viper.SetDefault("system.base.auto_update_ovpn_config", false)
+	viper.SetDefault("system.base.allow_duplicate_login", true)
 	viper.SetDefault("system.ldap.ldap_auth", false)
 	viper.SetDefault("system.ldap.ldap_url", "ldap://example.org:389")
 	viper.SetDefault("system.ldap.ldap_base_dn", "dc=example,dc=org")

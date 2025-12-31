@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gavintan/gopkg/aes"
+	"github.com/spf13/viper"
 	"gorm.io/gorm"
 )
 
@@ -89,6 +90,23 @@ func (u *User) UpdatePassword() error {
 func (u *User) Login(clogin bool) error {
 	user := u.Username
 	pass := u.Password
+
+	if !viper.GetBool("system.base.allow_duplicate_login") {
+		data, err := os.ReadFile(path.Join(ovData, "openvpn-status.log"))
+		if err != nil {
+			logger.Error(context.Background(), err.Error())
+		}
+
+		for _, v := range strings.Split(string(data), "\n") {
+			cdSlice := strings.Split(v, "\t")
+
+			if cdSlice[0] == "CLIENT_LIST" {
+				if cdSlice[9] == user {
+					return fmt.Errorf("用户已登录")
+				}
+			}
+		}
+	}
 
 	if ldapAuth {
 		l, err := InitLdap()
