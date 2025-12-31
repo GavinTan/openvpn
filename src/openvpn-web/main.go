@@ -46,7 +46,7 @@ type ClientData struct {
 	SendBytes  string `json:"sendBytes"`
 	ConnDate   string `json:"connDate"`
 	OnlineTime string `json:"onlineTime"`
-	UserName   string `json:"username"`
+	Username   string `json:"username"`
 }
 
 type ServerData struct {
@@ -179,7 +179,7 @@ func (ov *ovpn) getClient() []ClientData {
 				RecvBytes:  tools.FormatBytes(recv),
 				SendBytes:  tools.FormatBytes(send),
 				ConnDate:   cdSlice[7],
-				UserName:   username,
+				Username:   username,
 				ID:         cdSlice[10],
 				OnlineTime: (time.Duration(time.Now().Unix()-connDate.Unix()) * time.Second).String(),
 			}
@@ -637,6 +637,23 @@ func main() {
 			switch k {
 			case "system.base.admin_password":
 				val, _ = aes.AesEncrypt(val, secretKey)
+			case "system.base.allow_duplicate_login":
+				if val == "false" {
+					cfg, err := initOvpnConfig()
+					if err != nil {
+						logger.Error(context.Background(), err.Error())
+						return
+					}
+
+					statusLogPath := path.Join(ovData, "openvpn-status.log")
+					if cfg.Get("status-version") != "3" || cfg.Get("status") != statusLogPath+" 1" {
+						cfg.Set("status", statusLogPath+" 1")
+						cfg.Set("status-version", "3")
+						cfg.Save()
+
+						ov.sendCommand("signal SIGHUP")
+					}
+				}
 			case "openvpn.ovpn_subnet", "openvpn.ovpn_subnet6":
 				_, _, err := net.ParseCIDR(val)
 				if err != nil {
