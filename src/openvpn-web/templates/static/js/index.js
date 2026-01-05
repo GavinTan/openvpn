@@ -185,7 +185,7 @@ $('#restartSrv').click(function () {
 
 $('#restartSrvSumbit').click(function () {
   request.post('/ovpn/server', { action: 'restartSrv' }).then((data) => {
-    $('#restartInfoModal').modal('hide');
+    $('#restartSrvModal').modal('hide');
     message.success(data.message);
   });
 });
