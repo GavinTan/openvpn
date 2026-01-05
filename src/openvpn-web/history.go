@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gavintan/gopkg/tools"
+	"github.com/spf13/viper"
 )
 
 type History struct {
@@ -109,6 +110,11 @@ func (h History) Query(p Params) QueryData {
 	qd.RecordsFiltered = filterCount
 
 	return qd
+}
+
+func (h History) Clear() error {
+	result := db.Where("created_at < ?", time.Now().AddDate(0, 0, -viper.GetInt("system.base.history_max_days"))).Delete(&h)
+	return result.Error
 }
 
 func (History) TableName() string {

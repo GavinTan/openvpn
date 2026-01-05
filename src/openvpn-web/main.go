@@ -32,6 +32,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
 	"github.com/patrickmn/go-cache"
+	"github.com/robfig/cron/v3"
 	"github.com/spf13/viper"
 	"gorm.io/gorm"
 	gLogger "gorm.io/gorm/logger"
@@ -469,6 +470,15 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	c := cron.New()
+	c.AddFunc("@daily", func() {
+		err := History{}.Clear()
+		if err != nil {
+			logger.Error(context.Background(), err.Error())
+		}
+	})
+	c.Start()
 
 	store := gormsessions.NewStore(db, true, []byte(secretKey))
 	cc := cache.New(5*time.Minute, 10*time.Minute)

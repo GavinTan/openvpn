@@ -3,6 +3,7 @@ $(document).on('click', '#settings', function () {
     $('#webPort').val(data.system.base.web_port);
     $('#adminUsername').val(data.system.base.admin_username);
     $('#adminPassword').val(data.system.base.admin_password);
+    $('#historyMaxDays').val(data.system.base.history_max_days);
     $('#autoUpdateOvpnConfig').prop('checked', data.system.base.auto_update_ovpn_config);
     $('#allowDuplicateLogin').prop('checked', data.system.base.allow_duplicate_login);
 
@@ -128,6 +129,21 @@ $(document).on('blur', '#adminPassword', function () {
   request.post('/settings', { 'system.base.admin_password': newValue }).then((data) => {
     message.success(data.message);
     $('#settingsModal .progress-bar').width('0%');
+  });
+});
+
+$(document).on('focus', '#historyMaxDays', function () {
+  $(this).data('oldValue', $(this).val());
+});
+
+$(document).on('blur', '#historyMaxDays', function () {
+  const oldValue = $(this).data('oldValue');
+  const newValue = $(this).val();
+
+  if (oldValue === newValue) return;
+
+  request.post('/settings', { 'system.base.history_max_days': newValue }).then((data) => {
+    message.success(data.message);
   });
 });
 
