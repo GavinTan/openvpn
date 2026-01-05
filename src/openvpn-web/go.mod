@@ -11,6 +11,7 @@ require (
 	github.com/go-ldap/ldap/v3 v3.4.12
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pquerna/otp v1.5.0
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/viper v1.21.0
 	gorm.io/gorm v1.31.1
 )
