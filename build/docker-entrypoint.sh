@@ -227,12 +227,26 @@ set_ovip() {
     fi
 }
 
+set_ovconfig() {
+    cc_file="$1"
+    ovc_file="$ovpn_data/.ovc"
+
+    if [ -f "$ovc_file" ]; then
+        ovconfig=$(cat $ovc_file)
+        if [ -n "$ovconfig" ]; then
+            echo "$ovconfig" >> $cc_file
+            rm -rf $ovc_file
+        fi
+    fi
+}
+
 client_disconnect() {
     add_history
 }
 
 client_connect() {
     set_ovip "$1"
+    set_ovconfig "$1"
 }
 
 ################################################################################################

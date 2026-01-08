@@ -12,6 +12,7 @@
     <link rel="stylesheet" type="text/css" href="static/css/dataTables.bootstrap5.min.css" />
     <link rel="stylesheet" type="text/css" href="static/css/buttons.bootstrap5.min.css" />
     <link rel="stylesheet" type="text/css" href="static/css/datepicker-bs5.min.css" />
+    <link rel="stylesheet" type="text/css" href="static/css/fontawesome.min.css" />
     <link rel="stylesheet" href="static/css/index.css" />
 
     <style>
@@ -92,6 +93,54 @@
       .tooltip-inner {
         text-align: left;
         word-break: break-all;
+      }
+
+      /* 左侧树形菜单样式 */
+      .tree-menu {
+        list-style: none;
+        padding-left: 0;
+      }
+      .tree-menu .tree-menu {
+        padding-left: 20px;
+      }
+      .tree-item {
+        padding: 8px 12px;
+        margin: 2px 0;
+        border-radius: 4px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: background-color 0.2s;
+      }
+      .tree-item:hover {
+        background-color: #e9ecef;
+      }
+      .tree-item.selected {
+        background-color: #0d6efd;
+        color: white;
+      }
+      .tree-toggle {
+        width: 16px;
+        height: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
+      .tree-toggle.expanded {
+        transform: rotate(90deg);
+      }
+      .tree-toggle.hidden {
+        visibility: hidden;
+      }
+
+      #contextMenu {
+        display: none;
+        position: absolute;
+        z-index: 1050;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       }
     </style>
   </head>
@@ -354,8 +403,18 @@
         </table>
       </div>
 
-      <div id="vtableContainer" class="my-5 p-3 bg-body rounded shadow-sm">
-        <table id="vtable" class="table table-striped" style="width: 100%"></table>
+      <div class="d-flex">
+        <div class="tree-panel my-3 me-3" style="width: 250px">
+          <div id="treeContainer">
+            <ul id="treeMenu" class="tree-menu"></ul>
+          </div>
+        </div>
+
+        <div class="flex-grow-1">
+          <div id="vtableContainer" class="p-3 bg-body rounded shadow-sm">
+            <table id="vtable" class="table table-striped" style="width: 100%"></table>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -479,6 +538,10 @@
               <div class="form-group mb-3">
                 <label>配置文件</label>
                 <select class="form-select form-select-sm float-end w-75" name="ovpnConfig"></select>
+              </div>
+              <div class="form-group mb-3">
+                <label>节点</label>
+                <select class="form-select form-select-sm float-end w-75" name="gid"></select>
               </div>
               <div class="form-group mb-3">
                 <label>
@@ -1438,6 +1501,50 @@
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
       </div>
       <div class="offcanvas-body"></div>
+    </div>
+
+    <div id="contextMenu" class="dropdown-menu">
+      <a class="dropdown-item" role="button" id="menuAdd"> <i class="fas fa-plus me-2 text-primary"></i>新建节点 </a>
+      <a class="dropdown-item" role="button" id="menuEdit"> <i class="fas fa-edit me-2 text-primary"></i>编辑名称 </a>
+      <div class="dropdown-divider"></div>
+      <a class="dropdown-item" role="button" id="menuVpnConfig">
+        <i class="fab fa-jxl me-2 text-primary"></i>VPN配置
+      </a>
+      <a class="dropdown-item" role="button" id="menuExport">
+        <i class="fas fa-download me-2 text-primary"></i>导出账号
+      </a>
+      <div class="dropdown-divider"></div>
+      <a class="dropdown-item" role="button" id="menuDelete">
+        <i class="fas fa-trash-alt me-2 text-danger"></i>删除节点
+      </a>
+    </div>
+
+    <div
+      class="modal fade"
+      data-bs-backdrop="static"
+      data-bs-keyboard="false"
+      tabindex="-1"
+      id="treeVpnConfigModal"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">VPN配置（应用到节点下所有账号）</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <textarea
+            class="form-control form-control-lg border border-0 p-1"
+            name="config"
+            rows="10"
+            placeholder='push "route 192.168.8.0 255.255.255.0"&#10;push "redirect-gateway def1 ipv6 bypass-dhcp"'
+          ></textarea>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+            <button type="submit" class="btn btn-primary" id="treeVpnConfigSumbit">确认</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <footer

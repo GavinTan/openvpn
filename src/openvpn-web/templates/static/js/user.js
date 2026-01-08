@@ -162,12 +162,12 @@ tables.user = {
     });
   },
   ajax: function (data, callback, settings) {
-    request.get('/ovpn/user').then((data) => callback({ data: data?.users, authUser: data?.authUser }));
+    request.get(`/ovpn/user/${cgid}`).then((data) => callback({ data: data?.users, authUser: data?.authUser }));
   },
 };
 
 // 显示用户详情
-$(document).on('click', '#showUserOffcanvas', function () {
+$(document).on('click', '#showUserOffcanvas', async function () {
   const data = vtable.row($(this).parents('tr')).data();
   const oc = new bootstrap.Offcanvas($('#userOffcanvas'));
 
@@ -175,6 +175,8 @@ $(document).on('click', '#showUserOffcanvas', function () {
   const now = new Date();
   ed.setHours(0, 0, 0, 0);
   now.setHours(0, 0, 0, 0);
+
+  const group = await request.get(`/ovpn/group/${data.gid}`);
 
   const html = `
     <div class="desc-item row">
@@ -208,6 +210,10 @@ $(document).on('click', '#showUserOffcanvas', function () {
     <div class="desc-item row">
       <div class="col-5 desc-label">姓名</div>
       <div class="col-7 desc-value">${data.name}</div>
+    </div>
+      <div class="desc-item row">
+      <div class="col-5 desc-label">节点</div>
+      <div class="col-7 desc-value">${group?.name || ''}</div>
     </div>
     <div class="desc-item row">
       <div class="col-5 desc-label">过期时间</div>
@@ -300,6 +306,7 @@ importUserFileInput.addEventListener('change', (e) => {
 });
 
 $('#importUserSubmit').click(function () {
+  uploadFile.set('gid', cgid);
   fetch('/ovpn/user', {
     method: 'POST',
     body: uploadFile,
@@ -349,6 +356,7 @@ $('#addUserModal form').submit(function () {
       ipAddr,
       expireDate,
       ovpnConfig,
+      gid: cgid,
     })
     .then((data) => {
       vtable.ajax.reload(null, false);
@@ -379,18 +387,13 @@ $(document).on('keyup', '#addUserModal input[name="ipAddr"]', function () {
 
 // 编辑用户
 $(document).on('click', '#editUser', function () {
-  const id = vtable.row($(this).parents('tr')).data().id;
-  const name = vtable.row($(this).parents('tr')).data().name;
-  const username = vtable.row($(this).parents('tr')).data().username;
-  const ipAddr = vtable.row($(this).parents('tr')).data().ipAddr;
-  const expireDate = vtable.row($(this).parents('tr')).data().expireDate;
-  const ovpnConfig = vtable.row($(this).parents('tr')).data().ovpnConfig;
+  const u = vtable.row($(this).parents('tr')).data();
 
-  $('#editUserModal input[name="id"]').val(id);
-  $('#editUserModal input[name="name"]').val(name);
-  $('#editUserModal input[name="username"]').val(username);
-  $('#editUserModal input[name="ipAddr"]').val(ipAddr);
-  $('#editUserModal input[name="expireDate"]').val(expireDate);
+  $('#editUserModal input[name="id"]').val(u.id);
+  $('#editUserModal input[name="name"]').val(u.name);
+  $('#editUserModal input[name="username"]').val(u.username);
+  $('#editUserModal input[name="ipAddr"]').val(u.ipAddr);
+  $('#editUserModal input[name="expireDate"]').val(u.expireDate);
 
   request.get('/ovpn/client').then((data) => {
     $('#editUserModal select[name="ovpnConfig"]').html(
@@ -404,7 +407,12 @@ $(document).on('click', '#editUser', function () {
     );
   });
 
-  $('#editUserModal select[name="ovpnConfig"]').val(ovpnConfig);
+  $('#editUserModal select[name="ovpnConfig"]').val(u.ovpnConfig);
+
+  request.get('/ovpn/group').then((data) => {
+    $('#editUserModal select[name="gid"]').html(data.map((i) => `<option value="${i.id}">${i.name}</option>`));
+    $('#editUserModal select[name="gid"]').val(cgid);
+  });
 
   const elem = document.querySelector('#editUserModal input[name="expireDate"]');
   const datepicker = new Datepicker(elem, {
@@ -416,7 +424,7 @@ $(document).on('click', '#editUser', function () {
     minDate: new Date(),
   });
 
-  datepicker.setDate(new Date(expireDate));
+  datepicker.setDate(new Date(u.expireDate));
 
   $('#editUserModal').modal('show');
 });
@@ -428,8 +436,9 @@ $('#editUserModal form').submit(function () {
   const ipAddr = $('#editUserModal input[name="ipAddr"]').val();
   const expireDate = $('#editUserModal input[name="expireDate"]').val();
   const ovpnConfig = $('#editUserModal select[name="ovpnConfig"]').val() || '';
+  const gid = $('#editUserModal select[name="gid"]').val();
 
-  request.patch('/ovpn/user', { id, name, username, ipAddr, expireDate, ovpnConfig }).then((data) => {
+  request.patch('/ovpn/user', { id, name, username, ipAddr, expireDate, ovpnConfig, gid }).then((data) => {
     vtable.ajax.reload(null, false);
     $('#editUserModal').modal('hide');
     message.success(data.message);
@@ -566,3 +575,211 @@ $('#resetPassModal form').submit(function () {
 
   return false;
 });
+
+// 树形菜单
+let currentNode;
+let expandedIds = new Set();
+const max_depth = 3;
+const treeMenu = document.getElementById('treeMenu');
+
+function buildTree(data, parentId = null, depth = 0) {
+  return data
+    .filter((item) => item.parent_id === parentId)
+    .map((item) => ({
+      ...item,
+      depth: depth,
+      children: buildTree(data, item.id, depth + 1),
+    }));
+}
+
+function renderTree(nodes, container) {
+  nodes.forEach((node) => {
+    const li = document.createElement('li');
+
+    const hasChildren = node.children && node.children.length > 0;
+    const isExpanded = expandedIds.has(node.id);
+    const toggleIcon = hasChildren ? 'fa-chevron-right' : '';
+
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'tree-item';
+    itemDiv.dataset.id = node.id;
+
+    itemDiv.innerHTML = `
+          <span class="tree-toggle ${hasChildren ? '' : 'hidden'} ${isExpanded ? 'expanded' : ''}">
+              <i class="fas ${toggleIcon}"></i>
+          </span>
+          <i class="fas ${hasChildren ? (isExpanded ? 'fa-folder-open' : 'fa-folder') : 'fa-folder'} text-warning"></i>
+          <span class="text-truncate">${node.name}</span>
+      `;
+
+    li.appendChild(itemDiv);
+
+    if (hasChildren) {
+      const childUl = document.createElement('ul');
+      childUl.className = 'tree-menu';
+      childUl.style.display = isExpanded ? 'block' : 'none';
+      renderTree(node.children, childUl);
+      li.appendChild(childUl);
+    }
+
+    itemDiv.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      handleContextMenu(e, node);
+    });
+
+    itemDiv.addEventListener('click', (e) => {
+      e.stopPropagation();
+      contextMenu.style.display = 'none';
+
+      document.querySelectorAll('.tree-item').forEach((item) => item.classList.remove('selected'));
+      itemDiv.classList.add('selected');
+
+      cgid = node.id;
+      vtable.ajax.reload(null, false);
+    });
+
+    itemDiv.querySelector('.tree-toggle').addEventListener('click', (e) => {
+      e.stopPropagation();
+
+      if (hasChildren) {
+        const toggle = itemDiv.querySelector('.tree-toggle');
+        const childUl = li.querySelector('.tree-menu');
+        const folderIcon = itemDiv.querySelector('.fa-folder, .fa-folder-open');
+        const isExpanded = toggle.classList.contains('expanded');
+
+        if (isExpanded) {
+          toggle.classList.remove('expanded');
+          childUl.style.display = 'none';
+          expandedIds.delete(node.id);
+
+          folderIcon.classList.remove('fa-folder-open');
+          folderIcon.classList.add('fa-folder');
+        } else {
+          toggle.classList.add('expanded');
+          childUl.style.display = 'block';
+          expandedIds.add(node.id);
+
+          folderIcon.classList.remove('fa-folder');
+          folderIcon.classList.add('fa-folder-open');
+        }
+      }
+    });
+
+    container.appendChild(li);
+  });
+}
+
+function refreshTree(data) {
+  treeMenu.innerHTML = '';
+  const tree = buildTree(data);
+  if (expandedIds.size === 0 && tree.length > 0) {
+    expandedIds.add(tree[0].id);
+  }
+  renderTree(tree, treeMenu);
+}
+
+const contextMenu = document.getElementById('contextMenu');
+const menuAdd = document.getElementById('menuAdd');
+const menuEdit = document.getElementById('menuEdit');
+const menuExport = document.getElementById('menuExport');
+const menuDelete = document.getElementById('menuDelete');
+const menuVpnConfig = document.getElementById('menuVpnConfig');
+
+function handleContextMenu(e, node) {
+  currentNode = node;
+
+  if (node.depth < max_depth) {
+    menuAdd.style.opacity = '1';
+    menuAdd.style.pointerEvents = 'auto';
+  } else {
+    menuAdd.style.opacity = '0.5';
+    menuAdd.style.pointerEvents = 'none';
+  }
+
+  if (node.parent_id === null) {
+    menuDelete.style.opacity = '0.5';
+    menuDelete.style.pointerEvents = 'none';
+    menuVpnConfig.style.opacity = '0.5';
+    menuVpnConfig.style.pointerEvents = 'none';
+  } else {
+    menuDelete.style.opacity = '1';
+    menuDelete.style.pointerEvents = 'auto';
+    menuVpnConfig.style.opacity = '1';
+    menuVpnConfig.style.pointerEvents = 'auto';
+  }
+
+  contextMenu.style.display = 'block';
+  contextMenu.style.left = `${e.pageX}px`;
+  contextMenu.style.top = `${e.pageY}px`;
+}
+
+menuAdd.addEventListener('click', () => {
+  contextMenu.style.display = 'none';
+  setTimeout(() => {
+    const name = prompt('请输入新节点名称：');
+    if (name) {
+      request.post('/ovpn/group', { name, parent_id: currentNode.id }).then(() => {
+        expandedIds.add(currentNode.id);
+        getTreeData();
+      });
+    }
+  }, 0);
+});
+
+menuEdit.addEventListener('click', () => {
+  contextMenu.style.display = 'none';
+  setTimeout(() => {
+    const newName = prompt('修改节点名称为：', currentNode.name);
+    if (newName) {
+      request.patch('/ovpn/group', { id: currentNode.id, name: newName }).then(() => {
+        getTreeData();
+      });
+    }
+  }, 0);
+});
+
+menuExport.addEventListener('click', () => {
+  contextMenu.style.display = 'none';
+  window.location.href = `/ovpn/user/export?gid=${cgid}`;
+});
+
+menuVpnConfig.addEventListener('click', () => {
+  contextMenu.style.display = 'none';
+  request.get(`/ovpn/group/${currentNode.id}`).then((data) => {
+    $('#treeVpnConfigModal textarea[name="config"]').val(data.config?.replace(/\\n/g, '\n'));
+    $('#treeVpnConfigModal').modal('show');
+  });
+});
+
+menuDelete.addEventListener('click', () => {
+  contextMenu.style.display = 'none';
+  setTimeout(() => {
+    if (confirm(`确定要删除 "${currentNode.name}" 及其节点下所有子节点和账号数据吗？`)) {
+      request.delete(`/ovpn/group/${currentNode.id}`).then(() => {
+        getTreeData();
+        vtable.ajax.reload(null, false);
+      });
+    }
+  }, 0);
+});
+
+document.addEventListener('click', (e) => {
+  if (e.target.offsetParent !== contextMenu) {
+    contextMenu.style.display = 'none';
+  }
+});
+
+$('#treeVpnConfigSumbit').click(function () {
+  const config = $('#treeVpnConfigModal textarea[name="config"]').val();
+  request.patch('/ovpn/group', { id: currentNode.id, config: config?.trim()?.replace(/\n/g, '\\n') }).then(() => {
+    $('#treeVpnConfigModal textarea[name="config"]').val('');
+    $('#treeVpnConfigModal').modal('hide');
+    message.success('设置VPN配置成功');
+  });
+});
+
+export function getTreeData() {
+  request.get('/ovpn/group').then((data) => {
+    refreshTree(data);
+  });
+}

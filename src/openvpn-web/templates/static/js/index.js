@@ -1,5 +1,5 @@
 window.vtable = null;
-window.gid = null;
+window.cgid = null;
 window.tables = {};
 window.vtable = null;
 window.qt = null;
@@ -8,7 +8,7 @@ window.lastMonth = null;
 
 await import('/static/js/utils.js');
 await import('/static/js/settings.js');
-await import('/static/js/user.js');
+const user = await import('/static/js/user.js');
 await import('/static/js/client.js');
 await import('/static/js/cert.js');
 await import('/static/js/history.js');
@@ -49,12 +49,20 @@ tables.status = {
 };
 
 const initTable = (tab) => {
+  $('#treeMenu').empty();
+  $('#treeContainer').parent().hide();
+
   if (tab === 'status') {
     $('#vtableContainer').removeClass('my-3').addClass('my-5');
     $('#serverTable').show();
   } else {
     $('#vtableContainer').removeClass('my-5').addClass('my-3');
     $('#serverTable').hide();
+  }
+
+  if (tab === 'user') {
+    $('#treeContainer').parent().show();
+    user.getTreeData();
   }
 
   if (tab === 'history') {
