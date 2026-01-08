@@ -318,7 +318,7 @@ $(document).on('blur', '#macosClientUrl', function () {
 
   if (oldValue === newValue) return;
 
-  request.post('/settings', { 'client.client_url.maco': newValue }).then((data) => {
+  request.post('/settings', { 'client.client_url.macos': newValue }).then((data) => {
     message.success(data.message);
   });
 });
