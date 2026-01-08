@@ -463,7 +463,7 @@ func main() {
 	}
 
 	var err error
-	db, err = gorm.Open(sqlite.Open(path.Join(ovData, "ovpn.db")), &gorm.Config{
+	db, err = gorm.Open(sqlite.Open(path.Join(ovData, "ovpn.db")+"?_pragma=foreign_keys(1)"), &gorm.Config{
 		Logger: logger,
 	})
 
@@ -483,6 +483,8 @@ func main() {
 	store := gormsessions.NewStore(db, true, []byte(secretKey))
 	cc := cache.New(5*time.Minute, 10*time.Minute)
 
+	db.AutoMigrate(&Group{})
+	db.FirstOrCreate(&Group{Name: "Default", ParentID: nil})
 	db.AutoMigrate(&User{}, &History{})
 
 	r := gin.New()
@@ -802,9 +804,66 @@ func main() {
 			c.JSON(http.StatusOK, ov.getClient())
 		})
 
-		ovpn.GET("/user", func(c *gin.Context) {
+		ovpn.GET("/group", func(c *gin.Context) {
+			var g Group
+			c.JSON(http.StatusOK, g.All())
+		})
+
+		ovpn.GET("/group/:id", func(c *gin.Context) {
+			var g Group
+			c.JSON(http.StatusOK, g.Get(c.Param("id")))
+		})
+
+		ovpn.POST("/group", func(c *gin.Context) {
+			var g Group
+			c.ShouldBind(&g)
+
+			err := g.Create()
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{"message": "添加成功"})
+		})
+
+		ovpn.PATCH("/group", func(c *gin.Context) {
+			var g Group
+			c.ShouldBind(&g)
+
+			if config, ok := c.Request.PostForm["config"]; ok {
+				if config[0] == "" {
+					db.Model(&g).Update("config", nil)
+				}
+			}
+
+			err := g.Update()
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{"message": "更新成功"})
+		})
+
+		ovpn.DELETE("/group/:id", func(c *gin.Context) {
+			var g Group
+			c.ShouldBind(&g)
+
+			err := g.Delete(c.Param("id"))
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{"message": "删除成功"})
+		})
+
+		ovpn.GET("/user/:gid", func(c *gin.Context) {
 			var auth bool
-			var u User
+			var g Group
+
+			gid := c.Param("gid")
 
 			cmd := exec.Command("egrep", "^auth-user-pass-verify", path.Join(ovData, "server.conf"))
 			if err := cmd.Run(); err != nil {
@@ -813,7 +872,80 @@ func main() {
 				auth = true
 			}
 
-			c.JSON(http.StatusOK, gin.H{"users": u.All(), "authUser": auth})
+			c.JSON(http.StatusOK, gin.H{"users": g.GetUsers(gid), "authUser": auth})
+		})
+
+		ovpn.GET("/user/export", func(c *gin.Context) {
+			gid := c.Query("gid")
+
+			fileName := fmt.Sprintf("user_%s.csv", time.Now().Format("20060102150405"))
+
+			c.Header("Content-Type", "text/csv; charset=utf-8")
+			c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fileName))
+			c.Header("Cache-Control", "no-cache")
+
+			c.Writer.Write([]byte{0xEF, 0xBB, 0xBF})
+
+			writer := csv.NewWriter(c.Writer)
+			header := []string{"ID", "用户名", "密码", "姓名", "节点", "启用", "过期时间", "IP地址", "配置文件", "MFA", "创建时间"}
+			if err := writer.Write(header); err != nil {
+				logger.Error(context.Background(), err.Error())
+				return
+			}
+			writer.Flush()
+
+			gQuery := db.Model(&Group{}).
+				Select("id").
+				Where(`
+				parent_id = ?
+				OR EXISTS (
+					SELECT 1 FROM `+"`group`"+`
+					WHERE id = ? AND parent_id IS NULL
+				)
+				`, gid, gid)
+
+			rows, err := db.Model(&User{}).Where("gid = ? OR gid IN (?)", gid, gQuery).Rows()
+			if err != nil {
+				return
+			}
+			defer rows.Close()
+
+			for rows.Next() {
+				var u User
+				var g Group
+
+				db.ScanRows(rows, &u)
+
+				enable := "0"
+				if *u.IsEnable {
+					enable = "1"
+				}
+
+				dp, _ := aes.AesDecrypt(u.Password, secretKey)
+				record := []string{
+					strconv.Itoa(int(u.ID)),
+					u.Username,
+					dp,
+					u.Name,
+					g.Get(strconv.Itoa(int(u.Gid))).Name,
+					enable,
+					u.ExpireDate,
+					u.IpAddr,
+					u.OvpnConfig,
+					u.MfaSecret,
+					u.CreatedAt.Format("2006-01-02 15:04:05"),
+				}
+
+				if err := writer.Write(record); err != nil {
+					logger.Error(context.Background(), err.Error())
+					return
+				}
+			}
+			writer.Flush()
+
+			if err := writer.Error(); err != nil {
+				logger.Error(context.Background(), err.Error())
+			}
 		})
 
 		ovpn.POST("/user", func(c *gin.Context) {
@@ -827,6 +959,7 @@ func main() {
 					return
 				}
 			} else {
+				gid := c.PostForm("gid")
 				f, _ := file.Open()
 
 				defer f.Close()
@@ -856,6 +989,7 @@ func main() {
 					}
 
 					enable := record[3] == "1"
+					gid64, err := strconv.ParseUint(gid, 10, 64)
 					u := User{
 						Username:   record[0],
 						Password:   record[1],
@@ -864,6 +998,7 @@ func main() {
 						ExpireDate: strings.Replace(record[4], "/", " ", 1),
 						IpAddr:     record[5],
 						OvpnConfig: record[6],
+						Gid:        uint(gid64),
 					}
 
 					err = u.Create()

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -21,6 +22,7 @@ type User struct {
 	Password   string    `form:"password" json:"password"`
 	IsEnable   *bool     `gorm:"default:true" form:"isEnable" json:"isEnable"`
 	Name       string    `json:"name" form:"name"`
+	Gid        uint      `gorm:"default:1" json:"gid" form:"gid"`
 	ExpireDate string    `gorm:"default:NULL" json:"expireDate" form:"expireDate"`
 	IpAddr     string    `gorm:"uniqueIndex;default:NULL" json:"ipAddr" form:"ipAddr"`
 	OvpnConfig string    `json:"ovpnConfig" form:"ovpnConfig"`
@@ -50,7 +52,7 @@ func (u *User) AfterFind(tx *gorm.DB) (err error) {
 func (u *User) All() []User {
 	var users []User
 
-	result := db.Model(&User{}).WithContext(context.Background()).Find(&users)
+	result := db.WithContext(context.Background()).Find(&users)
 	if result.Error != nil {
 		logger.Error(context.Background(), result.Error.Error())
 		return []User{}
@@ -172,6 +174,36 @@ func (u *User) Login(clogin bool) error {
 
 		if u.IpAddr != "" {
 			os.WriteFile(path.Join(ovData, ".ovip"), []byte(u.IpAddr), 0644)
+		}
+
+		var ovconfig sql.NullString
+		db.Raw(`
+			WITH RECURSIVE group_up AS (
+				SELECT
+					id,
+					parent_id,
+					config,
+					0 AS level
+				FROM "group"
+				WHERE id = ?
+		
+				UNION ALL
+		
+				SELECT
+					g.id,
+					g.parent_id,
+					g.config,
+					gu.level + 1
+				FROM "group" g
+				JOIN group_up gu ON g.id = gu.parent_id
+			)
+			SELECT GROUP_CONCAT(REPLACE(config, '\n', CHAR(10)), CHAR(10)) AS configs
+			FROM group_up
+			WHERE config IS NOT NULL
+		`, u.Gid).Scan(&ovconfig)
+
+		if ovconfig.Valid {
+			os.WriteFile(path.Join(ovData, ".ovc"), []byte(ovconfig.String), 0644)
 		}
 
 		return nil
