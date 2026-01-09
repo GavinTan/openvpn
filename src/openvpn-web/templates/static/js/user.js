@@ -398,7 +398,7 @@ $(document).on('click', '#editUser', function () {
   request.get('/ovpn/client').then((data) => {
     $('#editUserModal select[name="ovpnConfig"]').html(
       data.map((i) => {
-        if (i.fullName === ovpnConfig) {
+        if (i.fullName === u.ovpnConfig) {
           return `<option value="${i.fullName}" selected>${i.name}</option>`;
         }
 
