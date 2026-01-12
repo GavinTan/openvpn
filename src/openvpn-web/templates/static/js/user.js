@@ -410,8 +410,11 @@ $(document).on('click', '#editUser', function () {
   $('#editUserModal select[name="ovpnConfig"]').val(u.ovpnConfig);
 
   request.get('/ovpn/group').then((data) => {
-    $('#editUserModal select[name="gid"]').html(data.map((i) => `<option value="${i.id}">${i.name}</option>`));
-    $('#editUserModal select[name="gid"]').val(cgid);
+    $('#editUserModal ul[name="groupList"]').html(renderDropdownItems(buildTree(data)));
+
+    const item = $(`#editUserModal [data-id="${u.gid}"]`);
+    item.addClass('selected');
+    $('#editUserModal button[name="groupBtn"]').text(item.data('name'));
   });
 
   const elem = document.querySelector('#editUserModal input[name="expireDate"]');
@@ -436,7 +439,7 @@ $('#editUserModal form').submit(function () {
   const ipAddr = $('#editUserModal input[name="ipAddr"]').val();
   const expireDate = $('#editUserModal input[name="expireDate"]').val();
   const ovpnConfig = $('#editUserModal select[name="ovpnConfig"]').val() || '';
-  const gid = $('#editUserModal select[name="gid"]').val();
+  const gid = $('#editUserModal input[name="gid"]').val();
 
   request.patch('/ovpn/user', { id, name, username, ipAddr, expireDate, ovpnConfig, gid }).then((data) => {
     vtable.ajax.reload(null, false);
@@ -669,6 +672,31 @@ function renderTree(nodes, container) {
   });
 }
 
+function renderDropdownItems(treeData) {
+  let html = '';
+  treeData.forEach((node) => {
+    const indent = '&nbsp;&nbsp;&nbsp;&nbsp;'.repeat(node.depth);
+    const symbol = node.depth > 0 ? '└─ ' : '';
+    const displayName = indent + symbol + node.name;
+
+    html += `
+    <li>
+      <a class="dropdown-item group-select-item"
+        href="#" 
+        data-id="${node.id}" 
+        data-name="${node.name}"
+        onmouseenter="this.focus()"
+      >
+        ${displayName}
+      </a>
+    </li>
+      `;
+    if (node.children) html += renderDropdownItems(node.children);
+  });
+
+  return html;
+}
+
 function refreshTree(data) {
   treeMenu.innerHTML = '';
   const tree = buildTree(data);
@@ -709,8 +737,26 @@ function handleContextMenu(e, node) {
   }
 
   contextMenu.style.display = 'block';
-  contextMenu.style.left = `${e.pageX}px`;
-  contextMenu.style.top = `${e.pageY}px`;
+
+  const menuWidth = contextMenu.offsetWidth;
+  const menuHeight = contextMenu.offsetHeight;
+
+  const pageWidth = window.innerWidth;
+  const pageHeight = window.innerHeight;
+
+  let x = e.pageX;
+  let y = e.pageY;
+
+  if (x + menuWidth > pageWidth) {
+    x -= menuWidth;
+  }
+
+  if (y + menuHeight > pageHeight) {
+    y -= menuHeight;
+  }
+
+  contextMenu.style.left = `${x}px`;
+  contextMenu.style.top = `${y}px`;
 }
 
 menuAdd.addEventListener('click', () => {
@@ -767,6 +813,20 @@ document.addEventListener('click', (e) => {
   if (e.target.offsetParent !== contextMenu) {
     contextMenu.style.display = 'none';
   }
+});
+
+$('#editUserModal .dropdown').on('shown.bs.dropdown', function () {
+  $('#editUserModal .group-select-item.selected').focus();
+});
+
+$(document).on('click', '.group-select-item', function (e) {
+  e.preventDefault();
+
+  $('#editUserModal .group-select-item').removeClass('selected');
+  $(this).addClass('selected');
+
+  $('#editUserModal button[name="groupBtn"]').text($(this).data('name'));
+  $('#editUserModal input[name="gid"]').val($(this).data('id'));
 });
 
 $('#treeVpnConfigSumbit').click(function () {
