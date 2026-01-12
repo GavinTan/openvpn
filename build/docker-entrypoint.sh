@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-SYSTEM_CONFIG="/data/config.json"
+SYSTEM_CONFIG="$OVPN_DATA/config.json"
 
 init_pki() {
     SERVER_NAME=$(jq -r '.system.base.server_name // ""' $SYSTEM_CONFIG)

@@ -129,7 +129,7 @@ func initConfig() {
 
 	viper.SetConfigName("config")
 	viper.SetConfigType("json")
-	viper.AddConfigPath(".")
+	viper.AddConfigPath(ovData)
 
 	err := viper.ReadInConfig()
 	if err != nil {
