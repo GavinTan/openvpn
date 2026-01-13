@@ -111,6 +111,7 @@ var (
 		},
 	)
 	ovData = os.Getenv("OVPN_DATA")
+	conf   config
 )
 
 func (ov *ovpn) sendCommand(command string) (string, error) {
@@ -614,7 +615,7 @@ func main() {
 			}
 		}
 
-		c.HTML(http.StatusOK, "client.html", getConfig().Client)
+		c.HTML(http.StatusOK, "client.html", conf.Client)
 	})
 
 	r.GET("/admin", func(c *gin.Context) {
