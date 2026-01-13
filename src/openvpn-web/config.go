@@ -160,6 +160,10 @@ func upadteOvpnConfig() {
 		}
 
 		for k, v := range viper.GetStringMap("openvpn") {
+			if k == "ovpn_push_dns1" || k == "ovpn_push_dns2" {
+				continue
+			}
+
 			cfg.Update("openvpn."+k, fmt.Sprintf("%v", v))
 		}
 
@@ -171,7 +175,6 @@ func upadteOvpnConfig() {
 }
 
 func loadConfig() {
-	var conf config
 	viper.Unmarshal(&conf)
 
 	webPort = conf.System.Base.WebPort
@@ -190,9 +193,4 @@ func loadConfig() {
 	ldapBindPassword = conf.System.Ldap.LdapBindPassword
 
 	ovManage = conf.Openvpn.OvpnManagement
-}
-
-func getConfig() (conf config) {
-	viper.Unmarshal(&conf)
-	return
 }
