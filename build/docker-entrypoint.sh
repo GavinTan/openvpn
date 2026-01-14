@@ -2,14 +2,15 @@
 set -e
 
 SYSTEM_CONFIG="$OVPN_DATA/config.json"
+export EASYRSA_PKI="$OVPN_DATA/pki"
 
 init_pki() {
     SERVER_NAME=$(jq -r '.system.base.server_name // ""' $SYSTEM_CONFIG)
     SERVER_CN=$(jq -r '.system.base.server_cn // ""' $SYSTEM_CONFIG ) 
     cd $OVPN_DATA && /usr/share/easy-rsa/easyrsa init-pki
    
-    cat << EOF > $OVPN_DATA/pki/vars
-set_var EASYRSA $OVPN_DATA
+    cat << EOF > $OEASYRSA_PKI/vars
+set_var EASYRSA /usr/share/easy-rsa
 set_var EASYRSA_CA_EXPIRE 365
 set_var EASYRSA_CERT_EXPIRE 365
 set_var EASYRSA_CRL_DAYS 365
@@ -20,7 +21,7 @@ EOF
     /usr/share/easy-rsa/easyrsa --batch --req-cn="$SERVER_CN" build-ca nopass
     /usr/share/easy-rsa/easyrsa --batch build-server-full "$SERVER_NAME" nopass
     /usr/share/easy-rsa/easyrsa gen-crl
-    /usr/sbin/openvpn --genkey secret $OVPN_DATA/pki/tc.key
+    /usr/sbin/openvpn --genkey secret $EASYRSA_PKI/tc.key
 }
 
 init_config() {
@@ -47,11 +48,11 @@ $([[ "$OVPN_IPV6" == "true" ]] && echo -e "server $(getsubnet $OVPN_SUBNET)\nser
 $([[ "$OVPN_GATEWAY" == "true" ]] && echo -e 'push "dhcp-option DNS 8.8.8.8"\npush "dhcp-option DNS 2001:4860:4860::8888"\npush "redirect-gateway def1 ipv6 bypass-dhcp"' || echo -e '#push "dhcp-option DNS 8.8.8.8"\n#push "dhcp-option DNS 2001:4860:4860::8888"\n#push "redirect-gateway def1 ipv6 bypass-dhcp"')
 dh none
 tls-groups prime256v1
-tls-crypt $OVPN_DATA/pki/tc.key
-crl-verify $OVPN_DATA/pki/crl.pem
-ca $OVPN_DATA/pki/ca.crt
-cert $OVPN_DATA/pki/issued/$SERVER_NAME.crt
-key $OVPN_DATA/pki/private/$SERVER_NAME.key
+tls-crypt $EASYRSA_PKI/tc.key
+crl-verify $EASYRSA_PKI/crl.pem
+ca $EASYRSA_PKI/ca.crt
+cert $EASYRSA_PKI/issued/$SERVER_NAME.crt
+key $EASYRSA_PKI/private/$SERVER_NAME.key
 auth SHA256
 cipher AES-128-GCM
 data-ciphers AES-128-GCM
@@ -109,7 +110,7 @@ run_server() {
 renew_cert() {
     SERVER_NAME=$(jq -r '.system.base.server_name // ""' $SYSTEM_CONFIG)
 
-    #cd $OVPN_DATA/pki
+    #cd $EASYRSA_PKI
     #openssl x509 -in ca.crt -days $1 -out ca.crt -signkey private/ca.key
     /usr/share/easy-rsa/easyrsa --batch --days=$1 renew-ca
     /usr/share/easy-rsa/easyrsa --batch --days=$1 renew $SERVER_NAME
@@ -183,16 +184,16 @@ $(echo -e $4)
 ## end ##
 
 <ca>
-$(cat $OVPN_DATA/pki/ca.crt)
+$(cat $EASYRSA_PKI/ca.crt)
 </ca>
 <cert>
-$(openssl x509 -in $OVPN_DATA/pki/issued/$1.crt)
+$(openssl x509 -in $EASYRSA_PKI/issued/$1.crt)
 </cert>
 <key>
-$(cat $OVPN_DATA/pki/private/$1.key)
+$(cat $EASYRSA_PKI/private/$1.key)
 </key>
 <tls-crypt>
-$(cat $OVPN_DATA/pki/tc.key)
+$(cat $EASYRSA_PKI/tc.key)
 </tls-crypt>
 EOF
 }
