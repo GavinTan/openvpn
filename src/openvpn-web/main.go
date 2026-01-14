@@ -699,7 +699,7 @@ func main() {
 
 	ovpn := r.Group("/ovpn")
 	{
-		ovpn.StaticFS("/download", http.Dir("clients"))
+		ovpn.StaticFS("/download", http.Dir(path.Join(ovData, "clients")))
 
 		ovpn.POST("/server", func(c *gin.Context) {
 			a := c.PostForm("action")
