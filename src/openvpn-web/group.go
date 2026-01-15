@@ -10,7 +10,7 @@ import (
 
 type Group struct {
 	ID        uint      `gorm:"primarykey" json:"id" form:"id"`
-	Name      string    `gorm:"uniqueIndex" json:"name" form:"name"`
+	Name      string    `json:"name" form:"name"`
 	ParentID  *uint     `json:"parent_id" form:"parent_id"`
 	Config    *string   `json:"config" form:"config"`
 	Users     []User    `gorm:"foreignKey:Gid;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
