@@ -340,23 +340,39 @@ $('#importUserSubmit').click(function () {
 });
 
 // 添加用户
-$('#addUserModal form').submit(function () {
+$('#addUserModal form').submit(function (e) {
+  e.preventDefault();
+
   const name = $('#addUserModal input[name="name"]').val();
   const username = $('#addUserModal input[name="username"]').val();
   const password = $('#addUserModal input[name="password"]').val();
+  const email = $('#addUserModal input[name="email"]').val();
   const ipAddr = $('#addUserModal input[name="ipAddr"]').val();
   const expireDate = $('#addUserModal input[name="expireDate"]').val();
   const ovpnConfig = $('#addUserModal select[name="ovpnConfig"]').val() || '';
+
+  let sendNotifyEmail = false;
+  if ($(document.activeElement).text() === '保存&发送邮件') {
+    if (!$.trim(email)) {
+      $('#addUserModal input[name="email"]').addClass('border border-danger');
+      return;
+    }
+    sendNotifyEmail = true;
+  }
+
+  $('#addUserModal input[name="email"]').removeClass('border border-danger');
 
   request
     .post('/ovpn/user', {
       name,
       username,
       password,
+      email,
       ipAddr,
       expireDate,
       ovpnConfig,
       gid: cgid,
+      sendNotifyEmail,
     })
     .then((data) => {
       vtable.ajax.reload(null, false);
@@ -364,8 +380,6 @@ $('#addUserModal form').submit(function () {
       $('#addUserModal form').trigger('reset');
       $('#addUserModal').modal('hide');
     });
-
-  return false;
 });
 
 $(document).on('keyup', '#addUserModal input[name="ipAddr"]', function () {

@@ -22,6 +22,7 @@ type User struct {
 	Password   string    `form:"password" json:"password"`
 	IsEnable   *bool     `gorm:"default:true" form:"isEnable" json:"isEnable"`
 	Name       string    `json:"name" form:"name"`
+	Email      string    `json:"email" form:"email"`
 	Gid        uint      `gorm:"default:1" json:"gid" form:"gid"`
 	ExpireDate string    `gorm:"default:NULL" json:"expireDate" form:"expireDate"`
 	IpAddr     string    `gorm:"uniqueIndex;default:NULL" json:"ipAddr" form:"ipAddr"`

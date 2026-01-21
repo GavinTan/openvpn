@@ -1,5 +1,6 @@
 $(document).on('click', '#settings', function () {
   request.get('/settings').then((data) => {
+    $('#siteUrl').val(data.system.base.site_url);
     $('#webPort').val(data.system.base.web_port);
     $('#adminUsername').val(data.system.base.admin_username);
     $('#adminPassword').val(data.system.base.admin_password);
@@ -17,6 +18,15 @@ $(document).on('click', '#settings', function () {
     $('#ldapUserAttrConfigName').val(data.system.ldap.ldap_user_attr_config_name);
     $('#ldapUserGroupFilter').prop('checked', data.system.ldap.ldap_user_group_filter);
     $('#ldapUserGroupDn').val(data.system.ldap.ldap_user_group_dn);
+
+    $('#emailSendSubjectPrefix').val(data.system.email?.send_subject_prefix);
+    $('#emailSendFrom').val(data.system.email?.send_from);
+    $('#emailSmtpHost').val(data.system.email?.host);
+    $('#emailSmtpPort').val(data.system.email?.port);
+    $('#emailSmtpUsername').val(data.system.email?.username);
+    $('#emailSmtpPassword').val(data.system.email?.password);
+    $('#emailSecurityTls').prop('checked', data.system.email?.security === 'tls');
+    $('#emailSecuritySsl').prop('checked', data.system.email?.security === 'ssl');
 
     $('#windowsClientUrl').val(data.client.client_url.windows);
     $('#macosClientUrl').val(data.client.client_url.macos);
@@ -40,6 +50,21 @@ $(document).on('click', '#settings', function () {
 });
 
 // base
+$(document).on('focus', '#siteUrl', function () {
+  $(this).data('oldValue', $(this).val());
+});
+
+$(document).on('blur', '#siteUrl', function () {
+  const oldValue = $(this).data('oldValue');
+  const newValue = $(this).val();
+
+  if (oldValue === newValue) return;
+
+  request.post('/settings', { 'system.base.site_url': newValue }).then((data) => {
+    message.success(data.message);
+  });
+});
+
 $(document).on('focus', '#webPort', function () {
   $(this).data('oldValue', $(this).val());
 });
@@ -290,6 +315,156 @@ $(document).on('blur', '#ldapUserGroupDn', function () {
   request.post('/settings', { 'system.ldap.ldap_user_group_dn': newValue }).then((data) => {
     message.success(data.message);
   });
+});
+
+// email
+$(document).on('mousedown', '#emailSendSubjectPrefix', function () {
+  if (!$(this).is(':focus')) {
+    $(this).data('oldValue', $(this).val());
+  }
+});
+
+$(document).on('blur', '#emailSendSubjectPrefix', function () {
+  const oldValue = $(this).data('oldValue');
+  const newValue = $(this).val();
+
+  if (oldValue === newValue) return;
+
+  request.post('/settings', { 'system.email.send_subject_prefix': newValue }).then((data) => {
+    message.success(data.message);
+  });
+});
+
+$(document).on('mousedown', '#emailSendFrom', function () {
+  if (!$(this).is(':focus')) {
+    $(this).data('oldValue', $(this).val());
+  }
+});
+
+$(document).on('blur', '#emailSendFrom', function () {
+  if (!this.reportValidity()) return;
+
+  const oldValue = $(this).data('oldValue');
+  const newValue = $(this).val();
+
+  if (oldValue === newValue) return;
+
+  request.post('/settings', { 'system.email.send_from': newValue }).then((data) => {
+    message.success(data.message);
+  });
+});
+
+$(document).on('mousedown', '#emailSmtpHost', function () {
+  if (!$(this).is(':focus')) {
+    $(this).data('oldValue', $(this).val());
+  }
+});
+
+$(document).on('blur', '#emailSmtpHost', function () {
+  const oldValue = $(this).data('oldValue');
+  const newValue = $(this).val();
+
+  if (oldValue === newValue) return;
+
+  request.post('/settings', { 'system.email.host': newValue }).then((data) => {
+    message.success(data.message);
+  });
+});
+
+$(document).on('mousedown', '#emailSmtpPort', function () {
+  if (!$(this).is(':focus')) {
+    $(this).data('oldValue', $(this).val());
+  }
+});
+
+$(document).on('blur', '#emailSmtpPort', function () {
+  const oldValue = $(this).data('oldValue');
+  const newValue = $(this).val();
+
+  if (oldValue === newValue) return;
+
+  request.post('/settings', { 'system.email.port': newValue }).then((data) => {
+    message.success(data.message);
+  });
+});
+
+$(document).on('mousedown', '#emailSmtpUsername', function () {
+  if (!$(this).is(':focus')) {
+    $(this).data('oldValue', $(this).val());
+  }
+});
+
+$(document).on('blur', '#emailSmtpUsername', function () {
+  if (!this.reportValidity()) return;
+
+  const oldValue = $(this).data('oldValue');
+  const newValue = $(this).val();
+
+  if (oldValue === newValue) return;
+
+  request.post('/settings', { 'system.email.username': newValue }).then((data) => {
+    message.success(data.message);
+  });
+});
+
+$(document).on('mousedown', '#emailSmtpPassword', function () {
+  if (!$(this).is(':focus')) {
+    $(this).data('oldValue', $(this).val());
+  }
+});
+
+$(document).on('blur', '#emailSmtpPassword', function () {
+  const oldValue = $(this).data('oldValue');
+  const newValue = $(this).val();
+
+  if (oldValue === newValue) return;
+
+  request.post('/settings', { 'system.email.password': newValue }).then((data) => {
+    message.success(data.message);
+  });
+});
+
+$(document).on('change', '#emailSecurityTls', function () {
+  if ($('#emailSecuritySsl').prop('checked')) {
+    $('#emailSecuritySsl').prop('checked', false);
+  }
+
+  request.post('/settings', { 'system.email.security': $(this).prop('checked') ? 'tls' : '' }).then((data) => {
+    message.success(data.message);
+  });
+});
+
+$(document).on('change', '#emailSecuritySsl', function () {
+  if ($('#emailSecurityTls').prop('checked')) {
+    $('#emailSecurityTls').prop('checked', false);
+  }
+
+  request.post('/settings', { 'system.email.security': $(this).prop('checked') ? 'ssl' : '' }).then((data) => {
+    message.success(data.message);
+  });
+});
+
+$('#emailTest').submit(function () {
+  $('#emailTestBtnspinner').removeClass('d-none');
+  $('#emailTestBtnText').text('发送中...');
+  $('#emailTestBtn').prop('disabled', true);
+
+  request
+    .post('/email/send', {
+      email: $('#emailTestTo').val(),
+      subject: 'Test',
+      content: '测试邮件！',
+    })
+    .then((data) => {
+      message.success(data.message);
+    })
+    .finally(() => {
+      $('#emailTestBtnspinner').addClass('d-none');
+      $('#emailTestBtnText').text('发送测试');
+      $('#emailTestBtn').prop('disabled', false);
+    });
+
+  return false;
 });
 
 // client url

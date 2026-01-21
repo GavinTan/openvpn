@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/x509"
 	"embed"
@@ -648,7 +649,7 @@ func main() {
 			val := vs[0]
 
 			switch k {
-			case "system.base.admin_password":
+			case "system.base.admin_password", "system.email.password":
 				val, _ = aes.AesEncrypt(val, secretKey)
 			case "system.base.allow_duplicate_login":
 				if val == "false" {
@@ -695,6 +696,19 @@ func main() {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"message": "更新成功"})
+	})
+
+	r.POST("/email/send", func(c *gin.Context) {
+		email := c.PostForm("email")
+		subject := c.PostForm("subject")
+		content := c.PostForm("content")
+
+		err := sendEmail(email, subject, content)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		} else {
+			c.JSON(http.StatusOK, gin.H{"message": "发送成功"})
+		}
 	})
 
 	ovpn := r.Group("/ovpn")
@@ -1017,6 +1031,36 @@ func main() {
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 			} else {
+				go func() {
+					sendNotifyEmail := c.PostForm("sendNotifyEmail")
+					if sendNotifyEmail == "true" {
+						var tpl *template.Template
+						var buf bytes.Buffer
+
+						tpl, err = template.ParseFS(FS, "templates/email.html")
+						if err == nil {
+							err = tpl.Execute(&buf, struct {
+								Name     string
+								Username string
+								Password string
+								SiteUrl  string
+							}{
+								Name:     u.Name,
+								Username: u.Username,
+								Password: c.PostForm("password"),
+								SiteUrl:  viper.GetString("system.base.site_url"),
+							})
+						}
+
+						if err != nil {
+							logger.Error(context.Background(), err.Error())
+							return
+						}
+
+						sendEmail(u.Email, "用户开通通知", buf.String())
+					}
+				}()
+
 				c.JSON(http.StatusOK, gin.H{"message": "添加用户成功"})
 			}
 		})
