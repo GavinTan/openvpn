@@ -35,13 +35,17 @@
 - ipv6支持
 - ldap支持
 - mfa支持
+- 邮件通知
 - 连接历史记录
 - vpn账号固定ip
+- vpn账号分组路由推送
 - 在线编辑server.conf
 - 在线重启openvpn服务
 - 一键生成客户端 & CCD配置文件
 
 ## Quick Start
+
+> 裸机部署：目前提供一个支持部分发行版的安装脚本`scripts/openvpn-install.sh`。
 
 运行 openvpn
 
@@ -90,7 +94,7 @@ docker run -d \
 
 >注意：
 >
->1. 需要在页面系统设置openvpn里启用ipv6（注意：修改openvpn配置需要系统里启用自动更新配置才会生效）
+>1. 需要在页面系统设置openvpn里启用ipv6
 >2. 启用ipv6后客户端跟服务器的proto需要都指定udp6/tcp6
 >3. docker的网络需要启用ipv6支持
 >4. 使用openvpn-connect客户端的需要使用3.4.1以后的版本
