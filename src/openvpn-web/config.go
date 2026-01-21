@@ -11,6 +11,7 @@ import (
 )
 
 type SysBeseConfig struct {
+	SiteUrl              string `json:"site_url" mapstructure:"site_url"`
 	WebPort              string `json:"web_port" mapstructure:"web_port"`
 	SecretKey            string `json:"secret_key" mapstructure:"secret_key"`
 	ServerCN             string `json:"server_cn" mapstructure:"server_cn"`
@@ -33,6 +34,16 @@ type SysLdapConfig struct {
 	LdapUserAttrConfigName string `json:"ldap_user_attr_config_name" mapstructure:"ldap_user_attr_config_name"`
 	LdapBindUserDn         string `json:"ldap_bind_user_dn" mapstructure:"ldap_bind_user_dn"`
 	LdapBindPassword       string `json:"ldap_bind_password" mapstructure:"ldap_bind_password"`
+}
+
+type SysEmailConfig struct {
+	SendSubjectPrefix string  `json:"send_subject_prefix" mapstructure:"send_subject_prefix"`
+	SendFrom          string  `json:"send_from" mapstructure:"send_from"`
+	Host              string  `json:"host" mapstructure:"host"`
+	Port              int     `json:"port" mapstructure:"port"`
+	Username          string  `json:"username" mapstructure:"username"`
+	Password          string  `json:"password" mapstructure:"password"`
+	Security          *string `json:"security" mapstructure:"security"`
 }
 
 type ClientUrlConfig struct {
@@ -58,8 +69,9 @@ type OvpnConfig struct {
 
 type config struct {
 	System struct {
-		Base SysBeseConfig `json:"base" mapstructure:"base"`
-		Ldap SysLdapConfig `json:"ldap" mapstructure:"ldap"`
+		Base  SysBeseConfig  `json:"base" mapstructure:"base"`
+		Ldap  SysLdapConfig  `json:"ldap" mapstructure:"ldap"`
+		Email SysEmailConfig `json:"email" mapstructure:"email"`
 	} `json:"system" mapstructure:"system"`
 	Client struct {
 		ClientUrl ClientUrlConfig `json:"client_url" mapstructure:"client_url"`
@@ -90,6 +102,7 @@ func initConfig() {
 	sk := genRandomString(50)
 	dp, _ := aes.AesEncrypt("admin", sk)
 
+	viper.SetDefault("system.base.site_url", "http://127.0.0.1:8833")
 	viper.SetDefault("system.base.web_port", "8833")
 	viper.SetDefault("system.base.secret_key", sk)
 	viper.SetDefault("system.base.server_cn", "ovpn_"+genRandomString(16))
@@ -109,6 +122,13 @@ func initConfig() {
 	viper.SetDefault("system.ldap.ldap_user_attr_config_name", "config")
 	viper.SetDefault("system.ldap.ldap_bind_user_dn", "cn=admin,dc=example,dc=org")
 	viper.SetDefault("system.ldap.ldap_bind_password", "adminpassword")
+	viper.SetDefault("system.email.send_subject_prefix", "【openvpn-web】")
+	viper.SetDefault("system.email.send_from", "")
+	viper.SetDefault("system.email.host", "")
+	viper.SetDefault("system.email.port", 25)
+	viper.SetDefault("system.email.username", "")
+	viper.SetDefault("system.email.password", "")
+	viper.SetDefault("system.email.security", nil)
 
 	viper.SetDefault("client.client_url.windows", "https://openvpn.net/downloads/openvpn-connect-v3-windows.msi")
 	viper.SetDefault("client.client_url.macos", "https://openvpn.net/downloads/openvpn-connect-v3-macos.dmg")

@@ -57,6 +57,7 @@
       .desc-item:nth-child(odd) {
         background-color: #f8f9fa;
       }
+
       .desc-item:nth-child(even) {
         background-color: #ffffff;
       }
@@ -81,6 +82,7 @@
         cursor: pointer;
         transition: background-color 0.2s;
       }
+
       .file-drop-zone .bg-light {
         background-color: #f8f9fa;
       }
@@ -100,13 +102,16 @@
         overflow-y: auto;
         max-height: 75vh;
       }
+
       .tree-menu {
         list-style: none;
         padding-left: 0;
       }
+
       .tree-menu .tree-menu {
         padding-left: 20px;
       }
+
       .tree-item {
         padding: 8px 12px;
         margin: 2px 0;
@@ -117,13 +122,16 @@
         gap: 8px;
         transition: background-color 0.2s;
       }
+
       .tree-item:hover {
         background-color: #e9ecef;
       }
+
       .tree-item.selected {
         background-color: #0d6efd;
         color: white;
       }
+
       .tree-toggle {
         width: 16px;
         height: 16px;
@@ -133,9 +141,11 @@
         cursor: pointer;
         transition: transform 0.2s;
       }
+
       .tree-toggle.expanded {
         transform: rotate(90deg);
       }
+
       .tree-toggle.hidden {
         visibility: hidden;
       }
@@ -471,6 +481,10 @@
                 <input type="text" class="form-control form-control-sm float-end w-75" name="name" required />
               </div>
               <div class="form-group mb-3">
+                <label>邮箱</label>
+                <input type="email" class="form-control form-control-sm float-end w-75" name="email" />
+              </div>
+              <div class="form-group mb-3">
                 <label>到期时间</label>
                 <input
                   type="text"
@@ -510,6 +524,7 @@
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
               <button type="submit" class="btn btn-primary">保存</button>
+              <button type="submit" class="btn btn-primary">保存&发送邮件</button>
             </div>
           </form>
         </div>
@@ -971,6 +986,35 @@
                   <h6 class="mb-3 fw-bold">基本</h6>
                   <div class="ms-5">
                     <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">
+                        站点
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          fill="currentColor"
+                          class="bi bi-question-circle"
+                          viewBox="0 0 16 16"
+                          data-bs-toggle="tooltip"
+                          data-bs-placement="right"
+                          data-bs-title="一般设置为外部可访问地址，通常在系统邮件中的链接中使用"
+                        >
+                          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"></path>
+                          <path
+                            d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286m1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94"
+                          ></path>
+                        </svg>
+                      </label>
+                      <div class="col-sm-9">
+                        <input
+                          type="text"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="siteUrl"
+                          value="http://127.0.0.1:8833"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
                       <label class="col-sm-3 col-form-label">WEB端口</label>
                       <div class="col-sm-9">
                         <input
@@ -1263,6 +1307,165 @@
                           class="form-control form-control-sm border-0 border-bottom"
                           id="ldapUserGroupDn"
                         />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="mx-5 my-3">
+                  <h6 class="mb-3 fw-bold">邮件配置</h6>
+                  <div class="ms-5">
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">主题前缀</label>
+                      <div class="col-sm-9">
+                        <input
+                          type="text"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="emailSendSubjectPrefix"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">
+                        发送邮箱
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          fill="currentColor"
+                          class="bi bi-question-circle"
+                          viewBox="0 0 16 16"
+                          data-bs-toggle="tooltip"
+                          data-bs-placement="right"
+                          data-bs-title="默认使用 SMTP 账号作为发件人"
+                        >
+                          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"></path>
+                          <path
+                            d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286m1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94"
+                          ></path>
+                        </svg>
+                      </label>
+                      <div class="col-sm-9">
+                        <input
+                          type="email"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="emailSendFrom"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">SMTP地址</label>
+                      <div class="col-sm-9">
+                        <input
+                          type="text"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="emailSmtpHost"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">SMTP端口</label>
+                      <div class="col-sm-9">
+                        <input
+                          type="number"
+                          oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="emailSmtpPort"
+                          value="25"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">SMTP账号</label>
+                      <div class="col-sm-9">
+                        <input
+                          type="email"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="emailSmtpUsername"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">SMTP密码</label>
+                      <div class="col-sm-9">
+                        <input
+                          type="password"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="emailSmtpPassword"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1 align-items-baseline">
+                      <label class="col-sm-3 col-form-label">
+                        安全设置
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          fill="currentColor"
+                          class="bi bi-question-circle"
+                          viewBox="0 0 16 16"
+                          data-bs-toggle="tooltip"
+                          data-bs-placement="right"
+                          data-bs-title="TLS: 与 SMTP 服务器通信时是否使用 TLS（安全）连接。这用于显式 TLS 连接，通常在端口 587 上。SSL: 与 SMTP 服务器通信时是否使用 SSL（安全）连接。这用于隐式 TLS 连接，通常在端口 465 上。"
+                        >
+                          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"></path>
+                          <path
+                            d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286m1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94"
+                          ></path>
+                        </svg>
+                      </label>
+                      <div class="col-sm-9">
+                        <div class="form-check form-check-inline">
+                          <input class="form-check-input" type="checkbox" value="" id="emailSecurityTls" />
+                          <label class="form-check-label" for="emailSecurityTls"> TLS </label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                          <input class="form-check-input" type="checkbox" value="" id="emailSecuritySsl" />
+                          <label class="form-check-label" for="emailSecuritySsl"> SSL </label>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="row mb-1 align-items-baseline">
+                      <label class="col-sm-3 col-form-label">
+                        收件人
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          fill="currentColor"
+                          class="bi bi-question-circle"
+                          viewBox="0 0 16 16"
+                          data-bs-toggle="tooltip"
+                          data-bs-placement="right"
+                          data-bs-title="用于测试电子邮件服务器的连通性"
+                        >
+                          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"></path>
+                          <path
+                            d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286m1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94"
+                          ></path>
+                        </svg>
+                      </label>
+                      <div class="col-sm-9">
+                        <form id="emailTest" class="d-flex gap-2">
+                          <input
+                            type="email"
+                            class="form-control form-control-sm border-0 border-bottom flex-fill"
+                            id="emailTestTo"
+                            required
+                          />
+                          <button
+                            class="btn btn-sm btn-outline-primary text-nowrap flex-shrink-0 d-inline-flex align-items-center gap-1"
+                            type="submit"
+                          >
+                            <span
+                              id="emailTestBtnspinner"
+                              class="spinner-border spinner-border-sm d-none"
+                              role="status"
+                              aria-hidden="true"
+                            ></span>
+                            <span id="emailTestBtnText">发送测试</span>
+                          </button>
+                        </form>
                       </div>
                     </div>
                   </div>
