@@ -40,15 +40,15 @@ import (
 )
 
 type ClientData struct {
-	ID         string `json:"id"`
-	Rip        string `json:"rip"`
-	Vip        string `json:"vip"`
-	Vip6       string `json:"vip6"`
-	RecvBytes  string `json:"recvBytes"`
-	SendBytes  string `json:"sendBytes"`
-	ConnDate   string `json:"connDate"`
-	OnlineTime string `json:"onlineTime"`
-	Username   string `json:"username"`
+	ID         string  `json:"id"`
+	Rip        string  `json:"rip"`
+	Vip        string  `json:"vip"`
+	Vip6       string  `json:"vip6"`
+	RecvBytes  float64 `json:"recvBytes"`
+	SendBytes  float64 `json:"sendBytes"`
+	ConnDate   string  `json:"connDate"`
+	OnlineTime string  `json:"onlineTime"`
+	Username   string  `json:"username"`
 }
 
 type ServerData struct {
@@ -179,8 +179,8 @@ func (ov *ovpn) getClient() []ClientData {
 				Rip:        rip,
 				Vip:        cdSlice[3],
 				Vip6:       cdSlice[4],
-				RecvBytes:  tools.FormatBytes(recv),
-				SendBytes:  tools.FormatBytes(send),
+				RecvBytes:  recv,
+				SendBytes:  send,
 				ConnDate:   cdSlice[7],
 				Username:   username,
 				ID:         cdSlice[10],
@@ -816,7 +816,7 @@ func main() {
 		})
 
 		ovpn.GET("/online-client", func(c *gin.Context) {
-			c.JSON(http.StatusOK, ov.getClient())
+			c.JSON(http.StatusOK, gin.H{"server": ov.getServer(), "clients": ov.getClient()})
 		})
 
 		ovpn.GET("/group", func(c *gin.Context) {

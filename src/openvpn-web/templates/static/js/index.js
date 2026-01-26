@@ -16,18 +16,68 @@ await import('/static/js/history.js');
 const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
 const tooltipList = [...tooltipTriggerList].map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
 
+function formatSize(bytes) {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
 tables.status = {
+  rowId: 'id',
+  order: [[5, 'desc']],
   columns: [
-    { title: '用户名/客户端', data: 'username' },
-    { title: 'VPN IP', data: 'vip' },
-    { title: '用户 IP', data: 'rip' },
-    { title: '下载流量', data: 'recvBytes' },
-    { title: '上传流量', data: 'sendBytes' },
-    { title: '上线时间', data: 'connDate' },
-    { title: '时长', data: 'onlineTime' },
+    { title: '用户名/客户端', data: 'username', name: 'username' },
+    { title: 'VPN IP', data: 'vip', name: 'vip' },
+    { title: '用户 IP', data: 'rip', name: 'rip' },
+    // {
+    //   title: '上传流量',
+    //   data: 'recvBytes',
+    //   name: 'recvBytes',
+    //   render: (data, type, row) => formatSize(data),
+    // },
+    // {
+    //   title: '下载流量',
+    //   data: 'sendBytes',
+    //   name: 'sendBytes',
+    //   render: (data, type, row) => formatSize(data),
+    // },
+    {
+      title: '上传速率',
+      data: 'upSpeed',
+      name: 'upSpeed',
+      width: '120px',
+      render: (data, type, row) => {
+        if (type === 'sort' || type === 'type') {
+          return data || 0;
+        }
+
+        return `${formatSize(data || 0)}/s`;
+      },
+    },
+    {
+      title: '下载速率',
+      data: 'downSpeed',
+      name: 'downSpeed',
+      width: '120px',
+      render: (data, type, row) => {
+        if (type === 'sort' || type === 'type') {
+          return data || 0;
+        }
+
+        return `${formatSize(data || 0)}/s`;
+      },
+    },
+    { title: '上线时间', data: 'connDate', name: 'connDate' },
+    { title: '时长', data: 'onlineTime', name: 'onlineTime', width: '120px' },
     {
       title: '操作',
-      data: (data) => `<button type="button" class="btn btn-outline-danger btn-sm" id="killClient">断开</button>`,
+      data: null,
+      orderable: false,
+      searchable: false,
+      render: (data, type, row, meta) =>
+        `<button type="button" class="btn btn-outline-danger btn-sm" id="killClient">断开</button>`,
     },
   ],
   dom:
@@ -41,10 +91,35 @@ tables.status = {
       } else {
         vtable.ajax.reload(null, false);
       }
-    }, 30000);
+    }, 1000);
   },
   ajax: function (data, callback, settings) {
-    request.get('/ovpn/online-client').then((data) => callback({ data }));
+    request.get('/ovpn/online-client').then((res) => {
+      const now = new Date();
+      res?.clients.forEach((i) => {
+        const row = vtable.row(`#${i.id}`);
+        if (row.any()) {
+          const old = row.data();
+          const t = (now - old.lastTime) / 1000;
+
+          i.downSpeed = (i.sendBytes - old.sendBytes) / t;
+          i.upSpeed = (i.recvBytes - old.recvBytes) / t;
+        }
+        i.lastTime = now;
+      });
+
+      $('#serverTable tbody').html(`
+        <tr>
+          <td>${res?.server.Address}</td>
+          <td>${res?.server.Status}</td>
+          <td>${res?.server.BytesIn}</td>
+          <td>${res?.server.BytesOut}</td>
+          <td>${res?.server.RunDate}</td>
+        </tr>
+      `);
+
+      callback({ data: res?.clients });
+    });
   },
 };
 
