@@ -211,7 +211,11 @@ $(document).on('click', '#showUserOffcanvas', async function () {
       <div class="col-5 desc-label">姓名</div>
       <div class="col-7 desc-value">${data.name}</div>
     </div>
-      <div class="desc-item row">
+    <div class="desc-item row">
+      <div class="col-5 desc-label">邮箱</div>
+      <div class="col-7 desc-value">${data.email}</div>
+    </div>
+    <div class="desc-item row">
       <div class="col-5 desc-label">节点</div>
       <div class="col-7 desc-value">${group?.name || ''}</div>
     </div>
@@ -405,6 +409,7 @@ $(document).on('click', '#editUser', function () {
 
   $('#editUserModal input[name="id"]').val(u.id);
   $('#editUserModal input[name="name"]').val(u.name);
+  $('#editUserModal input[name="email"]').val(u.email);
   $('#editUserModal input[name="username"]').val(u.username);
   $('#editUserModal input[name="ipAddr"]').val(u.ipAddr);
   $('#editUserModal input[name="expireDate"]').val(u.expireDate);
@@ -449,13 +454,14 @@ $(document).on('click', '#editUser', function () {
 $('#editUserModal form').submit(function () {
   const id = $('#editUserModal input[name="id"]').val();
   const name = $('#editUserModal input[name="name"]').val();
+  const email = $('#editUserModal input[name="email"]').val();
   const username = $('#editUserModal input[name="username"]').val();
   const ipAddr = $('#editUserModal input[name="ipAddr"]').val();
   const expireDate = $('#editUserModal input[name="expireDate"]').val();
   const ovpnConfig = $('#editUserModal select[name="ovpnConfig"]').val() || '';
   const gid = $('#editUserModal input[name="gid"]').val();
 
-  request.patch('/ovpn/user', { id, name, username, ipAddr, expireDate, ovpnConfig, gid }).then((data) => {
+  request.patch('/ovpn/user', { id, name, email, username, ipAddr, expireDate, ovpnConfig, gid }).then((data) => {
     vtable.ajax.reload(null, false);
     $('#editUserModal').modal('hide');
     message.success(data.message);
