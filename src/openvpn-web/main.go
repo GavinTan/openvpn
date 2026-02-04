@@ -812,6 +812,8 @@ func main() {
 		ovpn.POST("/login", func(c *gin.Context) {
 			var u User
 			c.ShouldBind(&u)
+			u.OvpnConfig = c.PostForm("common_name")
+
 			err := u.Login(true)
 			if err != nil {
 				c.JSON(http.StatusUnauthorized, gin.H{"message": err.Error()})

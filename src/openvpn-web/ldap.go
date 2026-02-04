@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/go-ldap/ldap/v3"
@@ -68,7 +69,7 @@ func (l *LdapConn) LdapSearch(username string) (*ldap.SearchResult, error) {
 	return sr, nil
 }
 
-func (l *LdapConn) Auth(username, password string) error {
+func (l *LdapConn) Auth(username, password, commonName string) error {
 	sr, err := l.LdapSearch(username)
 	if err != nil {
 		return err
@@ -82,6 +83,11 @@ func (l *LdapConn) Auth(username, password string) error {
 	}
 
 	defer l.Conn.Close()
+
+	configName := sr.Entries[0].GetAttributeValue(ldapUserAttrConfigName)
+	if commonName != strings.TrimSuffix(configName, ".ovpn") {
+		return fmt.Errorf("用户使用非法配置文件登录")
+	}
 
 	ipaddr := sr.Entries[0].GetAttributeValue(ldapUserAttrIpaddrName)
 	if ipaddr != "" {

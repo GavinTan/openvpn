@@ -93,6 +93,7 @@ func (u *User) UpdatePassword() error {
 func (u *User) Login(clogin bool) error {
 	user := u.Username
 	pass := u.Password
+	commonName := u.OvpnConfig
 
 	if viper.GetInt("system.base.max_duplicate_login") > 0 {
 		data, err := os.ReadFile(path.Join(ovData, "openvpn-status.log"))
@@ -122,7 +123,7 @@ func (u *User) Login(clogin bool) error {
 			return err
 		}
 
-		return l.Auth(user, pass)
+		return l.Auth(user, pass, commonName)
 	} else {
 		result := db.First(&u, "username = ?", user)
 
@@ -176,6 +177,9 @@ func (u *User) Login(clogin bool) error {
 
 		if u.Password != pass {
 			return fmt.Errorf("密码错误")
+		}
+		if commonName != strings.TrimSuffix(u.OvpnConfig, ".ovpn") {
+			return fmt.Errorf("用户使用非法配置文件登录")
 		}
 
 		if u.IpAddr != "" {

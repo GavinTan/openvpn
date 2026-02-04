@@ -3,7 +3,7 @@
 log_prefix="[OPENVPN-AUTH] $(date '+%Y-%m-%d %H:%M:%S.%3N')"
 
 
-if ! resp=$(curl -w "\n%{http_code}" --connect-timeout 5 -s -X POST "$ovpn_auth_api" --data-urlencode "username=$username" --data-urlencode "password=$password"); then
+if ! resp=$(curl -w "\n%{http_code}" --connect-timeout 5 -s -X POST "$ovpn_auth_api" --data-urlencode "username=$username" --data-urlencode "password=$password" --data-urlencode "common_name=$common_name"); then
     echo "$log_prefix [$username] 请求登录接口失败"
     exit 1
 fi
