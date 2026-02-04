@@ -1085,7 +1085,7 @@
                     </div>
                     <div class="row mb-1 align-items-baseline">
                       <label class="col-sm-3 col-form-label">
-                        用户重复登录
+                        用户登录数量
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           width="16"
@@ -1095,7 +1095,7 @@
                           viewBox="0 0 16 16"
                           data-bs-toggle="tooltip"
                           data-bs-placement="right"
-                          data-bs-title="允许同一个vpn账号重复登录"
+                          data-bs-title="允许同一个vpn账号重复登录数量，0：不限制"
                         >
                           <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"></path>
                           <path
@@ -1104,10 +1104,14 @@
                         </svg>
                       </label>
                       <div class="col-sm-9">
-                        <div class="form-check">
-                          <input class="form-check-input" type="checkbox" value="" id="allowDuplicateLogin" />
-                          <label class="form-check-label" for="allowDuplicateLogin"> 启用 </label>
-                        </div>
+                        <input
+                          type="number"
+                          oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="maxDuplicateLogin"
+                          min="0"
+                          value="0"
+                        />
                       </div>
                     </div>
                     <div class="row mb-1">

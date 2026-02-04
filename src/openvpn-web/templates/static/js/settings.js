@@ -6,7 +6,7 @@ $(document).on('click', '#settings', function () {
     $('#adminPassword').val(data.system.base.admin_password);
     $('#historyMaxDays').val(data.system.base.history_max_days);
     $('#autoUpdateOvpnConfig').prop('checked', data.system.base.auto_update_ovpn_config);
-    $('#allowDuplicateLogin').prop('checked', data.system.base.allow_duplicate_login);
+    $('#maxDuplicateLogin').val(data.system.base.max_duplicate_login);
 
     $('#ldapAuth').prop('checked', data.system.ldap.ldap_auth);
     $('#ldapUrl').val(data.system.ldap.ldap_url);
@@ -178,8 +178,22 @@ $(document).on('change', '#autoUpdateOvpnConfig', function () {
   });
 });
 
-$(document).on('change', '#allowDuplicateLogin', function () {
-  request.post('/settings', { 'system.base.allow_duplicate_login': $(this).prop('checked') }).then((data) => {
+$(document).on('focus', '#maxDuplicateLogin', function () {
+  $(this).data('oldValue', $(this).val());
+});
+
+$(document).on('blur', '#maxDuplicateLogin', function () {
+  const oldValue = $(this).data('oldValue');
+  let newValue = $(this).val();
+
+  if (oldValue === newValue) return;
+
+  if (!newValue) {
+    newValue = 0;
+    $(this).val(newValue);
+  }
+
+  request.post('/settings', { 'system.base.max_duplicate_login': newValue }).then((data) => {
     message.success(data.message);
   });
 });
