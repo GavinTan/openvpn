@@ -94,20 +94,25 @@ func (u *User) Login(clogin bool) error {
 	user := u.Username
 	pass := u.Password
 
-	if !viper.GetBool("system.base.allow_duplicate_login") {
+	if viper.GetInt("system.base.max_duplicate_login") > 0 {
 		data, err := os.ReadFile(path.Join(ovData, "openvpn-status.log"))
 		if err != nil {
 			logger.Error(context.Background(), err.Error())
 		}
 
+		loginCount := 0
 		for _, v := range strings.Split(string(data), "\n") {
 			cdSlice := strings.Split(v, "\t")
 
 			if cdSlice[0] == "CLIENT_LIST" {
 				if cdSlice[9] == user {
-					return fmt.Errorf("用户已登录")
+					loginCount++
 				}
 			}
+		}
+
+		if loginCount >= viper.GetInt("system.base.max_duplicate_login") {
+			return fmt.Errorf("用户已登录数量超过限制")
 		}
 	}
 

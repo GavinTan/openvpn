@@ -651,8 +651,13 @@ func main() {
 			switch k {
 			case "system.base.admin_password", "system.email.password":
 				val, _ = aes.AesEncrypt(val, secretKey)
-			case "system.base.allow_duplicate_login":
-				if val == "false" {
+			case "system.base.max_duplicate_login":
+				n, err := strconv.Atoi(val)
+				if err != nil {
+					n = 0
+				}
+
+				if n > 0 {
 					cfg, err := initOvpnConfig()
 					if err != nil {
 						logger.Error(context.Background(), err.Error())
