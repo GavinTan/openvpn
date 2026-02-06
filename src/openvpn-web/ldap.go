@@ -87,7 +87,7 @@ func (l *LdapConn) Auth(clogin bool, username, password, commonName string) erro
 	if clogin {
 		configName := sr.Entries[0].GetAttributeValue(ldapUserAttrConfigName)
 		if commonName != strings.TrimSuffix(configName, ".ovpn") {
-			return fmt.Errorf("用户使用非法配置文件登录")
+			return fmt.Errorf("使用非法配置文件登录")
 		}
 
 		ipaddr := sr.Entries[0].GetAttributeValue(ldapUserAttrIpaddrName)

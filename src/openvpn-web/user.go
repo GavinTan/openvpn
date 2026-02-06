@@ -144,10 +144,6 @@ func (u *User) Login(clogin bool) error {
 			}
 		}
 
-		if u.Password != pass {
-			return fmt.Errorf("密码错误")
-		}
-
 		if clogin {
 			if u.MfaSecret != "" && !strings.HasPrefix(pass, "SCRV1:") {
 				return fmt.Errorf("未获取到MFA验证码")
@@ -179,9 +175,15 @@ func (u *User) Login(clogin bool) error {
 					return fmt.Errorf("MFA验证失败")
 				}
 			}
+		}
 
+		if u.Password != pass {
+			return fmt.Errorf("密码错误")
+		}
+
+		if clogin {
 			if commonName != strings.TrimSuffix(u.OvpnConfig, ".ovpn") {
-				return fmt.Errorf("用户使用非法配置文件登录")
+				return fmt.Errorf("使用非法配置文件登录")
 			}
 
 			if u.IpAddr != "" {
