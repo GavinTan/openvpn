@@ -95,25 +95,27 @@ func (u *User) Login(clogin bool) error {
 	pass := u.Password
 	commonName := u.OvpnConfig
 
-	if viper.GetInt("system.base.max_duplicate_login") > 0 {
-		data, err := os.ReadFile(path.Join(ovData, "openvpn-status.log"))
-		if err != nil {
-			logger.Error(context.Background(), err.Error())
-		}
+	if clogin {
+		if viper.GetInt("system.base.max_duplicate_login") > 0 {
+			data, err := os.ReadFile(path.Join(ovData, "openvpn-status.log"))
+			if err != nil {
+				logger.Error(context.Background(), err.Error())
+			}
 
-		loginCount := 0
-		for _, v := range strings.Split(string(data), "\n") {
-			cdSlice := strings.Split(v, "\t")
+			loginCount := 0
+			for _, v := range strings.Split(string(data), "\n") {
+				cdSlice := strings.Split(v, "\t")
 
-			if cdSlice[0] == "CLIENT_LIST" {
-				if cdSlice[9] == user {
-					loginCount++
+				if cdSlice[0] == "CLIENT_LIST" {
+					if cdSlice[9] == user {
+						loginCount++
+					}
 				}
 			}
-		}
 
-		if loginCount >= viper.GetInt("system.base.max_duplicate_login") {
-			return fmt.Errorf("用户已登录数量超过限制")
+			if loginCount >= viper.GetInt("system.base.max_duplicate_login") {
+				return fmt.Errorf("用户已登录数量超过限制")
+			}
 		}
 	}
 
@@ -123,7 +125,7 @@ func (u *User) Login(clogin bool) error {
 			return err
 		}
 
-		return l.Auth(user, pass, commonName)
+		return l.Auth(clogin, user, pass, commonName)
 	} else {
 		result := db.First(&u, "username = ?", user)
 
@@ -140,6 +142,10 @@ func (u *User) Login(clogin bool) error {
 			if ed.Before(time.Now()) {
 				return fmt.Errorf("账号已过期")
 			}
+		}
+
+		if u.Password != pass {
+			return fmt.Errorf("密码错误")
 		}
 
 		if clogin {
@@ -173,47 +179,44 @@ func (u *User) Login(clogin bool) error {
 					return fmt.Errorf("MFA验证失败")
 				}
 			}
-		}
 
-		if u.Password != pass {
-			return fmt.Errorf("密码错误")
-		}
-		if commonName != strings.TrimSuffix(u.OvpnConfig, ".ovpn") {
-			return fmt.Errorf("用户使用非法配置文件登录")
-		}
+			if commonName != strings.TrimSuffix(u.OvpnConfig, ".ovpn") {
+				return fmt.Errorf("用户使用非法配置文件登录")
+			}
 
-		if u.IpAddr != "" {
-			os.WriteFile(path.Join(ovData, ".ovip"), []byte(u.IpAddr), 0644)
-		}
+			if u.IpAddr != "" {
+				os.WriteFile(path.Join(ovData, ".ovip"), []byte(u.IpAddr), 0644)
+			}
 
-		var ovconfig sql.NullString
-		db.Raw(`
-			WITH RECURSIVE group_up AS (
-				SELECT
-					id,
-					parent_id,
-					config,
-					0 AS level
-				FROM "group"
-				WHERE id = ?
-		
-				UNION ALL
-		
-				SELECT
-					g.id,
-					g.parent_id,
-					g.config,
-					gu.level + 1
-				FROM "group" g
-				JOIN group_up gu ON g.id = gu.parent_id
-			)
-			SELECT GROUP_CONCAT(REPLACE(config, '\n', CHAR(10)), CHAR(10)) AS configs
-			FROM group_up
-			WHERE config IS NOT NULL
-		`, u.Gid).Scan(&ovconfig)
+			var ovconfig sql.NullString
+			db.Raw(`
+				WITH RECURSIVE group_up AS (
+					SELECT
+						id,
+						parent_id,
+						config,
+						0 AS level
+					FROM "group"
+					WHERE id = ?
+			
+					UNION ALL
+			
+					SELECT
+						g.id,
+						g.parent_id,
+						g.config,
+						gu.level + 1
+					FROM "group" g
+					JOIN group_up gu ON g.id = gu.parent_id
+				)
+				SELECT GROUP_CONCAT(REPLACE(config, '\n', CHAR(10)), CHAR(10)) AS configs
+				FROM group_up
+				WHERE config IS NOT NULL
+			`, u.Gid).Scan(&ovconfig)
 
-		if ovconfig.Valid {
-			os.WriteFile(path.Join(ovData, ".ovc"), []byte(ovconfig.String), 0644)
+			if ovconfig.Valid {
+				os.WriteFile(path.Join(ovData, ".ovc"), []byte(ovconfig.String), 0644)
+			}
 		}
 
 		return nil
