@@ -424,13 +424,27 @@ func genRandomString(length int) string {
 	return string(result)
 }
 
+func IsLocalRequest(c *gin.Context) bool {
+	ip, _, err := net.SplitHostPort(c.Request.RemoteAddr)
+	if err != nil {
+		return false
+	}
+
+	parsedIP := net.ParseIP(ip)
+	if parsedIP == nil {
+		return false
+	}
+
+	return parsedIP.IsLoopback()
+}
+
 func AuthMiddleWare() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
 		user := session.Get("user")
 
 		if c.Request.URL.Path == "/ovpn/login" || c.Request.URL.Path == "/ovpn/history" {
-			if c.ClientIP() == "127.0.0.1" || c.ClientIP() == "::1" {
+			if IsLocalRequest(c) {
 				c.Next()
 				return
 			}
