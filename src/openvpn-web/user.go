@@ -182,8 +182,10 @@ func (u *User) Login(clogin bool) error {
 		}
 
 		if clogin {
-			if commonName != strings.TrimSuffix(u.OvpnConfig, ".ovpn") {
-				return fmt.Errorf("使用非法配置文件登录")
+			if viper.GetBool("system.base.validate_client_config") {
+				if commonName != strings.TrimSuffix(u.OvpnConfig, ".ovpn") {
+					return fmt.Errorf("使用非法配置文件登录")
+				}
 			}
 
 			if u.IpAddr != "" {
