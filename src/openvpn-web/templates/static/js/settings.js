@@ -7,6 +7,7 @@ $(document).on('click', '#settings', function () {
     $('#historyMaxDays').val(data.system.base.history_max_days);
     $('#autoUpdateOvpnConfig').prop('checked', data.system.base.auto_update_ovpn_config);
     $('#maxDuplicateLogin').val(data.system.base.max_duplicate_login);
+    $('#validateClientConfig').prop('checked', data.system.base.validate_client_config);
 
     $('#ldapAuth').prop('checked', data.system.ldap.ldap_auth);
     $('#ldapUrl').val(data.system.ldap.ldap_url);
@@ -194,6 +195,12 @@ $(document).on('blur', '#maxDuplicateLogin', function () {
   }
 
   request.post('/settings', { 'system.base.max_duplicate_login': newValue }).then((data) => {
+    message.success(data.message);
+  });
+});
+
+$(document).on('change', '#validateClientConfig', function () {
+  request.post('/settings', { 'system.base.validate_client_config': $(this).prop('checked') }).then((data) => {
     message.success(data.message);
   });
 });

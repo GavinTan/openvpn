@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-ldap/ldap/v3"
+	"github.com/spf13/viper"
 )
 
 type LdapUserData struct {
@@ -85,9 +86,11 @@ func (l *LdapConn) Auth(clogin bool, username, password, commonName string) erro
 	defer l.Conn.Close()
 
 	if clogin {
-		configName := sr.Entries[0].GetAttributeValue(ldapUserAttrConfigName)
-		if commonName != strings.TrimSuffix(configName, ".ovpn") {
-			return fmt.Errorf("使用非法配置文件登录")
+		if viper.GetBool("system.base.validate_client_config") {
+			configName := sr.Entries[0].GetAttributeValue(ldapUserAttrConfigName)
+			if commonName != strings.TrimSuffix(configName, ".ovpn") {
+				return fmt.Errorf("使用非法配置文件登录")
+			}
 		}
 
 		ipaddr := sr.Entries[0].GetAttributeValue(ldapUserAttrIpaddrName)

@@ -21,6 +21,7 @@ type SysBeseConfig struct {
 	AutoUpdateOvpnConfig bool   `json:"auto_update_ovpn_config" mapstructure:"auto_update_ovpn_config"`
 	MaxDuplicateLogin    int    `json:"max_duplicate_login" mapstructure:"max_duplicate_login"`
 	HistoryMaxDays       int    `json:"history_max_days" mapstructure:"history_max_days"`
+	ValidateClientConfig bool   `json:"validate_client_config" mapstructure:"validate_client_config"`
 }
 
 type SysLdapConfig struct {
@@ -111,6 +112,7 @@ func initConfig() {
 	viper.SetDefault("system.base.admin_password", dp)
 	viper.SetDefault("system.base.auto_update_ovpn_config", false)
 	viper.SetDefault("system.base.max_duplicate_login", 0)
+	viper.SetDefault("system.base.validate_client_config", false)
 	viper.SetDefault("system.base.history_max_days", 90)
 	viper.SetDefault("system.ldap.ldap_auth", false)
 	viper.SetDefault("system.ldap.ldap_url", "ldap://example.org:389")
