@@ -75,6 +75,7 @@ EOF
             ;;
         *)
             echo "不支持的系统！"
+            exit 1
             ;;
     esac
 }
