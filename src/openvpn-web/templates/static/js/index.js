@@ -1,7 +1,6 @@
 window.vtable = null;
 window.cgid = null;
 window.tables = {};
-window.vtable = null;
 window.qt = null;
 window.now = null;
 window.lastMonth = null;
@@ -28,9 +27,22 @@ tables.status = {
   rowId: 'id',
   order: [[5, 'desc']],
   columns: [
-    { title: '用户名/客户端', data: 'username', name: 'username' },
-    { title: 'VPN IP', data: 'vip', name: 'vip' },
-    { title: '用户 IP', data: 'rip', name: 'rip' },
+    {
+      title: '用户名/客户端',
+      data: 'username',
+      name: 'username',
+      className: 'dt-center w-min-160',
+      render: (data, type, row) =>
+        `<button class="btn btn-link text-decoration-none p-0" id="showOnlineClientOffcanvas">${data}</button>`,
+    },
+    {
+      title: 'VPN IP',
+      data: 'vip',
+      name: 'vip',
+      className: 'dt-center w-max-250 text-truncate',
+      render: (data, type, row) => `${row.vip && row.vip6 ? `${row.vip}<br />${row.vip6}` : row.vip || row.vip6}`,
+    },
+    { title: '用户 IP', data: 'rip', name: 'rip', className: 'dt-center w-max-250 text-truncate' },
     // {
     //   title: '上传流量',
     //   data: 'recvBytes',
@@ -47,7 +59,7 @@ tables.status = {
       title: '上传速率',
       data: 'upSpeed',
       name: 'upSpeed',
-      width: '120px',
+      className: 'dt-center w-min-120',
       render: (data, type, row) => {
         if (type === 'sort' || type === 'type') {
           return data || 0;
@@ -60,7 +72,7 @@ tables.status = {
       title: '下载速率',
       data: 'downSpeed',
       name: 'downSpeed',
-      width: '120px',
+      className: 'dt-center w-min-120',
       render: (data, type, row) => {
         if (type === 'sort' || type === 'type') {
           return data || 0;
@@ -70,26 +82,35 @@ tables.status = {
       },
     },
     { title: '上线时间', data: 'connDate', name: 'connDate' },
-    { title: '时长', data: 'onlineTime', name: 'onlineTime', width: '120px' },
+    { title: '时长', data: 'onlineTime', name: 'onlineTime' },
     {
       title: '操作',
       data: null,
       orderable: false,
       searchable: false,
-      render: (data, type, row, meta) =>
-        `<button type="button" class="btn btn-outline-danger btn-sm" id="killClient">断开</button>`,
+      className: 'dt-center w-min-200',
+      render: (data, type, row, meta) => `
+      <button type="button" class="btn btn-outline-danger btn-sm" id="killClient">断开</button>
+      <button type="button" class="btn btn-outline-primary btn-sm" id="rateLimit">限速</button>
+      ${
+        data.isNftBlacklist
+          ? '<button type="button" class="btn btn-outline-success btn-sm" id="enableNetwork">解网</button>'
+          : '<button type="button" class="btn btn-outline-warning btn-sm" id="disableNetwork">禁网</button>'
+      }
+      `,
     },
   ],
   dom:
-    "<'d-flex justify-content-between'f<'toolbar'>>" +
+    "<'d-md-flex justify-content-between'f<'toolbar'>>" +
     "<'row'<'col-sm-12'tr>>" +
-    "<'d-flex justify-content-between align-items-center'lip>",
+    "<'d-md-flex justify-content-between align-items-center'lip>",
   fnInitComplete: function () {
     const interval = setInterval(() => {
       if ($('#serverTable').is(':hidden')) {
         clearInterval(interval);
       } else {
         vtable.ajax.reload(null, false);
+        // vtable.columns.adjust().draw(false);
       }
     }, 1000);
   },
@@ -97,6 +118,9 @@ tables.status = {
     request.get('/ovpn/online-client').then((res) => {
       const now = new Date();
       res?.clients.forEach((i) => {
+        i.downSpeed = 0;
+        i.upSpeed = 0;
+
         const row = vtable.row(`#${i.id}`);
         if (row.any()) {
           const old = row.data();
@@ -105,6 +129,7 @@ tables.status = {
           i.downSpeed = (i.sendBytes - old.sendBytes) / t;
           i.upSpeed = (i.recvBytes - old.recvBytes) / t;
         }
+
         i.lastTime = now;
       });
 
@@ -156,6 +181,8 @@ const initTable = (tab) => {
   }
 
   vtable = $('#vtable').DataTable({
+    responsive: true,
+    colReorder: true,
     language: {
       url: '/static/zh.json',
       loadingRecords: '数据加载中...',
@@ -295,4 +322,139 @@ $(document).on('click', '#killClient', function () {
   request.post('/ovpn/kill', { cid: id }).then(() => {
     vtable.cell(this).row().remove().draw();
   });
+});
+
+$(document).on('click', '#rateLimit', function () {
+  const data = vtable.row($(this).parents('tr')).data();
+  $('#rateLimitModal form').trigger('reset');
+  request.get(`/ovpn/rateLimit?vip=${data.vip || data.vip6}`).then((res) => {
+    if (res.upQos.rate) {
+      $('#rateLimitModal input[name="upload"]').val(res.upQos.rate);
+      $('#rateLimitModal select[name="uploadUnit"]').val(res.upQos.unit);
+    }
+
+    if (res.downQos.rate) {
+      $('#rateLimitModal input[name="download"]').val(res.downQos.rate);
+      $('#rateLimitModal select[name="downloadUnit"]').val(res.downQos.unit);
+    }
+
+    $('#rateLimitModal').modal('show');
+    $('#rateLimitModal input[name="vip"]').val(
+      data.vip && data.vip6 ? `${data.vip},${data.vip6}` : data.vip || data.vip6
+    );
+  });
+});
+
+$('#rateLimitModal form').submit(function (e) {
+  e.preventDefault();
+
+  const vip = $('#rateLimitModal input[name="vip"]').val();
+  const upload = $('#rateLimitModal input[name="upload"]').val();
+  const uploadUnit = $('#rateLimitModal select[name="uploadUnit"]').val();
+  const download = $('#rateLimitModal input[name="download"]').val();
+  const downloadUnit = $('#rateLimitModal select[name="downloadUnit"]').val();
+
+  request
+    .post(`/ovpn/rateLimit`, {
+      vip,
+      upload,
+      uploadUnit,
+      download,
+      downloadUnit,
+    })
+    .then((data) => {
+      $('#rateLimitModal').modal('hide');
+      message.success(data.message);
+    });
+});
+
+$(document).on('click', '#disableNetwork', function () {
+  const data = vtable.row($(this).parents('tr')).data();
+  $('#disableNetworkModal h4 span').text(data.vip || data.vip6);
+  $('#disableNetworkModal input[name="vip"]').val(
+    data.vip && data.vip6 ? `${data.vip},${data.vip6}` : data.vip || data.vip6
+  );
+  $('#disableNetworkModal').modal('show');
+});
+
+$(document).on('click', '#disableNetworkSubmit', function () {
+  const vip = $('#disableNetworkModal input[name="vip"]').val();
+  request.post('/ovpn/netBlackList', { vip, action: 'add' }).then(() => {
+    $('#disableNetworkModal').modal('hide');
+    message.success('禁网成功');
+  });
+});
+
+$(document).on('click', '#enableNetwork', function () {
+  const data = vtable.row($(this).parents('tr')).data();
+  $('#enableNetworkModal h4 span').text(data.vip || data.vip6);
+  $('#enableNetworkModal input[name="vip"]').val(
+    data.vip && data.vip6 ? `${data.vip},${data.vip6}` : data.vip || data.vip6
+  );
+  $('#enableNetworkModal').modal('show');
+});
+
+$(document).on('click', '#enableNetworkSubmit', function () {
+  const vip = $('#enableNetworkModal input[name="vip"]').val();
+  request.post('/ovpn/netBlackList', { vip, action: 'delete' }).then(() => {
+    $('#enableNetworkModal').modal('hide');
+    message.success('解除网络限制成功');
+  });
+});
+
+// 显示在线客户端详情
+$(document).on('click', '#showOnlineClientOffcanvas', async function () {
+  const data = vtable.row($(this).parents('tr')).data();
+  const oc = new bootstrap.Offcanvas($('#onlineClientOffcanvas'));
+
+  const html = `
+    <div class="desc-item row">
+      <div class="col-5 desc-label">ID</div>
+      <div class="col-7 desc-value">${data.id}</div>
+    </div>
+    <div class="desc-item row">
+      <div class="col-5 desc-label">用户名/客户端</div>
+      <div class="col-7 desc-value">${data.username}</div>
+    </div>
+    <div class="desc-item row">
+      <div class="col-5 desc-label">用户 IP</div>
+      <div class="col-7 desc-value">${data.rip}</div>
+    </div>
+    <div class="desc-item row">
+      <div class="col-5 desc-label">VPN IP</div>
+      <div class="col-7 desc-value">${data.vip}</div>
+    </div>
+   ${
+     data.vip6 &&
+     `
+       <div class="desc-item row">
+         <div class="col-5 desc-label">VPN IPV6</div>
+         <div class="col-7 desc-value">${data.vip6}</div>
+       </div>
+     `
+   }
+    <div class="desc-item row">
+      <div class="col-5 desc-label">上传流量</div>
+      <div class="col-7 desc-value">${formatSize(data.recvBytes)}</div>
+    </div>
+    <div class="desc-item row">
+      <div class="col-5 desc-label">下载流量</div>
+      <div class="col-7 desc-value">${formatSize(data.sendBytes)}</div>
+    </div>
+    <div class="desc-item row">
+      <div class="col-5 desc-label">上线时间</div>
+      <div class="col-7 desc-value">${data.connDate}</div>
+    </div>
+    <div class="desc-item row">
+      <div class="col-5 desc-label">时长</div>
+      <div class="col-7 desc-value">${data.onlineTime}</div>
+    </div>
+    <div class="desc-item row">
+      <div class="col-5 desc-label">禁止网络</div>
+      <div class="col-7 desc-value">${data.isNftBlackList ? '是' : '否'}</div>
+    </div>
+    `;
+
+  $('#onlineClientOffcanvas .offcanvas-body').html(html);
+  oc.show();
 });

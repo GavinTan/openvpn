@@ -13,6 +13,8 @@
     <link rel="stylesheet" type="text/css" href="static/css/buttons.bootstrap5.min.css" />
     <link rel="stylesheet" type="text/css" href="static/css/datepicker-bs5.min.css" />
     <link rel="stylesheet" type="text/css" href="static/css/fontawesome.min.css" />
+    <link rel="stylesheet" type="text/css" href="static/css/colReorder.bootstrap5.min.css" />
+    <link rel="stylesheet" type="text/css" href="static/css/responsive.bootstrap5.min.css" />
     <link rel="stylesheet" href="static/css/index.css" />
 
     <style>
@@ -26,6 +28,11 @@
 
       .dataTables_info {
         padding-top: 0 !important;
+      }
+
+      table.dataTable th.dt-type-date div.dt-column-header,
+      table.dataTable th.dt-type-numeric div.dt-column-header {
+        flex-direction: row;
       }
 
       .offcanvas-body button.nav-link {
@@ -169,6 +176,22 @@
       .dropdown-item:focus {
         background-color: selecteditem;
         color: selecteditemtext;
+      }
+
+      .w-min-120 {
+        min-width: 120px;
+      }
+
+      .w-min-160 {
+        min-width: 160px;
+      }
+
+      .w-min-200 {
+        min-width: 200px;
+      }
+
+      .w-max-250 {
+        max-width: 250px;
       }
     </style>
   </head>
@@ -410,7 +433,7 @@
     <div class="container-fluid">
       <div id="serverTable" class="my-3 p-3 bg-body rounded shadow-sm" style="display: none">
         <table class="table table-borderless m-0 text-center">
-          <thead class="border-bottom border-2">
+          <thead class="border-bottom" style="--bs-border-width: 2px">
             <tr>
               <th scope="col">VPN Server</th>
               <th scope="col">状态</th>
@@ -440,7 +463,7 @@
 
         <div class="flex-grow-1">
           <div id="vtableContainer" class="p-3 bg-body rounded shadow-sm">
-            <table id="vtable" class="table table-striped" style="width: 100%"></table>
+            <table id="vtable" class="table table-striped align-middle my-2" style="width: 100%"></table>
           </div>
         </div>
       </div>
@@ -1814,6 +1837,134 @@
       </div>
     </div>
 
+    <div
+      class="modal fade"
+      data-bs-backdrop="static"
+      data-bs-keyboard="false"
+      tabindex="-1"
+      id="rateLimitModal"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form>
+            <div class="modal-header">
+              <h5 class="modal-title">网络限速</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <input type="text" class="form-control form-control-sm" name="vip" hidden />
+              <div class="mb-4">
+                <label>上传速率</label>
+                <div class="input-group float-end w-75">
+                  <input
+                    type="text"
+                    class="form-control form-control-sm"
+                    name="upload"
+                    autocomplete="off"
+                    value="0"
+                    oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                  />
+                  <select class="form-select" style="max-width: 100px" name="uploadUnit">
+                    <option value="mbytes/second">MB/s</option>
+                    <option value="kbytes/second" selected>KB/s</option>
+                    <option value="bytes/second">B/s</option>
+                  </select>
+                </div>
+              </div>
+              <div class="mb-4">
+                <label>下载速率</label>
+                <div class="input-group float-end w-75">
+                  <input
+                    type="text"
+                    class="form-control form-control-sm"
+                    name="download"
+                    autocomplete="off"
+                    value="0"
+                    oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                  />
+                  <select class="form-select" style="max-width: 100px" name="downloadUnit">
+                    <option value="mbytes/second">MB/s</option>
+                    <option value="kbytes/second" selected>KB/s</option>
+                    <option value="bytes/second">B/s</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+              <button type="submit" class="btn btn-primary">确认</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="modal fade"
+      data-bs-backdrop="static"
+      data-bs-keyboard="false"
+      tabindex="-1"
+      id="disableNetworkModal"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">提示</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <input type="text" name="vip" hidden />
+          <div class="modal-body" style="text-align: center">
+            <h4>确认禁止 <span class="text-primary">xxx</span> 联网吗?</h4>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+            <button type="submit" class="btn btn-primary" id="disableNetworkSubmit">确认</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="modal fade"
+      data-bs-backdrop="static"
+      data-bs-keyboard="false"
+      tabindex="-1"
+      id="enableNetworkModal"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">提示</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <input type="text" name="vip" hidden />
+          <div class="modal-body" style="text-align: center">
+            <h4>确认解除 <span class="text-primary">xxx</span> 网络限制吗?</h4>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+            <button type="submit" class="btn btn-primary" id="enableNetworkSubmit">确认</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="offcanvas offcanvas-end"
+      tabindex="-1"
+      id="onlineClientOffcanvas"
+      aria-labelledby="onlineClientOffcanvasLabel"
+    >
+      <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="onlineClientOffcanvasLabel">详情</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+      </div>
+      <div class="offcanvas-body"></div>
+    </div>
+
     <footer
       class="fixed-bottom border-top bg-light d-flex justify-content-between align-items-center px-1"
       style="font-size: 12px"
@@ -1823,7 +1974,7 @@
     </footer>
     <script type="text/javascript" src="static/js/lib/jquery.min.js"></script>
     <script type="text/javascript" src="static/js/lib/bootstrap.bundle.min.js"></script>
-    <script type="text/javascript" src="static/js/lib/jquery.dataTables.min.js"></script>
+    <script type="text/javascript" src="static/js/lib/dataTables.min.js"></script>
     <script type="text/javascript" src="static/js/lib/dataTables.bootstrap5.min.js"></script>
     <script type="text/javascript" src="static/js/lib/dataTables.buttons.min.js"></script>
     <script type="text/javascript" src="static/js/lib/buttons.bootstrap5.min.js"></script>
@@ -1831,6 +1982,10 @@
     <script type="text/javascript" src="static/js/lib/datepicker-full.min.js"></script>
     <script type="text/javascript" src="static/js/lib/datepicker.zh-CN.js"></script>
     <script type="text/javascript" src="static/js/lib/dayjs.min.js"></script>
+    <script type="text/javascript" src="static/js/lib/dataTables.colReorder.min.js"></script>
+    <script type="text/javascript" src="static/js/lib/colReorder.bootstrap5.min.js"></script>
+    <script type="text/javascript" src="static/js/lib/dataTables.responsive.min.js"></script>
+    <script type="text/javascript" src="static/js/lib/responsive.bootstrap5.min.js"></script>
     <script type="module" src="/static/js/index.js"></script>
   </body>
 </html>

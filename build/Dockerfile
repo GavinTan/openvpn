@@ -1,6 +1,6 @@
-FROM alpine:3.23.2
+FROM alpine:3.23.3
 
-RUN apk add --no-cache openssl openvpn iptables iptables-legacy bash supervisor curl sqlite grep mailcap coreutils jq
+RUN apk add --no-cache openssl openvpn iptables iptables-legacy bash supervisor curl sqlite grep mailcap coreutils jq nftables
 #RUN mkdir /lib64 && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2
 
 COPY docker-entrypoint.sh /usr/bin
