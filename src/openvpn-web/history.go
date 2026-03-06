@@ -14,7 +14,9 @@ import (
 type History struct {
 	ID            uint      `gorm:"primarykey" json:"id" form:"id"`
 	Vip           string    `gorm:"column:vip;comment:'VPN IP'" json:"vip" form:"vip"`
+	Vip6          string    `gorm:"column:vip6;comment:'VPN IPV6'" json:"vip6" form:"vip6"`
 	Rip           string    `gorm:"column:rip;comment:'用户 IP'" json:"rip" form:"rip"`
+	Rip6          string    `gorm:"column:rip6;comment:'用户 IPV6'" json:"rip6" form:"rip6"`
 	CommonName    string    `gorm:"column:common_name;comment:'客户端名称'" json:"common_name" form:"common_name"`
 	Username      string    `gorm:"column:username;comment:'用户名'" json:"username" form:"username"`
 	BytesReceived float64   `gorm:"comment:'下载流量'" form:"bytes_received" json:"bytes_received"`

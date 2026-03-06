@@ -2,8 +2,16 @@ tables.history = {
   columns: [
     { title: '用户名', data: 'username' },
     { title: '客户端', data: 'common_name' },
-    { title: 'VPN IP', data: 'vip' },
-    { title: '用户 IP', data: 'rip' },
+    {
+      title: 'VPN IP',
+      data: 'vip',
+      render: (data, type, row) => (row.vip && row.vip6 ? `${row.vip}<br />${row.vip6}` : row.vip || row.vip6),
+    },
+    {
+      title: '用户 IP',
+      data: 'rip',
+      render: (data, type, row) => row.rip || row.rip6,
+    },
     { title: '上传流量', data: 'bytes_received' },
     { title: '下载流量', data: 'bytes_sent' },
     { title: '上线时间', data: 'time_unix' },
