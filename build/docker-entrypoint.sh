@@ -103,26 +103,6 @@ run_server() {
 		}
 	fi
 
-	TABLE=$(jq -r '.system.base.nft_qos_name // "openvpn-qos"' $SYSTEM_CONFIG)
-	nft list table inet $TABLE >/dev/null 2>&1 || nft add table inet $TABLE
-	nft list set inet $TABLE blacklist_4 >/dev/null 2>&1 || {
-		nft add set inet $TABLE blacklist_v4 '{ type ipv4_addr; }'
-	}
-	nft list set inet $TABLE blacklist_6 >/dev/null 2>&1 || {
-		nft add set inet $TABLE blacklist_v6 '{ type ipv6_addr; }'
-	}
-	nft list chain inet $TABLE forward >/dev/null 2>&1 || {
-		nft add chain inet $TABLE forward '{ type filter hook forward priority filter; policy accept; }'
-		nft add rule inet $TABLE forward ip saddr @blacklist_v4 drop
-		nft add rule inet $TABLE forward ip6 saddr @blacklist_v6 drop
-	}
-	nft list chain inet $TABLE upload >/dev/null 2>&1 || {
-		nft add chain inet $TABLE upload '{ type filter hook postrouting priority filter; policy accept; }'
-	}
-	nft list chain inet $TABLE download >/dev/null 2>&1 || {
-		nft add chain inet $TABLE download '{ type filter hook prerouting priority filter; policy accept; }'
-	}
-
 	/usr/sbin/openvpn $OVPN_DATA/server.conf
 }
 
@@ -221,6 +201,7 @@ check_config() {
 	config=$OVPN_DATA/server.conf
 	grep -q "^client-connect" $config || echo "client-connect /usr/bin/docker-entrypoint.sh" >>$config
 	grep -q "^client-disconnect" $config || echo "client-disconnect /usr/bin/docker-entrypoint.sh" >>$config
+	grep -q "^learn-address" $config || echo "learn-address /usr/bin/docker-entrypoint.sh" >>$config
 }
 
 add_history() {
@@ -260,7 +241,65 @@ set_ovconfig() {
 	fi
 }
 
+load_nftconfig() {
+	NFT_CONFIG="$OVPN_DATA/openvpn.nft"
+	TABLE=$(jq -r '.system.base.nft_table_name // "openvpn-nft"' $SYSTEM_CONFIG)
+
+	[ ! -f $NFT_CONFIG ] && cat <<EOF >$NFT_CONFIG
+table inet $TABLE {
+	set blacklist_v4 {
+		type ipv4_addr
+	}
+
+	set blacklist_v6 {
+		type ipv6_addr
+	}
+
+	chain forward {
+		type filter hook forward priority filter; policy accept;
+		ip saddr @blacklist_v4 drop
+		ip6 saddr @blacklist_v6 drop
+	}
+
+	chain upload {
+		type filter hook postrouting priority filter; policy accept;
+	}
+
+	chain download {
+		type filter hook prerouting priority filter; policy accept;
+	}
+}
+EOF
+
+	nft -f $NFT_CONFIG
+}
+
+set_firewall() {
+	set +e
+	WEB_PORT=$(jq -r '.system.base.web_port // "8833"' $ovpn_data/config.json)
+	ovpn_firewall_api="http://127.0.0.1:$WEB_PORT/ovpn/firewall?a=add_ovips"
+	data="vip=$ifconfig_pool_remote_ip&vip6=$ifconfig_pool_remote_ip6&username=$username"
+	status=$(curl -w "%{http_code}" --connect-timeout 5 -s -X POST -o /dev/null -d $data $ovpn_firewall_api)
+	if [[ $? -ne 0 || $status -ne 200 ]]; then
+		echo "[CLIENT-CONNECT] $0:$LINENO 设置防火墙出错，请检查！"
+	fi
+	set -e
+}
+
+delete_firewall() {
+	set +e
+	WEB_PORT=$(jq -r '.system.base.web_port // "8833"' $ovpn_data/config.json)
+	ovpn_firewall_api="http://127.0.0.1:$WEB_PORT/ovpn/firewall?a=delete_ovips"
+	data="vip=$ifconfig_pool_remote_ip&vip6=$ifconfig_pool_remote_ip6&username=$username"
+	status=$(curl -w "%{http_code}" --connect-timeout 5 -s -X POST -o /dev/null -d $data $ovpn_firewall_api)
+	if [[ $? -ne 0 || $status -ne 200 ]]; then
+		echo "[CLIENT-DISCONNECT] $0:$LINENO 移除防火墙策略出错，请检查！"
+	fi
+	set -e
+}
+
 client_disconnect() {
+	delete_firewall
 	add_history
 }
 
@@ -305,6 +344,7 @@ case $1 in
 		init_config
 	fi
 
+	load_nftconfig
 	check_config
 	run_server
 	;;
@@ -320,6 +360,10 @@ client-connect)
 	;;
 client-disconnect)
 	client_disconnect "$@"
+	exit 0
+	;;
+learn-address)
+	[ "$1" == "add" ] && set_firewall "$@"
 	exit 0
 	;;
 esac

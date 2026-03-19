@@ -237,6 +237,28 @@ func (u User) Info() User {
 	return u
 }
 
+func (u *User) GetGroups() []Group {
+	var groups []Group
+
+	db.Raw(`
+		WITH RECURSIVE group_tree AS (
+			SELECT g.*
+			FROM "group" g
+			INNER JOIN user u ON u.gid = g.id
+			WHERE u.username = ?
+
+			UNION ALL
+
+			SELECT g.*
+			FROM "group" g
+			INNER JOIN group_tree gt ON g.id = gt.parent_id
+		)
+		SELECT DISTINCT id FROM group_tree
+	`, u.Username).Scan(&groups)
+
+	return groups
+}
+
 func (User) TableName() string {
 	return "user"
 }

@@ -16,7 +16,6 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
-	"net/netip"
 	"os"
 	"os/exec"
 	"path"
@@ -50,6 +49,7 @@ type ClientData struct {
 	ConnDate       string  `json:"connDate"`
 	OnlineTime     string  `json:"onlineTime"`
 	Username       string  `json:"username"`
+	CommonName     string  `json:"commonName"`
 	IsNftBlacklist bool    `json:"isNftBlacklist"`
 }
 
@@ -121,7 +121,7 @@ func (ov *ovpn) sendCommand(command string) (string, error) {
 	var data string
 	var sb strings.Builder
 
-	conn, err := net.DialTimeout("tcp", ov.address, time.Second*10)
+	conn, err := net.DialTimeout("tcp", ov.address, time.Second*3)
 	if err != nil {
 		logger.Error(context.Background(), err.Error())
 		return data, err
@@ -129,7 +129,7 @@ func (ov *ovpn) sendCommand(command string) (string, error) {
 
 	defer conn.Close()
 
-	conn.SetDeadline(time.Now().Add(time.Second * 10))
+	conn.SetDeadline(time.Now().Add(time.Second * 3))
 	conn.Write([]byte(fmt.Sprintf("%s\n", command)))
 
 	for {
@@ -172,11 +172,6 @@ func (ov *ovpn) getClient() []ClientData {
 				rip = cdSlice[2][:strings.IndexByte(cdSlice[2], ':')]
 			}
 
-			username := cdSlice[9]
-			if username == "UNDEF" {
-				username = cdSlice[1]
-			}
-
 			cd := ClientData{
 				Rip:            rip,
 				Vip:            cdSlice[3],
@@ -184,10 +179,11 @@ func (ov *ovpn) getClient() []ClientData {
 				RecvBytes:      recv,
 				SendBytes:      send,
 				ConnDate:       cdSlice[7],
-				Username:       username,
+				Username:       cdSlice[9],
+				CommonName:     cdSlice[1],
 				ID:             cdSlice[10],
 				OnlineTime:     (time.Duration(time.Now().Unix()-connDate.Unix()) * time.Second).String(),
-				IsNftBlacklist: getNftBlacklist(cdSlice[3]) || getNftBlacklist(cdSlice[4]),
+				IsNftBlacklist: getNftTableSetElement("blacklist", cdSlice[3]) || getNftTableSetElement("blacklist", cdSlice[4]),
 			}
 
 			clients = append(clients, cd)
@@ -441,148 +437,12 @@ func IsLocalRequest(c *gin.Context) bool {
 	return parsedIP.IsLoopback()
 }
 
-type chainRuleData struct {
-	Rate   string `json:"rate"`
-	Unit   string `json:"unit"`
-	Handle string `json:"handle"`
-}
-
-func getNftQosChain(chain, ip string) chainRuleData {
-	_, err := netip.ParseAddr(ip)
-	if err != nil {
-		return chainRuleData{}
-	}
-
-	cmd := exec.Command("sh", "-o", "pipefail", "-c", fmt.Sprintf("nft -a list chain inet %s %s|awk '$3 == \"%s\" {print $(NF-5), $(NF-4), $(NF-1), $NF}'", nftQosName, chain, ip))
-	if out, err := cmd.CombinedOutput(); err != nil {
-		if len(out) == 0 {
-			out = []byte(err.Error())
-		}
-		logger.Error(context.Background(), string(out))
-	} else {
-		if len(out) > 0 {
-			outSlice := strings.Split(strings.TrimSpace(string(out)), " ")
-			return chainRuleData{
-				Rate:   outSlice[0],
-				Unit:   outSlice[1],
-				Handle: outSlice[3],
-			}
-		}
-	}
-
-	return chainRuleData{}
-}
-
-func setNftQosChain(chain, ips, rate, unit string) error {
-	rulePrefix := "ip"
-
-	for ip := range strings.SplitSeq(ips, ",") {
-		addr, err := netip.ParseAddr(ip)
-		if err != nil {
-			return fmt.Errorf("invalid ip: %s", ip)
-		}
-
-		if addr.Is6() {
-			rulePrefix = "ip6"
-		}
-
-		trafficDir := "daddr"
-		if chain == "upload" {
-			trafficDir = "saddr"
-		}
-
-		r, _ := strconv.Atoi(rate)
-		if r < 0 {
-			return nil
-		}
-
-		qos := getNftQosChain(chain, ip)
-		if qos.Handle == "" && r == 0 {
-			return nil
-		}
-
-		cmd := exec.Command("sh", "-o", "pipefail", "-c", fmt.Sprintf("nft add rule inet %s %s %s %s %s limit rate over %s %s drop", nftQosName, chain, rulePrefix, trafficDir, ip, rate, unit))
-		if qos.Handle != "" {
-			if r == 0 {
-				cmd = exec.Command("sh", "-o", "pipefail", "-c", fmt.Sprintf("nft delete rule inet %s %s handle %s", nftQosName, chain, qos.Handle))
-			} else {
-				cmd = exec.Command("sh", "-o", "pipefail", "-c", fmt.Sprintf("nft replace rule inet %s %s handle %s %s %s %s limit rate over %s %s drop", nftQosName, chain, qos.Handle, rulePrefix, trafficDir, ip, rate, unit))
-			}
-		}
-
-		if out, err := cmd.CombinedOutput(); err != nil {
-			if len(out) == 0 {
-				out = []byte(err.Error())
-			}
-
-			return fmt.Errorf("%s", out)
-		}
-	}
-
-	return nil
-}
-
-func getNftBlacklist(ip string) bool {
-	setName := "blacklist_v4"
-
-	addr, err := netip.ParseAddr(ip)
-	if err != nil {
-		return false
-	}
-
-	if addr.Is6() {
-		setName = "blacklist_v6"
-	}
-
-	cmd := exec.Command("sh", "-o", "pipefail", "-c", fmt.Sprintf("nft -j list set inet %s %s | jq --arg ip '%s' '.nftables[].set.elem[]? == $ip'", nftQosName, setName, ip))
-	if out, err := cmd.CombinedOutput(); err != nil {
-		if len(out) == 0 {
-			out = []byte(err.Error())
-		}
-		logger.Error(context.Background(), string(out))
-	} else {
-		return strings.TrimSpace(string(out)) == "true"
-	}
-
-	return false
-}
-
-func setNftBlackList(ips, action string) error {
-	setName := "blacklist_v4"
-
-	for ip := range strings.SplitSeq(ips, ",") {
-		addr, err := netip.ParseAddr(ip)
-		if err != nil {
-			return fmt.Errorf("invalid ip: %s", ip)
-		}
-
-		if addr.Is6() {
-			setName = "blacklist_v6"
-		}
-
-		cmd := exec.Command("sh", "-o", "pipefail", "-c", fmt.Sprintf("nft add element inet %s %s { %s }", nftQosName, setName, ip))
-		if getNftBlacklist(ip) && action == "delete" {
-			cmd = exec.Command("sh", "-o", "pipefail", "-c", fmt.Sprintf("nft delete element inet %s %s { %s }", nftQosName, setName, ip))
-		}
-
-		if out, err := cmd.CombinedOutput(); err != nil {
-			if len(out) == 0 {
-				out = []byte(err.Error())
-			}
-
-			return fmt.Errorf("%s", out)
-		}
-	}
-
-	return nil
-}
-
 func AuthMiddleWare() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
 		user := session.Get("user")
 
-		if c.Request.URL.Path == "/ovpn/login" || c.Request.URL.Path == "/ovpn/history" {
+		if c.Request.URL.Path == "/ovpn/login" || c.Request.URL.Path == "/ovpn/history" || c.Request.URL.Path == "/ovpn/firewall" {
 			if IsLocalRequest(c) {
 				c.Next()
 				return
@@ -640,7 +500,7 @@ func main() {
 
 	db.AutoMigrate(&Group{})
 	db.FirstOrCreate(&Group{Name: "Default", ParentID: nil})
-	db.AutoMigrate(&User{}, &History{})
+	db.AutoMigrate(&User{}, &History{}, &Firewall{})
 
 	r := gin.New()
 	r.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
@@ -962,51 +822,10 @@ func main() {
 			c.JSON(http.StatusOK, gin.H{"code": http.StatusOK})
 		})
 
-		ovpn.GET("/rateLimit", func(c *gin.Context) {
-			vip := c.Query("vip")
-			upQos := getNftQosChain("upload", vip)
-			downQos := getNftQosChain("download", vip)
-
-			c.JSON(http.StatusOK, gin.H{"upQos": upQos, "downQos": downQos})
-		})
-
-		ovpn.POST("/rateLimit", func(c *gin.Context) {
-			vip := c.PostForm("vip")
-			upload := c.PostForm("upload")
-			uploadUnit := c.PostForm("uploadUnit")
-			download := c.PostForm("download")
-			downloadUnit := c.PostForm("downloadUnit")
-
-			err := setNftQosChain("upload", vip, upload, uploadUnit)
-			if err != nil {
-				logger.Error(context.Background(), err.Error())
-				c.JSON(http.StatusInternalServerError, gin.H{"message": "设置上传速率失败"})
-				return
-			}
-
-			err = setNftQosChain("download", vip, download, downloadUnit)
-			if err != nil {
-				logger.Error(context.Background(), err.Error())
-				c.JSON(http.StatusInternalServerError, gin.H{"message": "设置下载速率失败"})
-				return
-			}
-
-			c.JSON(http.StatusOK, gin.H{"message": "设置速率成功"})
-		})
-
-		ovpn.POST("/netBlackList", func(c *gin.Context) {
-			vip := c.PostForm("vip")
-			action := c.PostForm("action")
-
-			err := setNftBlackList(vip, action)
-			if err != nil {
-				logger.Error(context.Background(), err.Error())
-				c.JSON(http.StatusInternalServerError, gin.H{"message": "禁网失败"})
-				return
-			}
-
-			c.JSON(http.StatusOK, gin.H{"message": "禁网成功"})
-		})
+		ovpn.GET("/firewall", FirewallHandler)
+		ovpn.POST("/firewall", FirewallHandler)
+		ovpn.PATCH("/firewall", FirewallHandler)
+		ovpn.DELETE("/firewall/:id", FirewallHandler)
 
 		ovpn.POST("/login", func(c *gin.Context) {
 			var u User
