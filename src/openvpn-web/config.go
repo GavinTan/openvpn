@@ -22,7 +22,7 @@ type SysBeseConfig struct {
 	MaxDuplicateLogin    int    `json:"max_duplicate_login" mapstructure:"max_duplicate_login"`
 	HistoryMaxDays       int    `json:"history_max_days" mapstructure:"history_max_days"`
 	ValidateClientConfig bool   `json:"validate_client_config" mapstructure:"validate_client_config"`
-	NftQosName           string `json:"nft_qos_name" mapstructure:"nft_qos_name"`
+	NftTableName         string `json:"nft_table_name" mapstructure:"nft_table_name"`
 }
 
 type SysLdapConfig struct {
@@ -96,7 +96,7 @@ var (
 	ldapUserAttrConfigName string
 	ldapBindUserDn         string
 	ldapBindPassword       string
-	nftQosName             string
+	nftTableName           string
 
 	ovManage string
 )
@@ -116,7 +116,7 @@ func initConfig() {
 	viper.SetDefault("system.base.max_duplicate_login", 0)
 	viper.SetDefault("system.base.validate_client_config", false)
 	viper.SetDefault("system.base.history_max_days", 90)
-	viper.SetDefault("system.base.nft_qos_name", "openvpn-qos")
+	viper.SetDefault("system.base.nft_table_name", "openvpn-nft")
 	viper.SetDefault("system.ldap.ldap_auth", false)
 	viper.SetDefault("system.ldap.ldap_url", "ldap://example.org:389")
 	viper.SetDefault("system.ldap.ldap_base_dn", "dc=example,dc=org")
@@ -216,7 +216,7 @@ func loadConfig() {
 	ldapUserAttrConfigName = conf.System.Ldap.LdapUserAttrConfigName
 	ldapBindUserDn = conf.System.Ldap.LdapBindUserDn
 	ldapBindPassword = conf.System.Ldap.LdapBindPassword
-	nftQosName = conf.System.Base.NftQosName
+	nftTableName = conf.System.Base.NftTableName
 
 	ovManage = conf.Openvpn.OvpnManagement
 }

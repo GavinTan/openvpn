@@ -11,6 +11,7 @@ const user = await import('/static/js/user.js');
 await import('/static/js/client.js');
 await import('/static/js/cert.js');
 await import('/static/js/history.js');
+await import('/static/js/firewall.js');
 
 const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
 const tooltipList = [...tooltipTriggerList].map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
@@ -33,7 +34,9 @@ tables.status = {
       name: 'username',
       className: 'dt-center w-min-160',
       render: (data, type, row) =>
-        `<button class="btn btn-link text-decoration-none p-0" id="showOnlineClientOffcanvas">${data}</button>`,
+        `<button class="btn btn-link text-decoration-none p-0" id="showOnlineClientOffcanvas">
+      ${data == 'UNDEF' ? row.commonName : data}
+        </button>`,
     },
     {
       title: 'VPN IP',
@@ -231,6 +234,13 @@ $('#vtable').on('shown.bs.popover', '.btn-delete', function () {
             vtable.ajax.reload(null, false);
           });
           break;
+        case 'firewall':
+          request.delete(`/ovpn/firewall/${row.id}`).then((data) => {
+            popoverInstance.hide();
+            message.success(data.message);
+            vtable.ajax.reload(null, false);
+          });
+          break;
       }
     });
 
@@ -284,6 +294,11 @@ $('#showClient').click(function () {
   initTable('client');
 });
 
+$('#showFirewall').click(function () {
+  window.history.pushState(null, '', '?tab=firewall');
+  initTable('firewall');
+});
+
 $('#manageCert').click(function () {
   window.history.pushState(null, '', '?tab=cert');
   initTable('cert');
@@ -327,7 +342,7 @@ $(document).on('click', '#killClient', function () {
 $(document).on('click', '#rateLimit', function () {
   const data = vtable.row($(this).parents('tr')).data();
   $('#rateLimitModal form').trigger('reset');
-  request.get(`/ovpn/rateLimit?vip=${data.vip || data.vip6}`).then((res) => {
+  request.get(`/ovpn/firewall?a=get_rateLimit&vip=${data.vip || data.vip6}`).then((res) => {
     if (res.upQos.rate) {
       $('#rateLimitModal input[name="upload"]').val(res.upQos.rate);
       $('#rateLimitModal select[name="uploadUnit"]').val(res.upQos.unit);
@@ -355,7 +370,7 @@ $('#rateLimitModal form').submit(function (e) {
   const downloadUnit = $('#rateLimitModal select[name="downloadUnit"]').val();
 
   request
-    .post(`/ovpn/rateLimit`, {
+    .post('/ovpn/firewall?a=set_rateLimit', {
       vip,
       upload,
       uploadUnit,
@@ -379,9 +394,9 @@ $(document).on('click', '#disableNetwork', function () {
 
 $(document).on('click', '#disableNetworkSubmit', function () {
   const vip = $('#disableNetworkModal input[name="vip"]').val();
-  request.post('/ovpn/netBlackList', { vip, action: 'add' }).then(() => {
+  request.post('/ovpn/firewall?a=add_blacklist', { vip }).then((data) => {
     $('#disableNetworkModal').modal('hide');
-    message.success('禁网成功');
+    message.success(data.message);
   });
 });
 
@@ -396,9 +411,9 @@ $(document).on('click', '#enableNetwork', function () {
 
 $(document).on('click', '#enableNetworkSubmit', function () {
   const vip = $('#enableNetworkModal input[name="vip"]').val();
-  request.post('/ovpn/netBlackList', { vip, action: 'delete' }).then(() => {
+  request.post('/ovpn/firewall?a=remove_blacklist', { vip }).then((data) => {
     $('#enableNetworkModal').modal('hide');
-    message.success('解除网络限制成功');
+    message.success(data.message);
   });
 });
 
