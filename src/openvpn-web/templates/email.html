@@ -45,7 +45,10 @@
             <tr>
               <td style="padding: 24px; color: #333333; font-size: 14px; line-height: 1.8">
                 <p style="margin: 0 0 10px 0">您好 <strong style="color: #2f80ed">{{.Name}}</strong>，</p>
-                <p style="margin: 0 0 15px 0">您的 <strong>OpenVPN</strong> 服务已成功开通，账号信息如下：</p>
+                <p style="margin: 0 0 15px 0">
+                  您的 <strong>OpenVPN</strong> {{ if eq .Type "resetPass" }}密码已重置{{ else }}服务已成功开通{{
+                  end}}，账号信息如下：
+                </p>
 
                 <table
                   width="100%"
@@ -60,14 +63,18 @@
                     <td style="padding: 10px; border-bottom: 1px solid #e6e6e6">{{.Username}}</td>
                   </tr>
                   <tr>
-                    <td style="padding: 10px; font-weight: bold">密码：</td>
+                    <td style="padding: 10px; font-weight: bold">
+                      {{ if eq .Type "resetPass" }}新密码：{{ else }}密码：{{ end }}
+                    </td>
                     <td style="padding: 10px">{{.Password}}</td>
                   </tr>
                 </table>
 
+                {{ if ne .Type "resetPass" }}
                 <p style="color: #e74c3c; margin: 10px 0 0 0; font-size: 12px">
                   为保障账号安全，首次登录后请尽快修改密码。
                 </p>
+                {{ end }}
 
                 <p style="margin: 28px 0 0 0; text-align: center">
                   <a href="{{.SiteUrl}}" target="_blank" style="color: #2f80ed; text-decoration: none">

@@ -1066,11 +1066,13 @@ func main() {
 						tpl, err = template.ParseFS(FS, "templates/email.html")
 						if err == nil {
 							err = tpl.Execute(&buf, struct {
+								Type     string
 								Name     string
 								Username string
 								Password string
 								SiteUrl  string
 							}{
+								Type:     "addUser",
 								Name:     u.Name,
 								Username: u.Username,
 								Password: c.PostForm("password"),
@@ -1111,6 +1113,45 @@ func main() {
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 			} else {
+				go func() {
+					var cu User
+					db.First(&cu, u.ID)
+
+					if cu.Email != "" {
+						sendNotifyEmail := c.PostForm("sendNotifyEmail")
+						if sendNotifyEmail == "true" {
+							var tpl *template.Template
+							var buf bytes.Buffer
+
+							tpl, err = template.ParseFS(FS, "templates/email.html")
+							if err == nil {
+								err = tpl.Execute(&buf, struct {
+									Type     string
+									Name     string
+									Username string
+									Password string
+									SiteUrl  string
+								}{
+									Type:     "resetPass",
+									Name:     cu.Name,
+									Username: cu.Username,
+									Password: c.PostForm("password"),
+									SiteUrl:  viper.GetString("system.base.site_url"),
+								})
+							}
+
+							if err != nil {
+								logger.Error(context.Background(), err.Error())
+								return
+							}
+
+							sendEmail(cu.Email, "用户密码重置通知", buf.String())
+						}
+					} else {
+						logger.Error(context.Background(), "发送邮件通知失败，用户没有配置邮箱地址")
+					}
+				}()
+
 				c.JSON(http.StatusOK, gin.H{"message": "用户更新成功"})
 			}
 		})
