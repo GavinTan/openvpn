@@ -68,9 +68,14 @@ tables.user = {
             ? '<button class="btn btn-link text-decoration-none p-0" id="disableUser">禁用</button>'
             : '<button class="btn btn-link text-decoration-none p-0" id="enableUser">启用</button>'
         }
-        <button class="btn btn-link text-decoration-none p-0 btn-delete" data-bs-toggle="popover" data-delete-type="user" data-delete-name="${
-          data.username
-        }">删除</button>
+        <button
+          class="btn btn-link text-decoration-none p-0 btn-delete"
+          data-bs-toggle="popover"
+          data-delete-type="user"
+          data-delete-name="${data.username}"
+        >
+          删除
+        </button>
         <div class="btn btn-link text-decoration-none p-0 dropdown">
           <button class="btn btn-link text-decoration-none p-0 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
             更多
@@ -138,7 +143,7 @@ tables.user = {
       `
     );
   },
-  drawCallback: function (settings) {
+  drawCallback: function () {
     $('#vtable .btn-delete').popover('dispose');
     $('#vtable .btn-delete').popover({
       container: 'body',
@@ -147,11 +152,11 @@ tables.user = {
       sanitize: false,
       trigger: 'click',
       title: '提示',
-      content: function () {
-        const name = $(this).data('delete-name');
+      content: function (e) {
+        const name = $(e).data('delete-name');
         return `
           <div>
-            <p>确定删除 <strong>${name}</strong> 吗？</p>
+            <p>确认删除 <strong>${name}</strong> 吗？</p>
             <div class="d-flex justify-content-center">
               <button class="btn btn-secondary btn-sm me-2 btn-popover-cancel">取消</button>
               <button class="btn btn-primary btn-sm btn-popover-confirm">确认</button>
@@ -379,6 +384,7 @@ $('#addUserModal form').submit(function (e) {
       sendNotifyEmail,
     })
     .then((data) => {
+      message.success(data.message);
       vtable.ajax.reload(null, false);
       // vtable.columns.adjust().draw(false);
       $('#addUserModal form').trigger('reset');
@@ -575,13 +581,13 @@ $(document).on('keyup', '#resetPassModal input[name="newPassAgain"]', function (
   if (newPassAgain == newPss) {
     $('#resetPassModal .form-text').addClass('d-none');
     $('#resetPassModal input[name="newPassAgain"]').removeClass('border border-danger');
-    $('#resetPassSumbit').removeAttr('disabled');
+    $('#resetPassModal :submit').removeAttr('disabled');
   } else {
     $('#resetPassModal .form-text').text('密码不一致！');
     $('#resetPassModal .form-text').addClass('text-danger');
     $('#resetPassModal input[name="newPassAgain"]').addClass('border border-danger');
     $('#resetPassModal .form-text').removeClass('d-none');
-    $('#resetPassSumbit').attr('disabled', true);
+    $('#resetPassModal :submit').attr('disabled', true);
   }
 });
 
@@ -589,7 +595,12 @@ $('#resetPassModal form').submit(function () {
   const id = $('#resetPassModal input[name="id"]').val();
   const newPass = $('#resetPassModal input[name="newPassAgain"]').val();
 
-  request.patch('/ovpn/user', { id, password: newPass }).then(() => {
+  let sendNotifyEmail = false;
+  if ($(document.activeElement).text() === '保存&发送邮件') {
+    sendNotifyEmail = true;
+  }
+
+  request.patch('/ovpn/user', { id, password: newPass, sendNotifyEmail }).then(() => {
     vtable.ajax.reload(null, false);
     $('#resetPassModal form').trigger('reset');
     $('#resetPassModal').modal('hide');
