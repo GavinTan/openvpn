@@ -593,7 +593,8 @@ func main() {
 			}
 
 			if err = u.Login(false); err == nil {
-				if u.Info().MfaSecret != "" {
+				user := u.Info()
+				if user.MfaSecret != "" {
 					cc.Set("valid_user", u.Username, 1*time.Minute)
 					c.JSON(200, gin.H{"message": "需要MFA验证"})
 					return
@@ -602,7 +603,7 @@ func main() {
 				session.Set("user", u.Username)
 				session.Save()
 
-				c.JSON(200, gin.H{"message": "登录成功", "redirect": "/"})
+				c.JSON(200, gin.H{"message": "登录成功", "redirect": "/", "user": user})
 				return
 			}
 		}
@@ -1397,7 +1398,23 @@ func main() {
 				}
 			}
 
-			err := u.UpdatePassword()
+			err := db.Transaction(func(tx *gorm.DB) error {
+				data := User{
+					Password: u.Password,
+				}
+
+				if isFirstLogin, ok := c.Request.PostForm["isFirstLogin"]; ok {
+					val := isFirstLogin[0] == "true"
+					data.IsFirstLogin = &val
+				}
+
+				if err := tx.Model(&u).Updates(data).Error; err != nil {
+					return err
+				}
+
+				return nil
+			})
+
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 			} else {
