@@ -31,6 +31,13 @@
         border: 0.125rem solid var(--mdb-form-control-border-color);
         cursor: pointer;
       }
+
+      .bi {
+        width: 1em;
+        height: 1em;
+        vertical-align: -0.125em;
+        fill: currentcolor;
+      }
     </style>
   </head>
 
@@ -122,6 +129,83 @@
         </div>
       </div>
     </div>
+
+    <div
+      class="modal fade"
+      id="modifyPassModal"
+      data-bs-backdrop="static"
+      data-bs-keyboard="false"
+      tabindex="-1"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <form>
+            <div class="modal-header">
+              <h2 class="modal-title fs-5">修改密码</h2>
+            </div>
+            <div class="modal-body">
+              <div class="alert alert-warning d-flex align-items-center" role="alert">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="bi flex-shrink-0 me-2"
+                  viewBox="0 0 16 16"
+                  role="img"
+                  aria-label="Warning:"
+                >
+                  <path
+                    d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"
+                  />
+                </svg>
+                <div>这是您首次登录，为了安全请修改默认密码。</div>
+              </div>
+              <div class="form-group mb-3" hidden>
+                <label>ID:</label>
+                <input type="text" class="form-control form-control-sm float-end w-75" name="id" disabled />
+              </div>
+              <div class="form-group mb-3">
+                <label>当前密码</label>
+                <input
+                  type="password"
+                  autocomplete="current-password"
+                  class="form-control form-control-sm float-end w-75"
+                  name="currentPass"
+                  required
+                />
+              </div>
+              <div class="form-group mb-4">
+                <label>新密码</label>
+                <input
+                  type="password"
+                  autocomplete="new-password"
+                  class="form-control form-control-sm float-end w-75"
+                  name="newPass"
+                  required
+                />
+
+                <div class="progress" role="progressbar" style="float: right; margin-top: 1px; width: 75%; height: 4px">
+                  <div class="progress-bar bg-success" style="width: 0%"></div>
+                </div>
+              </div>
+              <div class="form-group mb-3">
+                <label>确认密码</label>
+                <input
+                  type="password"
+                  autocomplete="new-password"
+                  class="form-control form-control-sm float-end w-75"
+                  name="newPassAgain"
+                  required
+                />
+                <div class="form-text d-none mt-2" style="left: 27%; position: absolute"></div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="submit" class="btn btn-primary">提交</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
   </body>
   <script type="text/javascript" src="static/js/lib/jquery.min.js"></script>
   <script type="text/javascript" src="static/js/lib/js.cookie.min.js"></script>
@@ -129,6 +213,8 @@
 
   <script type="module">
     import '/static/js/utils.js';
+
+    let redirect;
 
     if (Cookies.get('remember7d') == 1) {
       $('#remember7d').prop('checked', true);
@@ -151,8 +237,16 @@
         if (data.message === '需要MFA验证') {
           $('#mfaValidateModal').modal('show');
         } else {
-          location.assign(data.redirect);
-          message.success(data.message);
+          redirect = data.redirect;
+          if (data?.user?.isFirstLogin) {
+            $('#modifyPassModal input[name="id"]').val(data.user.id);
+            $('#modifyPassModal').modal('show');
+          } else {
+            message.success(data.message);
+            setTimeout(() => {
+              location.assign(redirect);
+            }, 500);
+          }
         }
       }).fail(function (xhr) {
         message.error(xhr.responseJSON?.message || xhr.responseText || xhr.statusText);
@@ -174,6 +268,81 @@
         if (xhr.responseJSON?.redirect) {
           location.assign(xhr.responseJSON.redirect);
         }
+      });
+
+      return false;
+    });
+
+    function checkPassword(pw) {
+      let passed = 0;
+      const rules = {
+        length: (s) => s.length >= 12,
+        lower: (s) => /[a-z]/.test(s),
+        upper: (s) => /[A-Z]/.test(s),
+        digit: (s) => /[0-9]/.test(s),
+        special: (s) => /[!@#\$%\^&\*()_+\-=[\]{};':"\\|,.<>\/?]/.test(s),
+      };
+
+      for (const key in rules) {
+        if (rules[key](pw)) passed++;
+      }
+      const percent = Math.round((passed / Object.keys(rules).length) * 100);
+
+      return percent;
+    }
+
+    $(document).on('keyup', '#modifyPassModal input[name="newPassAgain"]', function () {
+      const newPss = $('#modifyPassModal input[name="newPass"]').val();
+      const newPassAgain = $('#modifyPassModal input[name="newPassAgain"]').val();
+
+      if (newPassAgain == newPss) {
+        $('#modifyPassModal .form-text').addClass('d-none');
+        $('#modifyPassModal input[name="newPassAgain"]').removeClass('border border-danger');
+        $('#modifyPassSumbit').removeAttr('disabled');
+      } else {
+        $('#modifyPassModal .form-text').text('密码不一致！');
+        $('#modifyPassModal .form-text').addClass('text-danger');
+        $('#modifyPassModal input[name="newPassAgain"]').addClass('border border-danger');
+        $('#modifyPassModal .form-text').removeClass('d-none');
+        $('#modifyPassSumbit').attr('disabled', true);
+      }
+    });
+
+    $(document).on('input', '#modifyPassModal input[name="newPass"]', function (e) {
+      const percent = checkPassword(e.target.value);
+      const progressBar = $('#modifyPassModal .progress-bar');
+
+      progressBar.width(percent + '%');
+      progressBar.attr(
+        'class',
+        percent < 60
+          ? 'progress-bar text-bg-danger'
+          : 100 < percent > 60
+          ? 'progress-bar bg-warning'
+          : percent == 100
+          ? 'progress-bar bg-success'
+          : 'progress-bar bg-warning'
+      );
+    });
+
+    $('#modifyPassModal form').submit(function () {
+      const id = $('#modifyPassModal input[name="id"]').val();
+      const newPass = $('#modifyPassModal input[name="newPassAgain"]').val();
+      const currentPass = $('#modifyPassModal input[name="currentPass"]').val();
+
+      if (checkPassword(newPass) != 100) {
+        message.error('密码不满足要求（长度12位，包含大小写字母、数字、特殊字符）');
+        return false;
+      }
+
+      request.post('/client/modifyPass', { id, currentPass, password: newPass, isFirstLogin: false }).then((data) => {
+        $('#modifyPassModal .progress-bar').width('0%');
+        $('#modifyPassModal form').trigger('reset');
+        $('#modifyPassModal').modal('hide');
+        message.success(data.message);
+        setTimeout(() => {
+          location.assign(redirect);
+        }, 500);
       });
 
       return false;

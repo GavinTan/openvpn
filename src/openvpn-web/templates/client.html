@@ -40,7 +40,7 @@
           <div class="col-12 col-md-8 col-lg-6 col-xl-5">
             <div class="card shadow-2-strong" style="border-radius: 1rem">
               <div class="card-body p-5 text-center">
-                <h3 class="mb-5">OpenVPN WEB</h3>
+                <h3 class="mb-5" id="welcome">Welcome</h3>
                 <div class="mb-5">
                   <p class="section-title">OpenVPN Connect 下载:</p>
 
@@ -319,6 +319,10 @@
 
       return percent;
     }
+
+    request.get('/client/userinfo').then((data) => {
+      $('#welcome').text(`欢迎您，${data.name || data.username}`);
+    });
 
     $(document).on('keyup', '#modifyPassModal input[name="newPassAgain"]', function () {
       const newPss = $('#modifyPassModal input[name="newPass"]').val();
