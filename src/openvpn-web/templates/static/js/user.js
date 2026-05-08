@@ -231,6 +231,12 @@ $(document).on('click', '#showUserOffcanvas', async function () {
       </div>
     </div>
     <div class="desc-item row">
+      <div class="col-5 desc-label">上次登录时间</div>
+      <div class="col-7 desc-value">
+        ${data.lastLoginAt ? dayjs(data.lastLoginAt).format('YYYY-MM-DD HH:mm:ss') : ''}
+      </div>
+    </div>
+    <div class="desc-item row">
       <div class="col-5 desc-label">创建时间</div>
       <div class="col-7 desc-value">${dayjs(data.createdAt).format('YYYY-MM-DD HH:mm:ss')}</div>
     </div>
