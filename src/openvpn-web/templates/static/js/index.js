@@ -422,6 +422,8 @@ $(document).on('click', '#showOnlineClientOffcanvas', async function () {
   const data = vtable.row($(this).parents('tr')).data();
   const oc = new bootstrap.Offcanvas($('#onlineClientOffcanvas'));
 
+  const user = await request.get(`/ovpn/user?username=${data.username}`);
+
   const html = `
     <div class="desc-item row">
       <div class="col-5 desc-label">ID</div>
@@ -430,6 +432,10 @@ $(document).on('click', '#showOnlineClientOffcanvas', async function () {
     <div class="desc-item row">
       <div class="col-5 desc-label">用户名/客户端</div>
       <div class="col-7 desc-value">${data.username}</div>
+    </div>
+    <div class="desc-item row">
+      <div class="col-5 desc-label">姓名</div>
+      <div class="col-7 desc-value">${user.name}</div>
     </div>
     <div class="desc-item row">
       <div class="col-5 desc-label">用户 IP</div>
