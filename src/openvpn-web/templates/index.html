@@ -211,6 +211,103 @@
       #editFirewallModal select::-webkit-scrollbar-track {
         background: transparent;
       }
+
+      /* 防火墙树形穿梭框 */
+      .firewall-tree {
+        border: 1px solid #ced4da;
+        border-radius: 0.375rem;
+        padding: 0.25rem;
+        overflow: auto;
+        background: #fff;
+      }
+      .firewall-tree.disabled {
+        background: #e9ecef;
+        cursor: not-allowed;
+      }
+      .firewall-tree::-webkit-scrollbar {
+        width: 5px;
+      }
+      .firewall-tree::-webkit-scrollbar-thumb {
+        background: #ccc;
+        border-radius: 5px;
+      }
+      .firewall-tree::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .firewall-tree-list {
+        list-style: none;
+        padding-left: 0;
+        margin: 0;
+      }
+      .firewall-tree-list .firewall-tree-list {
+        padding-left: 18px;
+        position: relative;
+      }
+      .firewall-tree-item {
+        padding: 3px 6px;
+        margin: 1px 0;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        font-size: 0.875rem;
+        user-select: none;
+        white-space: nowrap;
+      }
+      .firewall-tree-item:hover {
+        background-color: #f0f4ff;
+      }
+      .firewall-tree-item.selected {
+        background-color: #0d6efd;
+        color: #fff;
+      }
+      .firewall-tree-item.selected .text-warning,
+      .firewall-tree-item.selected .text-info,
+      .firewall-tree-item.selected .text-muted {
+        color: #fff !important;
+      }
+      .firewall-tree-item.phantom {
+        cursor: default;
+        color: #6c757d;
+      }
+      .firewall-tree-item.phantom:hover {
+        background-color: transparent;
+      }
+      .firewall-tree-item .tree-toggle {
+        width: 14px;
+        height: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-size: 10px;
+        transition: transform 0.15s;
+      }
+      .firewall-tree-item .tree-toggle.expanded {
+        transform: rotate(90deg);
+      }
+      .firewall-tree-item .tree-toggle.hidden {
+        visibility: hidden;
+      }
+      .firewall-tree-item .tree-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .firewall-tree-empty {
+        text-align: center;
+        color: #adb5bd;
+        font-size: 0.8rem;
+        padding: 8px 4px;
+      }
+      .firewall-tree-section-title {
+        font-size: 0.75rem;
+        color: #6c757d;
+        padding: 4px 6px 2px;
+        font-weight: 500;
+        border-bottom: 1px dashed #e9ecef;
+        margin-bottom: 2px;
+      }
     </style>
   </head>
 
@@ -2023,7 +2120,7 @@
                 <div class="col-sm-10 d-flex align-items-start justify-content-center gap-3">
                   <div class="col-sm-5">
                     <input type="text" name="sip" class="form-control mb-1" placeholder="IP或者IP段" />
-                    <select name="sug" class="form-select" style="height: 190px" multiple></select>
+                    <div class="firewall-tree" data-name="sug" style="height: 190px"></div>
                   </div>
 
                   <div
@@ -2035,7 +2132,7 @@
                   </div>
 
                   <div class="col-sm-5">
-                    <select name="sg" class="form-select" style="height: 232px" multiple></select>
+                    <div class="firewall-tree" data-name="sg" style="height: 232px"></div>
                   </div>
                 </div>
               </div>
@@ -2044,7 +2141,7 @@
                 <div class="col-sm-10 d-flex align-items-start justify-content-center gap-3">
                   <div class="col-sm-5">
                     <input type="text" name="dip" class="form-control mb-1" placeholder="IP或者IP段" />
-                    <select name="dug" class="form-select" style="height: 190px" multiple disabled></select>
+                    <div class="firewall-tree disabled" data-name="dug" style="height: 190px"></div>
                   </div>
 
                   <div
@@ -2056,7 +2153,7 @@
                   </div>
 
                   <div class="col-sm-5">
-                    <select name="dg" class="form-select" style="height: 232px" multiple></select>
+                    <div class="firewall-tree" data-name="dg" style="height: 232px"></div>
                   </div>
                 </div>
               </div>
@@ -2107,7 +2204,7 @@
                 <div class="col-sm-10 d-flex align-items-start justify-content-center gap-3">
                   <div class="col-sm-5">
                     <input type="text" name="sip" class="form-control mb-1" placeholder="IP或者IP段" />
-                    <select name="sug" class="form-select" style="height: 190px" multiple></select>
+                    <div class="firewall-tree" data-name="sug" style="height: 190px"></div>
                   </div>
 
                   <div
@@ -2119,7 +2216,7 @@
                   </div>
 
                   <div class="col-sm-5">
-                    <select name="sg" class="form-select" style="height: 232px" multiple></select>
+                    <div class="firewall-tree" data-name="sg" style="height: 232px"></div>
                   </div>
                 </div>
               </div>
@@ -2128,7 +2225,7 @@
                 <div class="col-sm-10 d-flex align-items-start justify-content-center gap-3">
                   <div class="col-sm-5">
                     <input type="text" name="dip" class="form-control mb-1" placeholder="IP或者IP段" />
-                    <select name="dug" class="form-select" style="height: 190px" multiple disabled></select>
+                    <div class="firewall-tree disabled" data-name="dug" style="height: 190px"></div>
                   </div>
 
                   <div
@@ -2140,7 +2237,7 @@
                   </div>
 
                   <div class="col-sm-5">
-                    <select name="dg" class="form-select" style="height: 232px" multiple></select>
+                    <div class="firewall-tree" data-name="dg" style="height: 232px"></div>
                   </div>
                 </div>
               </div>
