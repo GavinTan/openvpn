@@ -17,21 +17,21 @@ import (
 )
 
 type User struct {
-	ID           uint      `gorm:"primarykey" json:"id" form:"id"`
-	Username     string    `gorm:"uniqueIndex;column:username" json:"username" form:"username"`
-	Password     string    `form:"password" json:"password"`
-	IsEnable     *bool     `gorm:"default:true" form:"isEnable" json:"isEnable"`
-	Name         string    `json:"name" form:"name"`
-	Email        string    `json:"email" form:"email"`
-	Gid          uint      `gorm:"default:1" json:"gid" form:"gid"`
-	ExpireDate   string    `gorm:"default:NULL" json:"expireDate" form:"expireDate"`
-	IpAddr       string    `gorm:"uniqueIndex;default:NULL" json:"ipAddr" form:"ipAddr"`
-	OvpnConfig   string    `json:"ovpnConfig" form:"ovpnConfig"`
-	MfaSecret    string    `json:"mfaSecret" form:"mfaSecret"`
-	IsFirstLogin *bool     `gorm:"default:true" form:"isFirstLogin" json:"isFirstLogin"`
-	LastLoginAt  time.Time `json:"lastLoginAt,omitempty" form:"lastLoginAt,omitempty"`
-	CreatedAt    time.Time `json:"createdAt,omitempty" form:"createdAt,omitempty"`
-	UpdatedAt    time.Time `json:"updatedAt,omitempty" form:"updatedAt,omitempty"`
+	ID           uint       `gorm:"primarykey" json:"id" form:"id"`
+	Username     string     `gorm:"uniqueIndex;column:username" json:"username" form:"username"`
+	Password     string     `form:"password" json:"password"`
+	IsEnable     *bool      `gorm:"default:true" form:"isEnable" json:"isEnable"`
+	Name         string     `json:"name" form:"name"`
+	Email        string     `json:"email" form:"email"`
+	Gid          uint       `gorm:"default:1" json:"gid" form:"gid"`
+	ExpireDate   string     `gorm:"default:NULL" json:"expireDate" form:"expireDate"`
+	IpAddr       string     `gorm:"uniqueIndex;default:NULL" json:"ipAddr" form:"ipAddr"`
+	OvpnConfig   string     `json:"ovpnConfig" form:"ovpnConfig"`
+	MfaSecret    string     `json:"mfaSecret" form:"mfaSecret"`
+	IsFirstLogin *bool      `gorm:"default:true" form:"isFirstLogin" json:"isFirstLogin"`
+	LastLoginAt  *time.Time `json:"lastLoginAt,omitempty" form:"lastLoginAt,omitempty"`
+	CreatedAt    time.Time  `json:"createdAt,omitempty" form:"createdAt,omitempty"`
+	UpdatedAt    time.Time  `json:"updatedAt,omitempty" form:"updatedAt,omitempty"`
 }
 
 func (u *User) BeforeSave(tx *gorm.DB) (err error) {
@@ -223,9 +223,9 @@ func (u *User) Login(clogin bool) error {
 			if ovconfig.Valid {
 				os.WriteFile(path.Join(ovData, ".ovc"), []byte(ovconfig.String), 0644)
 			}
-		} else {
-			db.Model(&u).Update("last_login", time.Now())
 		}
+
+		db.Model(&u).Update("last_login_at", time.Now())
 
 		return nil
 	}
