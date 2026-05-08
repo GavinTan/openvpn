@@ -855,6 +855,22 @@ func main() {
 			c.JSON(http.StatusOK, g.Get(c.Param("id")))
 		})
 
+		ovpn.GET("/group/:id/users", func(c *gin.Context) {
+			var auth bool
+			var g Group
+
+			gid := c.Param("id")
+
+			cmd := exec.Command("egrep", "^auth-user-pass-verify", path.Join(ovData, "server.conf"))
+			if err := cmd.Run(); err != nil {
+				auth = false
+			} else {
+				auth = true
+			}
+
+			c.JSON(http.StatusOK, gin.H{"users": g.GetUsers(gid), "authUser": auth})
+		})
+
 		ovpn.POST("/group", func(c *gin.Context) {
 			var g Group
 			c.ShouldBind(&g)
@@ -900,20 +916,20 @@ func main() {
 			c.JSON(http.StatusOK, gin.H{"message": "删除成功"})
 		})
 
-		ovpn.GET("/user/:gid", func(c *gin.Context) {
-			var auth bool
-			var g Group
+		ovpn.GET("/user", func(c *gin.Context) {
+			var u User
 
-			gid := c.Param("gid")
-
-			cmd := exec.Command("egrep", "^auth-user-pass-verify", path.Join(ovData, "server.conf"))
-			if err := cmd.Run(); err != nil {
-				auth = false
-			} else {
-				auth = true
+			username := c.Query("username")
+			if username != "" {
+				u.Username = username
 			}
 
-			c.JSON(http.StatusOK, gin.H{"users": g.GetUsers(gid), "authUser": auth})
+			c.JSON(http.StatusOK, u.Info())
+		})
+
+		ovpn.GET("/user/:id", func(c *gin.Context) {
+			var u User
+			c.JSON(http.StatusOK, u.Get(c.Param("id")))
 		})
 
 		ovpn.GET("/user/export", func(c *gin.Context) {

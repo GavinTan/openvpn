@@ -167,7 +167,7 @@ tables.user = {
     });
   },
   ajax: function (data, callback, settings) {
-    request.get(`/ovpn/user/${cgid}`).then((data) => callback({ data: data?.users, authUser: data?.authUser }));
+    request.get(`/ovpn/group/${cgid}/users`).then((data) => callback({ data: data?.users, authUser: data?.authUser }));
   },
 };
 

@@ -64,6 +64,16 @@ func (u *User) All() []User {
 	return users
 }
 
+func (u *User) Get(id string) User {
+	result := db.First(&u, id)
+	if result.Error != nil {
+		logger.Error(context.Background(), result.Error.Error())
+		return User{}
+	}
+
+	return *u
+}
+
 func (u *User) Create() error {
 	if u.Username == "" || u.Password == "" {
 		return fmt.Errorf("非法请求")
