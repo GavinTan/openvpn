@@ -88,21 +88,7 @@ tables.firewall = {
       {
         text: '添加',
         className: 'btn-primary',
-        action: () => {
-          $('#addFirewallModal select:not([name="policy"])').empty();
-          $('#addFirewallModal form').trigger('reset');
-          request.get('/ovpn/group').then((data) => {
-            data.forEach((i) => {
-              $('<option>', { value: i.id, text: i.name }).appendTo("#addFirewallModal select[name='sug']");
-              // $('<option>', { value: i.id, text: i.name }).appendTo("#addFirewallModal select[name='dug']");
-            });
-
-            $("#addFirewallModal input[name='sip']").toggleClass('border border-danger', false);
-            $("#addFirewallModal input[name='dip']").toggleClass('border border-danger', false);
-
-            $('#addFirewallModal').modal('show');
-          });
-        },
+        action: () => openFirewallModal('#addFirewallModal', null),
       },
     ],
   },
@@ -186,6 +172,347 @@ function isValidIPOrRange(val) {
   return ipv4Regex.test(input) || ipv6Regex.test(input);
 }
 
+// 用户组树形菜单
+const treeData = new Map();
+const nodeKey = (type, id) => `${type}:${id}`;
+
+const resetTreeData = (m, d) => {
+  treeData[`${m}_${d}`] = {
+    modal: m,
+    side: d,
+    groups: [],
+    inputs: [],
+    chosen: new Set(),
+    leftSel: new Set(),
+    rightSel: new Set(),
+    leftExp: new Set(),
+    rightExp: new Set(),
+  };
+};
+
+function buildTree(data, visibleIds) {
+  const pathNodeIds = new Set();
+  const nodeMap = new Map(data.map((i) => [i.id, i]));
+
+  visibleIds.forEach((id) => {
+    let currentNode = nodeMap.get(id);
+    while (currentNode) {
+      pathNodeIds.add(currentNode.id);
+      currentNode = currentNode.parent_id == null ? null : nodeMap.get(currentNode.parent_id);
+    }
+  });
+
+  const buildData = (parentId = null, depth = 0) =>
+    data
+      .filter((i) => i.parent_id === parentId && pathNodeIds.has(i.id))
+      .map((i) => ({
+        ...i,
+        depth,
+        isPhantom: !visibleIds.has(i.id),
+        children: buildData(i.id, depth + 1),
+      }));
+
+  return buildData();
+}
+
+function makeNode(node) {
+  const cls = ['firewall-tree-item'];
+  const toggleCls = node.hasChildren ? (node.isExpanded ? 'expanded' : '') : 'hidden';
+  const toggleIcon = node.hasChildren ? '<i class="fas fa-chevron-right"></i>' : '';
+
+  if (node.isPhantom) cls.push('phantom');
+  if (node.selected) cls.push('selected');
+
+  const li = `
+  <li>
+    <div
+      class="${cls.join(' ')}"
+      data-node-type="${node.type}"
+      data-node-id="${node.id}"
+      data-phantom="${node.isPhantom ? '1' : '0'}"
+    >
+      <span class="tree-toggle ${toggleCls}">${toggleIcon}</span>
+      <i class="fas ${node.icon}"></i>
+      <span class="tree-name" title="${node.name}">${node.name}</span>
+    </div>
+  </li>
+  `;
+
+  return $(li);
+}
+
+function renderTreeNodes(nodes, parent, expSet, selSet) {
+  nodes.forEach((node) => {
+    const hasChildren = node.children.length > 0;
+    const isExpanded = expSet.has(node.id);
+    const folder = hasChildren && isExpanded ? 'fa-folder-open' : 'fa-folder';
+
+    const li = makeNode({
+      id: node.id,
+      name: node.name,
+      type: 'group',
+      icon: `${folder} text-warning`,
+      isPhantom: node.isPhantom,
+      selected: !node.isPhantom && selSet.has(nodeKey('group', node.id)),
+      hasChildren,
+      isExpanded,
+    });
+
+    if (hasChildren) {
+      const ul = $('<ul class="firewall-tree-list"></ul>').toggle(isExpanded);
+      renderTreeNodes(node.children, ul, expSet, selSet);
+      li.append(ul);
+    }
+
+    parent.append(li);
+  });
+}
+
+function renderTree(modal, selBox, isLeft) {
+  const ctx = treeData[`${modal}_${selBox}`];
+  // 不渲染目标地址用户组树形菜单（openvpn启用client-to-client不受防火墙限制）
+  if (!ctx || (isLeft && selBox === 'd')) return;
+
+  const box = $(`${modal} .firewall-tree[data-name="${selBox + (isLeft ? 'ug' : 'g')}"]`);
+  if (!box.length) return;
+
+  const visibleIds = isLeft
+    ? new Set(ctx.groups.filter((g) => !ctx.chosen.has(g.id)).map((g) => g.id))
+    : new Set([...ctx.chosen]);
+  const tree = buildTree(ctx.groups, visibleIds);
+  const expSet = isLeft ? ctx.leftExp : ctx.rightExp;
+  const selSet = isLeft ? ctx.leftSel : ctx.rightSel;
+  const hasInputs = !isLeft && ctx.inputs.length > 0;
+  const hasTree = tree.length > 0;
+
+  ctx.chosen.forEach((id) => {
+    rightExpand(ctx, id);
+  });
+
+  box.empty();
+  if (!hasInputs && !hasTree) {
+    return;
+  }
+
+  if (hasInputs) {
+    if (hasTree) box.append('<div class="firewall-tree-section-title">IP</div>');
+
+    const ul = $('<ul class="firewall-tree-list"></ul>');
+    ctx.inputs.forEach((ip) =>
+      ul.append(
+        makeNode({
+          type: 'input',
+          id: ip.value,
+          name: ip.value,
+          icon: 'fa-globe text-info',
+          selected: selSet.has(nodeKey('input', ip.value)),
+        })
+      )
+    );
+
+    box.append(ul);
+  }
+
+  if (hasTree) {
+    if (hasInputs) box.append('<div class="firewall-tree-section-title">用户组</div>');
+    const ul = $('<ul class="firewall-tree-list"></ul>');
+    renderTreeNodes(tree, ul, expSet, selSet);
+    box.append(ul);
+  }
+}
+
+function clearSelectionExcept(modal, except) {
+  ['s', 'd'].forEach((selBox) => {
+    const ctx = treeData[`${modal}_${selBox}`];
+    if (!ctx) return;
+
+    [
+      { sel: ctx.leftSel, isLeft: true },
+      { sel: ctx.rightSel, isLeft: false },
+    ].forEach(({ sel, isLeft }) => {
+      const skip = except && except.selBox === selBox && except.isLeft === isLeft;
+      if (!skip && sel.size) {
+        sel.clear();
+        renderTree(modal, selBox, isLeft);
+      }
+    });
+  });
+}
+
+function rightExpand(ctx, id) {
+  const map = new Map(ctx.groups.map((g) => [g.id, g]));
+  let cg = map.get(id);
+  while (cg) {
+    ctx.rightExp.add(cg.id);
+    cg = cg.parent_id == null ? null : map.get(cg.parent_id);
+  }
+}
+
+function openFirewallModal(m, data) {
+  resetTreeData(m, 's');
+  resetTreeData(m, 'd');
+
+  $(`${m} form`).trigger('reset');
+  $(m).find("input[name='sip'], input[name='dip']").removeClass('border border-danger');
+
+  const isEdit = !!data;
+  if (isEdit) {
+    $(`${m} input[name='id']`).val(data.id);
+    $(`${m} select[name='policy']`).val(data.policy);
+    $(`${m} textarea[name='comment']`).val(data.comment);
+    $(`${m} input[name='status']`).prop('checked', data.status);
+  }
+
+  request.get('/ovpn/group').then((groups) => {
+    ['s', 'd'].forEach((i) => {
+      const key = `${m}_${i}`;
+      const ctx = treeData[key];
+      ctx.groups = groups;
+      ctx.leftExp = new Set(ctx.groups.filter((g) => g.parent_id === null).map((g) => g.id));
+
+      if (isEdit) {
+        data[`${i}g`].forEach((g) => {
+          ctx.chosen.add(g.id);
+          if (!ctx.groups.some((x) => x.id === g.id)) ctx.groups.push(g);
+        });
+
+        const ips = data[`${i}ip`];
+        if (ips) ips.split(',').forEach((ip) => ip && ctx.inputs.push({ value: ip }));
+      }
+
+      renderTree(m, i, true);
+      renderTree(m, i, false);
+    });
+
+    $(m).modal('show');
+  });
+}
+
+// 事件绑定
+['#addFirewallModal', '#editFirewallModal'].forEach((m) => {
+  // 保存按钮
+  $(`${m} form`).submit(function (e) {
+    e.preventDefault();
+
+    const sip = treeData[`${m}_s`].inputs.map((i) => i.value);
+    const sg = [...treeData[`${m}_s`].chosen].map(String);
+    const dip = treeData[`${m}_d`].inputs.map((i) => i.value);
+    const dg = [...treeData[`${m}_d`].chosen].map(String);
+
+    if (sip.length + sg.length === 0 || dip.length + dg.length === 0) {
+      message.error('源地址或目的地址为空');
+      return;
+    }
+
+    const data = {
+      sip,
+      dip,
+      sg,
+      dg,
+      policy: $(`${m} select[name='policy']`).val(),
+      comment: $(`${m} textarea[name='comment']`).val(),
+    };
+
+    const isEdit = m === '#editFirewallModal';
+    if (isEdit) {
+      data.id = $(`${m} input[name='id']`).val();
+      data.status = $(`${m} input[name='status']`).prop('checked');
+    }
+
+    request[isEdit ? 'patch' : 'post']('/ovpn/firewall', data).then((res) => {
+      message.success(res.message);
+      vtable.ajax.reload(null, false);
+      $(m).modal('hide');
+    });
+  });
+
+  ['s', 'd'].forEach((i) => {
+    // 加入按钮
+    $(`${m} button[name="${i}addBtn"]`).click(function () {
+      const ctx = treeData[`${m}_${i}`];
+      if (!ctx) return;
+
+      const ip = $(`${m} input[name='${i}ip']`);
+      if (ip.val() && isValidIPOrRange(ip.val())) {
+        if (!ctx || ctx.inputs.some((i) => i.value === ip.val())) return;
+        ctx.inputs.push({ value: ip.val() });
+        ip.val('');
+      }
+
+      ctx.leftSel.forEach((i) => {
+        const [type, id] = i.split(':');
+        if (type === 'group') {
+          ctx.chosen.add(Number(id));
+        }
+      });
+
+      ctx.leftSel.clear();
+
+      renderTree(m, i, true);
+      renderTree(m, i, false);
+    });
+
+    // 移除按钮
+    $(`${m} button[name="${i}delBtn"]`).click(function () {
+      const ctx = treeData[`${m}_${i}`];
+      if (!ctx) return;
+
+      ctx.rightSel.forEach((i) => {
+        const [type, id] = i.split(':');
+        if (type === 'group') {
+          ctx.chosen.delete(Number(id));
+        } else if (type === 'input') {
+          ctx.inputs = ctx.inputs.filter((i) => i.value !== id);
+        }
+      });
+
+      ctx.rightSel.clear();
+
+      renderTree(m, i, true);
+      renderTree(m, i, false);
+    });
+  });
+
+  // tree
+  const treeItem = `${m} .firewall-tree .firewall-tree-item`;
+  $(document)
+    .on('click', treeItem, function (e) {
+      e.stopPropagation();
+
+      const name = $(this).closest('.firewall-tree').data('name');
+      const isLeft = name.endsWith('ug');
+
+      const ctx = treeData[`${m}_${name[0]}`];
+      if (!ctx) return;
+
+      const expSet = isLeft ? ctx.leftExp : ctx.rightExp;
+      const selSet = isLeft ? ctx.leftSel : ctx.rightSel;
+      const nodeType = $(this).attr('data-node-type');
+      const rawId = $(this).attr('data-node-id');
+
+      if ($(e.target).closest('.tree-toggle').length && nodeType === 'group') {
+        const nid = Number(rawId);
+        expSet.has(nid) ? expSet.delete(nid) : expSet.add(nid);
+        renderTree(m, name[0], isLeft);
+        return;
+      }
+
+      if ($(this).attr('data-phantom') === '1') return;
+
+      clearSelectionExcept(m, { selBox: name[0], isLeft });
+
+      const k = nodeKey(nodeType, rawId);
+      if (!(e.ctrlKey || e.metaKey)) selSet.clear();
+      selSet.has(k) ? selSet.delete(k) : selSet.add(k);
+      renderTree(m, name[0], isLeft);
+    })
+    .on('click', m, function (e) {
+      if ($(e.target).closest('.firewall-tree-item, button, input, select, textarea, label, a').length) return;
+      clearSelectionExcept(m, null);
+    });
+});
+
+// 添加规则
 $("#addFirewallModal input[name='sip']").on('input', function () {
   const val = $(this).val();
   $(this).toggleClass('border border-danger', val !== '' && !isValidIPOrRange(val));
@@ -196,170 +523,10 @@ $("#addFirewallModal input[name='dip']").on('input', function () {
   $(this).toggleClass('border border-danger', val !== '' && !isValidIPOrRange(val));
 });
 
-$('#addFirewallModal button[name="saddBtn"]').click(function () {
-  const sip = $("#addFirewallModal input[name='sip']").val();
-  if (sip && isValidIPOrRange(sip)) {
-    if ($("#addFirewallModal select[name='sg']").find(`option[value='${sip}']`).length === 0) {
-      $('<option>', { value: sip, text: sip })
-        .attr('data-source', 'input')
-        .appendTo("#addFirewallModal select[name='sg']");
-    }
-
-    $("#addFirewallModal input[name='sip']").val('');
-  }
-
-  $("#addFirewallModal select[name='sug']")
-    .find('option:selected')
-    .each(function () {
-      if ($("#addFirewallModal select[name='sg']").find(`option[value='${$(this).val()}']`).length === 0) {
-        $(this).appendTo("#addFirewallModal select[name='sg']");
-      }
-    });
-
-  $("#addFirewallModal select[name='sug']").val([]);
-  $("#addFirewallModal select[name='sg']").val([]);
-});
-
-$('#addFirewallModal button[name="sdelBtn"]').click(function () {
-  $("#addFirewallModal select[name='sg']")
-    .find('option:selected')
-    .each(function () {
-      if ($(this).attr('data-source') === 'input') {
-        $(this).remove();
-      } else {
-        $(this).appendTo("#addFirewallModal select[name='sug']");
-      }
-    });
-
-  $("#addFirewallModal select[name='sug']").val([]);
-  $("#addFirewallModal select[name='sg']").val([]);
-});
-
-$('#addFirewallModal button[name="daddBtn"]').click(function () {
-  const dip = $("#addFirewallModal input[name='dip']").val();
-  if (dip && isValidIPOrRange(dip)) {
-    if ($("#addFirewallModal select[name='dg']").find(`option[value='${dip}']`).length === 0) {
-      $('<option>', { value: dip, text: dip })
-        .attr('data-source', 'input')
-        .appendTo("#addFirewallModal select[name='dg']");
-    }
-
-    $("#addFirewallModal input[name='dip']").val('');
-  }
-
-  $("#addFirewallModal select[name='dug']")
-    .find('option:selected')
-    .each(function () {
-      if ($("#addFirewallModal select[name='dg']").find(`option[value='${$(this).val()}']`).length === 0) {
-        $(this).appendTo("#addFirewallModal select[name='dg']");
-      }
-    });
-
-  $("#addFirewallModal select[name='dug']").val([]);
-  $("#addFirewallModal select[name='dg']").val([]);
-});
-
-$('#addFirewallModal button[name="ddelBtn"]').click(function () {
-  $("#addFirewallModal select[name='dg']")
-    .find('option:selected')
-    .each(function () {
-      if ($(this).attr('data-source') === 'input') {
-        $(this).remove();
-      } else {
-        $(this).appendTo("#addFirewallModal select[name='dug']");
-      }
-    });
-
-  $("#addFirewallModal select[name='dug']").val([]);
-  $("#addFirewallModal select[name='dg']").val([]);
-});
-
-$('#addFirewallModal form').submit(function (e) {
-  e.preventDefault();
-
-  const sip = [];
-  const dip = [];
-  const sg = [];
-  const dg = [];
-  const policy = $("#addFirewallModal select[name='policy']").val();
-  const comment = $("#addFirewallModal textarea[name='comment']").val();
-
-  const sgOption = $("#addFirewallModal select[name='sg']").find('option');
-  const dgOption = $("#addFirewallModal select[name='dg']").find('option');
-
-  if (sgOption.length === 0 || dgOption.length === 0) {
-    message.error('源地址或目的地址为空');
-    return;
-  }
-
-  sgOption.each(function () {
-    if ($(this).attr('data-source') === 'input') {
-      sip.push($(this).val());
-    } else {
-      sg.push($(this).val());
-    }
-  });
-
-  dgOption.each(function () {
-    if ($(this).attr('data-source') === 'input') {
-      dip.push($(this).val());
-    } else {
-      dg.push($(this).val());
-    }
-  });
-
-  request.post('/ovpn/firewall', { sip, dip, sg, dg, policy, comment }).then((data) => {
-    message.success(data.message);
-    vtable.ajax.reload(null, false);
-    $('#addFirewallModal').modal('hide');
-  });
-});
-
 // 编辑防火墙规则
 $(document).on('click', '#editFirewall', function () {
-  $('#editFirewallModal select:not([name="policy"])').empty();
-  $('#editFirewallModal form').trigger('reset');
-
   const data = vtable.row($(this).parents('tr')).data();
-  data.sip.split(',').forEach((i) => {
-    if (i)
-      $('<option>', { value: i, text: i })
-        .attr('data-source', 'input')
-        .appendTo("#editFirewallModal select[name='sg']");
-  });
-  data.dip.split(',').forEach((i) => {
-    if (i)
-      $('<option>', { value: i, text: i })
-        .attr('data-source', 'input')
-        .appendTo("#editFirewallModal select[name='dg']");
-  });
-
-  data.sg.forEach((i) => {
-    $('<option>', { value: i.id, text: i.name }).appendTo("#editFirewallModal select[name='sg']");
-  });
-  data.dg.forEach((i) => {
-    $('<option>', { value: i.id, text: i.name }).appendTo("#editFirewallModal select[name='dg']");
-  });
-
-  $('#editFirewallModal input[name="id"]').val(data.id);
-  $("#editFirewallModal input[name='sip']").toggleClass('border border-danger', false);
-  $("#editFirewallModal input[name='dip']").toggleClass('border border-danger', false);
-  $("#editFirewallModal select[name='policy']").val(data.policy);
-  $("#editFirewallModal textarea[name='comment']").val(data.comment);
-  $("#editFirewallModal input[name='status']").prop('checked', data.status);
-
-  request.get('/ovpn/group').then((g) => {
-    g.forEach((i) => {
-      if (!data.sg.some((sg) => sg.id === i.id)) {
-        $('<option>', { value: i.id, text: i.name }).appendTo("#editFirewallModal select[name='sug']");
-      }
-      // if (!data.dg.some((dg) => dg.id === i.id)) {
-      //   $('<option>', { value: i.id, text: i.name }).appendTo("#editFirewallModal select[name='dug']");
-      // }
-    });
-
-    $('#editFirewallModal').modal('show');
-  });
+  openFirewallModal('#editFirewallModal', data);
 });
 
 $("#editFirewallModal input[name='sip']").on('input', function () {
@@ -370,127 +537,6 @@ $("#editFirewallModal input[name='sip']").on('input', function () {
 $("#editFirewallModal input[name='dip']").on('input', function () {
   const val = $(this).val();
   $(this).toggleClass('border border-danger', val !== '' && !isValidIPOrRange(val));
-});
-
-$('#editFirewallModal button[name="saddBtn"]').click(function () {
-  const sip = $("#editFirewallModal input[name='sip']").val();
-  if (sip && isValidIPOrRange(sip)) {
-    if ($("#editFirewallModal select[name='sg']").find(`option[value='${sip}']`).length === 0) {
-      $('<option>', { value: sip, text: sip })
-        .attr('data-source', 'input')
-        .appendTo("#editFirewallModal select[name='sg']");
-    }
-
-    $("#editFirewallModal input[name='sip']").val('');
-  }
-
-  $("#editFirewallModal select[name='sug']")
-    .find('option:selected')
-    .each(function () {
-      if ($("#editFirewallModal select[name='sg']").find(`option[value='${$(this).val()}']`).length === 0) {
-        $(this).appendTo("#editFirewallModal select[name='sg']");
-      }
-    });
-
-  $("#editFirewallModal select[name='sug']").val([]);
-  $("#editFirewallModal select[name='sg']").val([]);
-});
-
-$('#editFirewallModal button[name="sdelBtn"]').click(function () {
-  $("#editFirewallModal select[name='sg']")
-    .find('option:selected')
-    .each(function () {
-      if ($(this).attr('data-source') === 'input') {
-        $(this).remove();
-      } else {
-        $(this).appendTo("#editFirewallModal select[name='sug']");
-      }
-    });
-
-  $("#editFirewallModal select[name='sug']").val([]);
-  $("#editFirewallModal select[name='sg']").val([]);
-});
-
-$('#editFirewallModal button[name="daddBtn"]').click(function () {
-  const dip = $("#editFirewallModal input[name='dip']").val();
-  if (dip && isValidIPOrRange(dip)) {
-    if ($("#editFirewallModal select[name='dg']").find(`option[value='${dip}']`).length === 0) {
-      $('<option>', { value: dip, text: dip })
-        .attr('data-source', 'input')
-        .appendTo("#editFirewallModal select[name='dg']");
-    }
-
-    $("#editFirewallModal input[name='dip']").val('');
-  }
-
-  $("#editFirewallModal select[name='dug']")
-    .find('option:selected')
-    .each(function () {
-      if ($("#editFirewallModal select[name='dg']").find(`option[value='${$(this).val()}']`).length === 0) {
-        $(this).appendTo("#editFirewallModal select[name='dg']");
-      }
-    });
-
-  $("#editFirewallModal select[name='dug']").val([]);
-  $("#editFirewallModal select[name='dg']").val([]);
-});
-
-$('#editFirewallModal button[name="ddelBtn"]').click(function () {
-  $("#editFirewallModal select[name='dg']")
-    .find('option:selected')
-    .each(function () {
-      if ($(this).attr('data-source') === 'input') {
-        $(this).remove();
-      } else {
-        $(this).appendTo("#editFirewallModal select[name='dug']");
-      }
-    });
-
-  $("#editFirewallModal select[name='dug']").val([]);
-  $("#editFirewallModal select[name='dg']").val([]);
-});
-
-$('#editFirewallModal form').submit(function (e) {
-  e.preventDefault();
-
-  const sip = [];
-  const dip = [];
-  const sg = [];
-  const dg = [];
-  const policy = $("#editFirewallModal select[name='policy']").val();
-  const comment = $("#editFirewallModal textarea[name='comment']").val();
-  const id = $("#editFirewallModal input[name='id']").val();
-  const status = $("#editFirewallModal input[name='status']").prop('checked');
-
-  const sgOption = $("#editFirewallModal select[name='sg']").find('option');
-  const dgOption = $("#editFirewallModal select[name='dg']").find('option');
-
-  if (sgOption.length === 0 || dgOption.length === 0) {
-    message.error('源地址或目的地址为空');
-    return;
-  }
-
-  sgOption.each(function () {
-    if ($(this).attr('data-source') === 'input') {
-      sip.push($(this).val());
-    } else {
-      sg.push($(this).val());
-    }
-  });
-
-  dgOption.each(function () {
-    if ($(this).attr('data-source') === 'input') {
-      dip.push($(this).val());
-    } else {
-      dg.push($(this).val());
-    }
-  });
-
-  request.patch('/ovpn/firewall', { id, sip, dip, sg, dg, policy, comment, status }).then((data) => {
-    message.success(data.message);
-    vtable.ajax.reload(null, false);
-    $('#editFirewallModal').modal('hide');
-  });
 });
 
 // 禁用规则
