@@ -18,7 +18,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -424,6 +423,7 @@ func genRandomString(length int) string {
 }
 
 func IsLocalRequest(c *gin.Context) bool {
+	fmt.Println(123232323, c.ClientIP(), c.Request.RemoteAddr)
 	ip, _, err := net.SplitHostPort(c.Request.RemoteAddr)
 	if err != nil {
 		return false
@@ -478,7 +478,7 @@ func main() {
 	}
 
 	var err error
-	db, err = gorm.Open(sqlite.Open(path.Join(ovData, "ovpn.db")+"?_pragma=foreign_keys(1)"), &gorm.Config{
+	db, err = gorm.Open(sqlite.Open(filepath.Join(ovData, "ovpn.db")+"?_pragma=foreign_keys(1)"), &gorm.Config{
 		Logger: logger,
 	})
 
@@ -678,7 +678,7 @@ func main() {
 						return
 					}
 
-					statusLogPath := path.Join(ovData, "openvpn-status.log")
+					statusLogPath := filepath.Join(ovData, "openvpn-status.log")
 					if cfg.Get("status-version") != "3" || cfg.Get("status") != statusLogPath+" 1" {
 						cfg.Set("status", statusLogPath+" 1")
 						cfg.Set("status-version", "3")
@@ -732,7 +732,7 @@ func main() {
 
 	ovpn := r.Group("/ovpn")
 	{
-		ovpn.StaticFS("/download", http.Dir(path.Join(ovData, "clients")))
+		ovpn.StaticFS("/download", http.Dir(filepath.Join(ovData, "clients")))
 
 		ovpn.POST("/server", func(c *gin.Context) {
 			a := c.PostForm("action")
@@ -747,7 +747,7 @@ func main() {
 					if v == "true" {
 						msg = "启用"
 					}
-					cmd := exec.Command("sh", "-c", fmt.Sprintf("/usr/bin/docker-entrypoint.sh auth %s", v))
+					cmd := exec.Command("docker-entrypoint.sh", "auth", v)
 					if out, err := cmd.CombinedOutput(); err != nil {
 						if len(out) == 0 {
 							out = []byte(err.Error())
@@ -762,7 +762,7 @@ func main() {
 			case "renewCert":
 				day := c.PostForm("day")
 
-				cmd := exec.Command("sh", "-c", fmt.Sprintf("/usr/bin/docker-entrypoint.sh renewcert %v", day))
+				cmd := exec.Command("docker-entrypoint.sh", "renewcert", day)
 				if out, err := cmd.CombinedOutput(); err != nil {
 					if len(out) == 0 {
 						out = []byte(err.Error())
@@ -784,7 +784,7 @@ func main() {
 
 				c.JSON(http.StatusOK, gin.H{"message": "重启服务成功"})
 			case "getConfig":
-				data, err := os.ReadFile(path.Join(ovData, "server.conf"))
+				data, err := os.ReadFile(filepath.Join(ovData, "server.conf"))
 				if err != nil {
 					logger.Error(context.Background(), err.Error())
 					c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -795,7 +795,7 @@ func main() {
 			case "updateConfig":
 				content := c.PostForm("content")
 
-				file, err := os.OpenFile(path.Join(ovData, "server.conf"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+				file, err := os.OpenFile(filepath.Join(ovData, "server.conf"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 				if err != nil {
 					logger.Error(context.Background(), err.Error())
 					c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -861,7 +861,7 @@ func main() {
 
 			gid := c.Param("id")
 
-			cmd := exec.Command("egrep", "^auth-user-pass-verify", path.Join(ovData, "server.conf"))
+			cmd := exec.Command("egrep", "^auth-user-pass-verify", filepath.Join(ovData, "server.conf"))
 			if err := cmd.Run(); err != nil {
 				auth = false
 			} else {
@@ -1185,86 +1185,106 @@ func main() {
 		})
 
 		ovpn.GET("/client", func(c *gin.Context) {
-			a := c.Query("a")
-			switch a {
-			case "getConfig":
-				f := c.Query("file")
+			clients := make([]ClientConfigData, 0)
 
-				data, err := os.ReadFile(path.Join(ovData, f))
-				if err != nil {
-					if strings.Contains(f, "ccd") && os.IsNotExist(err) {
-						c.JSON(http.StatusOK, gin.H{"content": ""})
-					} else {
-						c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
-					}
-					return
+			files, _ := os.ReadDir(filepath.Join(ovData, "clients"))
+			for _, file := range files {
+				finfo, _ := file.Info()
+
+				f := ClientConfigData{
+					Name:     strings.TrimSuffix(file.Name(), filepath.Ext(file.Name())),
+					FullName: file.Name(),
+					File:     fmt.Sprintf("/ovpn/download/%s", file.Name()),
+					Date:     finfo.ModTime().Local().Format("2006-01-02 15:04:05"),
 				}
-
-				c.JSON(http.StatusOK, gin.H{"content": string(data)})
-
-				return
-			default:
-				ccd := make([]ClientConfigData, 0)
-
-				files, _ := os.ReadDir(path.Join(ovData, "clients"))
-				for _, file := range files {
-					finfo, _ := file.Info()
-
-					f := ClientConfigData{
-						Name:     strings.TrimSuffix(file.Name(), filepath.Ext(file.Name())),
-						FullName: file.Name(),
-						File:     fmt.Sprintf("/ovpn/download/%s", file.Name()),
-						Date:     finfo.ModTime().Local().Format("2006-01-02 15:04:05"),
-					}
-					ccd = append(ccd, f)
-				}
-
-				sort.Slice(ccd, func(i, j int) bool {
-					return ccd[i].Date < ccd[j].Date
-				})
-
-				c.JSON(http.StatusOK, ccd)
+				clients = append(clients, f)
 			}
+
+			sort.Slice(clients, func(i, j int) bool {
+				return clients[i].Date < clients[j].Date
+			})
+
+			c.JSON(http.StatusOK, clients)
+
 		})
 
-		ovpn.PUT("/client", func(c *gin.Context) {
-			f := c.Query("file")
-			content := c.PostForm("content")
-			msg := "客户端更新成功"
+		ovpn.GET("/client/:name/ccd", func(c *gin.Context) {
+			name := c.Param("name")
+			ccdDir := filepath.Join(ovData, "ccd")
 
-			dir := filepath.Dir(path.Join(ovData, f))
-			if _, err := os.Stat(dir); os.IsNotExist(err) {
-				err := os.MkdirAll(dir, 0755)
-				if err != nil {
-					logger.Error(context.Background(), err.Error())
-				}
-			}
-
-			if strings.Contains(f, "ccd") {
-				grepCmd := exec.Command("grep", "-q", "^client-config-dir", path.Join(ovData, "server.conf"))
-				err := grepCmd.Run()
-				if err != nil {
-					cmd := exec.Command("sh", "-c", fmt.Sprintf("echo 'client-config-dir %[1]s/ccd' >> %[1]s/server.conf", ovData))
-					if out, err := cmd.CombinedOutput(); err != nil {
-						if len(out) == 0 {
-							out = []byte(err.Error())
-						}
-						logger.Error(context.Background(), string(out))
-					}
-
-					msg += "（未启用CCD需要重启服务）"
-				}
-			}
-
-			file, err := os.OpenFile(path.Join(ovData, f), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+			ccdRoot, err := os.OpenRoot(ccdDir)
 			if err != nil {
 				logger.Error(context.Background(), err.Error())
 				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
 			}
-			defer file.Close()
+			defer ccdRoot.Close()
 
-			_, err = file.WriteString(content)
+			data, err := ccdRoot.ReadFile(name)
+			if err != nil {
+				if os.IsNotExist(err) {
+					c.JSON(http.StatusOK, gin.H{"content": ""})
+				} else {
+					c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				}
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{"content": string(data)})
+		})
+
+		ovpn.GET("/client/:name/config", func(c *gin.Context) {
+			name := c.Param("name")
+			clientsDir := filepath.Join(ovData, "clients")
+
+			clientsRoot, err := os.OpenRoot(clientsDir)
+			if err != nil {
+				logger.Error(context.Background(), err.Error())
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return
+			}
+			defer clientsRoot.Close()
+
+			data, err := clientsRoot.ReadFile(name + ".ovpn")
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{"content": string(data)})
+		})
+
+		ovpn.PUT("/client/:name/ccd", func(c *gin.Context) {
+			name := c.Param("name")
+			content := c.PostForm("content")
+			msg := "客户端更新成功"
+			ccdDir := filepath.Join(ovData, "ccd")
+
+			os.MkdirAll(ccdDir, 0755)
+
+			cfg, err := initOvpnConfig()
+			if err != nil {
+				logger.Error(context.Background(), err.Error())
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return
+			}
+
+			if cfg.Get("client-config-dir") == "" {
+				cfg.Set("client-config-dir", ccdDir)
+				cfg.Save()
+
+				msg += "（未启用CCD需要重启服务生效）"
+			}
+
+			ccdRoot, err := os.OpenRoot(ccdDir)
+			if err != nil {
+				logger.Error(context.Background(), err.Error())
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return
+			}
+			defer ccdRoot.Close()
+
+			err = ccdRoot.WriteFile(name, []byte(content), 0644)
 			if err != nil {
 				logger.Error(context.Background(), err.Error())
 				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -1272,6 +1292,30 @@ func main() {
 			}
 
 			c.JSON(http.StatusOK, gin.H{"message": msg})
+		})
+
+		ovpn.PUT("/client/:name/config", func(c *gin.Context) {
+			name := c.Param("name")
+			content := c.PostForm("content")
+			clientsDir := filepath.Join(ovData, "clients")
+
+			os.MkdirAll(clientsDir, 0755)
+
+			clientsRoot, err := os.OpenRoot(clientsDir)
+			if err != nil {
+				logger.Error(context.Background(), err.Error())
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return
+			}
+			defer clientsRoot.Close()
+
+			err = clientsRoot.WriteFile(name+".ovpn", []byte(content), 0644)
+			if err != nil {
+				logger.Error(context.Background(), err.Error())
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			} else {
+				c.JSON(http.StatusOK, gin.H{"message": "客户端配置更新成功"})
+			}
 		})
 
 		ovpn.POST("/client", func(c *gin.Context) {
@@ -1282,30 +1326,52 @@ func main() {
 			ccdConfig := c.PostForm("ccdConfig")
 			mfa := c.PostForm("mfa")
 
-			_, err := os.Stat(path.Join(ovData, "clients", fmt.Sprintf("%s.ovpn", name)))
+			clientsDir := filepath.Join(ovData, "clients")
+			clientsRoot, err := os.OpenRoot(clientsDir)
 			if err != nil {
-				cmd := exec.Command("sh", "-c", fmt.Sprintf("/usr/bin/docker-entrypoint.sh genclient %#v %#v %#v %#v %#v %#v", name, serverAddr, serverPort, config, ccdConfig, mfa))
-				if out, err := cmd.CombinedOutput(); err != nil {
-					if len(out) == 0 {
-						out = []byte(err.Error())
+				logger.Error(context.Background(), err.Error())
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return
+			}
+			defer clientsRoot.Close()
+
+			_, err = clientsRoot.Stat(name + ".ovpn")
+			if err != nil {
+				if os.IsNotExist(err) {
+					cmd := exec.Command("docker-entrypoint.sh", "genclient", name, serverAddr, serverPort, config, ccdConfig, mfa)
+					if out, err := cmd.CombinedOutput(); err != nil {
+						if len(out) == 0 {
+							out = []byte(err.Error())
+						}
+						logger.Error(context.Background(), string(out))
+						c.JSON(http.StatusInternalServerError, gin.H{"message": "客户端添加失败"})
+						return
 					}
-					logger.Error(context.Background(), string(out))
-					c.JSON(http.StatusInternalServerError, gin.H{"message": "客户端添加失败"})
+
+					c.JSON(http.StatusOK, gin.H{"message": "客户端添加成功"})
 					return
 				}
-			} else {
-				c.JSON(http.StatusUnprocessableEntity, gin.H{"message": "客户端已存在"})
+
+				logger.Error(context.Background(), err.Error())
+				c.JSON(http.StatusInternalServerError, gin.H{"message": "非法客户端名称"})
 				return
 			}
 
-			c.JSON(http.StatusOK, gin.H{"message": "客户端添加成功"})
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"message": "客户端已存在"})
 		})
 
 		ovpn.DELETE("/client/:name", func(c *gin.Context) {
 			name := c.Param("name")
 
-			cmd := exec.Command("sh", "-c", fmt.Sprintf("easyrsa --batch revoke %s && easyrsa gen-crl", name))
-			if out, err := cmd.CombinedOutput(); err != nil {
+			cmd := exec.Command("easyrsa", "--batch", "revoke", name)
+			out, err := cmd.CombinedOutput()
+			if err == nil {
+				cmd = exec.Command("easyrsa", "gen-crl")
+				if out, err = cmd.CombinedOutput(); err != nil {
+					logger.Error(context.Background(), string(out))
+					c.JSON(http.StatusInternalServerError, gin.H{"message": "更新CRL证书失败"})
+				}
+			} else {
 				if len(out) == 0 {
 					out = []byte(err.Error())
 				}
@@ -1314,8 +1380,16 @@ func main() {
 				return
 			}
 
-			os.Remove(path.Join(ovData, "/clients", fmt.Sprintf("%s.ovpn", name)))
-			os.Remove(path.Join(ovData, "/ccd", name))
+			dataRoot, err := os.OpenRoot(ovData)
+			if err != nil {
+				logger.Error(context.Background(), err.Error())
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return
+			}
+			defer dataRoot.Close()
+
+			dataRoot.Remove(filepath.Join("clients", fmt.Sprintf("%s.ovpn", name)))
+			dataRoot.Remove(filepath.Join("ccd", name))
 
 			c.JSON(http.StatusOK, gin.H{"message": "删除客户端成功"})
 		})
@@ -1505,9 +1579,9 @@ func main() {
 				configName = lu.OvpnConfig
 			}
 
-			configFile := path.Join(ovData, "clients", configName)
+			configFile := filepath.Join(ovData, "clients", configName)
 			hasAuth := func() bool {
-				file, err := os.Open(path.Join(ovData, "server.conf"))
+				file, err := os.Open(filepath.Join(ovData, "server.conf"))
 				if err != nil {
 					return false
 				}
