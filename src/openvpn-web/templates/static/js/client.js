@@ -91,9 +91,22 @@ $('#addClientModal form').submit(function () {
 // 编辑客户端
 $(document).on('click', '#editClient', function () {
   const name = vtable.row($(this).parents('tr')).data().name;
-  $('#editClientModal input[name="name"]').val(`clients/${name}.ovpn`);
+  $('#editClientModal input[name="name"]').val(name);
+  $('#editClientModal').data('type', 'config');
 
-  request.get(`/ovpn/client?a=getConfig&file=clients/${encodeURIComponent(name)}.ovpn`).then((data) => {
+  request.get(`/ovpn/client/${encodeURIComponent(name)}/config`).then((data) => {
+    $('#editClientModal textarea[name="config"]').val(data.content);
+    $('#editClientModal').modal('show');
+  });
+});
+
+// 编辑CCD
+$(document).on('click', '#editCCD', function () {
+  const name = vtable.row($(this).parents('tr')).data().name;
+  $('#editClientModal input[name="name"]').val(name);
+  $('#editClientModal').data('type', 'ccd');
+
+  request.get(`/ovpn/client/${encodeURIComponent(name)}/ccd`).then((data) => {
     $('#editClientModal textarea[name="config"]').val(data.content);
     $('#editClientModal').modal('show');
   });
@@ -102,20 +115,10 @@ $(document).on('click', '#editClient', function () {
 $('#editClientSumbit').click(function () {
   const name = $('#editClientModal input[name="name"]').val();
   const content = $('#editClientModal textarea[name="config"]').val();
+  const type = $('#editClientModal').data('type');
 
-  $('#editClientModal').modal('hide');
-  request.put(`/ovpn/client?file=${encodeURIComponent(name)}`, { content }).then((data) => {
+  request.put(`/ovpn/client/${encodeURIComponent(name)}/${type}`, { content }).then((data) => {
     message.success(data.message);
-  });
-});
-
-// 编辑CCD
-$(document).on('click', '#editCCD', function () {
-  const name = vtable.row($(this).parents('tr')).data().name;
-  $('#editClientModal input[name="name"]').val(`ccd/${name}`);
-
-  request.get(`/ovpn/client?a=getConfig&file=ccd/${encodeURIComponent(name)}`).then((data) => {
-    $('#editClientModal textarea[name="config"]').val(data.content);
-    $('#editClientModal').modal('show');
+    $('#editClientModal').modal('hide');
   });
 });
