@@ -50,8 +50,8 @@ tables.client = {
       sanitize: false,
       trigger: 'click',
       title: '提示',
-      content: function () {
-        const name = $(this).data('delete-name');
+      content: function (e) {
+        const name = $(e).data('delete-name');
         return `
           <div>
             <p>确定删除 <strong>${name}</strong> 吗？</p>
