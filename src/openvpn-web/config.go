@@ -23,6 +23,7 @@ type SysBeseConfig struct {
 	HistoryMaxDays       int    `json:"history_max_days" mapstructure:"history_max_days"`
 	ValidateClientConfig bool   `json:"validate_client_config" mapstructure:"validate_client_config"`
 	NftTableName         string `json:"nft_table_name" mapstructure:"nft_table_name"`
+	Token                string `json:"token" mapstructure:"token"`
 }
 
 type SysLdapConfig struct {
@@ -154,11 +155,19 @@ func initConfig() {
 
 	viper.SetConfigName("config")
 	viper.SetConfigType("json")
+	viper.SetConfigPermissions(0600)
 	viper.AddConfigPath(ovData)
+
+	viper.SafeWriteConfig()
 
 	err := viper.ReadInConfig()
 	if err != nil {
-		viper.SafeWriteConfig()
+		panic(err)
+	}
+
+	if !viper.IsSet("system.base.token") {
+		viper.Set("system.base.token", "ovpntoken"+genRandomString(16))
+		viper.WriteConfig()
 	}
 
 	var lastEventTime time.Time
