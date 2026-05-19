@@ -423,7 +423,6 @@ func genRandomString(length int) string {
 }
 
 func IsLocalRequest(c *gin.Context) bool {
-	fmt.Println(123232323, c.ClientIP(), c.Request.RemoteAddr)
 	ip, _, err := net.SplitHostPort(c.Request.RemoteAddr)
 	if err != nil {
 		return false
@@ -442,10 +441,12 @@ func AuthMiddleWare() gin.HandlerFunc {
 		session := sessions.Default(c)
 		user := session.Get("user")
 
-		if c.Request.URL.Path == "/ovpn/login" || c.Request.URL.Path == "/ovpn/history" || c.Request.URL.Path == "/ovpn/firewall" {
-			if IsLocalRequest(c) {
-				c.Next()
-				return
+		if c.GetHeader("O-Token") == viper.GetString("system.base.token") {
+			if c.Request.URL.Path == "/ovpn/login" || c.Request.URL.Path == "/ovpn/history" || c.Request.URL.Path == "/ovpn/firewall" {
+				if IsLocalRequest(c) {
+					c.Next()
+					return
+				}
 			}
 		}
 

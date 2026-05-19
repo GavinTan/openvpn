@@ -207,8 +207,9 @@ check_config() {
 add_history() {
 	#https://build.openvpn.net/man/openvpn-2.6/openvpn.8.html#environmental-variables
 	set +e
+	TOKEN=$(jq -r '.system.base.token // ""' $ovpn_data/config.json)
 	data="vip=$ifconfig_pool_remote_ip&vip6=$ifconfig_pool_remote_ip6&rip=$trusted_ip&rip6=$trusted_ip6&common_name=$common_name&username=$username&bytes_received=$bytes_received&bytes_sent=$bytes_sent&time_unix=$time_unix&time_duration=$time_duration"
-	status=$(curl -w "%{http_code}" --connect-timeout 5 -s -X POST -o /dev/null -d $data $ovpn_history_api)
+	status=$(curl -w "%{http_code}" --connect-timeout 5 -s -X POST -o /dev/null -d $data $ovpn_history_api -H "O-Token: $TOKEN")
 	if [[ $? -ne 0 || $status -ne 200 ]]; then
 		echo "[CLIENT-DISCONNECT] $0:$LINENO 保存历史记录出错，请检查！"
 	fi
@@ -277,9 +278,10 @@ EOF
 set_firewall() {
 	set +e
 	WEB_PORT=$(jq -r '.system.base.web_port // "8833"' $ovpn_data/config.json)
+	TOKEN=$(jq -r '.system.base.token // ""' $ovpn_data/config.json)
 	ovpn_firewall_api="http://127.0.0.1:$WEB_PORT/ovpn/firewall?a=add_ovips"
 	data="vip=$ifconfig_pool_remote_ip&vip6=$ifconfig_pool_remote_ip6&username=$username"
-	status=$(curl -w "%{http_code}" --connect-timeout 5 -s -X POST -o /dev/null -d $data $ovpn_firewall_api)
+	status=$(curl -w "%{http_code}" --connect-timeout 5 -s -X POST -o /dev/null -d $data $ovpn_firewall_api -H "O-Token: $TOKEN")
 	if [[ $? -ne 0 || $status -ne 200 ]]; then
 		echo "[CLIENT-CONNECT] $0:$LINENO 设置防火墙出错，请检查！"
 	fi
@@ -289,9 +291,10 @@ set_firewall() {
 delete_firewall() {
 	set +e
 	WEB_PORT=$(jq -r '.system.base.web_port // "8833"' $ovpn_data/config.json)
+	TOKEN=$(jq -r '.system.base.token // ""' $ovpn_data/config.json)
 	ovpn_firewall_api="http://127.0.0.1:$WEB_PORT/ovpn/firewall?a=delete_ovips"
 	data="vip=$ifconfig_pool_remote_ip&vip6=$ifconfig_pool_remote_ip6&username=$username"
-	status=$(curl -w "%{http_code}" --connect-timeout 5 -s -X POST -o /dev/null -d $data $ovpn_firewall_api)
+	status=$(curl -w "%{http_code}" --connect-timeout 5 -s -X POST -o /dev/null -d $data $ovpn_firewall_api -H "O-Token: $TOKEN")
 	if [[ $? -ne 0 || $status -ne 200 ]]; then
 		echo "[CLIENT-DISCONNECT] $0:$LINENO 移除防火墙策略出错，请检查！"
 	fi
