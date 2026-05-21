@@ -102,6 +102,7 @@ var (
 	//go:embed templates
 	FS embed.FS
 
+	cc     = cache.New(5*time.Minute, 10*time.Minute)
 	db     *gorm.DB
 	logger = gLogger.New(
 		log.New(os.Stdout, "[OPENVPN-WEB] "+time.Now().Format("2006-01-02 15:04:05.000")+" MAIN ", 0),
@@ -414,10 +415,9 @@ func isValidPassword(pw string) bool {
 
 func genRandomString(length int) string {
 	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	result := make([]byte, length)
 	for i := range result {
-		result[i] = charset[r.Intn(len(charset))]
+		result[i] = charset[rand.Intn(len(charset))]
 	}
 	return string(result)
 }
@@ -497,7 +497,6 @@ func main() {
 	c.Start()
 
 	store := gormsessions.NewStore(db, true, []byte(secretKey))
-	cc := cache.New(5*time.Minute, 10*time.Minute)
 
 	db.AutoMigrate(&Group{})
 	db.FirstOrCreate(&Group{Name: "Default", ParentID: nil})
@@ -543,6 +542,24 @@ func main() {
 	r.POST("/login", func(c *gin.Context) {
 		var err error
 
+		cip := c.ClientIP()
+		key := c.PostForm("c_key")
+		dots := c.PostForm("c_dots")
+		passcode := c.PostForm("passcode")
+
+		n := getLoginFail(cip)
+		if passcode == "" && n >= loginCaptchaThreshold {
+			if key == "" && dots == "" {
+				c.JSON(401, gin.H{"message": "需要进行人机验证", "needCaptcha": true})
+				return
+			}
+
+			if !checkCaptcha(key, dots) {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": "验证码错误"})
+				return
+			}
+		}
+
 		session := sessions.Default(c)
 		remember7d := c.PostForm("remember7d")
 
@@ -565,14 +582,13 @@ func main() {
 				session.Set("user", u.Username)
 				session.Save()
 
+				resetLoginFail(cip)
 				c.JSON(200, gin.H{"message": "登录成功", "redirect": "/admin"})
 				return
 			} else {
 				err = fmt.Errorf("密码错误")
 			}
 		} else {
-			passcode := c.PostForm("passcode")
-
 			if passcode != "" {
 				if validUser, ok := cc.Get("valid_user"); ok {
 					if u.Username == validUser.(string) {
@@ -580,6 +596,7 @@ func main() {
 							cc.Delete("valid_user")
 							session.Set("user", u.Username)
 							session.Save()
+							resetLoginFail(cip)
 							c.JSON(200, gin.H{"message": "登录成功", "redirect": "/"})
 						} else {
 							c.JSON(401, gin.H{"message": "MFA验证失败"})
@@ -604,10 +621,14 @@ func main() {
 				session.Set("user", u.Username)
 				session.Save()
 
+				resetLoginFail(cip)
+
 				c.JSON(200, gin.H{"message": "登录成功", "redirect": "/", "user": user})
 				return
 			}
 		}
+
+		setLoginFail(cip)
 
 		c.JSON(401, gin.H{"message": err.Error()})
 	})
@@ -618,6 +639,15 @@ func main() {
 		session.Options(sessions.Options{MaxAge: -1})
 		session.Save()
 		c.Redirect(302, "/login")
+	})
+
+	r.GET("/captcha", func(c *gin.Context) {
+		key, mBase64, tBase64, err := getCaptcha()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"key": key, "master": mBase64, "thumb": tBase64})
 	})
 
 	r.Use(AuthMiddleWare())
