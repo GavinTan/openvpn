@@ -445,7 +445,7 @@
     $(document).on('click', '#disableMfa', function () {
       const id = $('#mfaModal input[name="id"]').val();
 
-      request.delete('/client/mfa', { id }).then((data) => {
+      request.delete(`/client/mfa/${id}`).then((data) => {
         $('#mfaModal').modal('hide');
         message.success(data.message);
       });
