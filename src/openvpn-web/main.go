@@ -623,7 +623,7 @@ func main() {
 
 				resetLoginFail(cip)
 
-				c.JSON(200, gin.H{"message": "登录成功", "redirect": "/", "user": user})
+				c.JSON(200, gin.H{"message": "登录成功", "redirect": "/"})
 				return
 			}
 		}
@@ -657,6 +657,12 @@ func main() {
 		if user, ok := session.Get("user").(string); ok {
 			if user == adminUsername {
 				c.Redirect(302, "/admin")
+				return
+			}
+
+			u := User{Username: user}.Info()
+			if *u.IsFirstLogin {
+				c.Redirect(302, "/login")
 				return
 			}
 		}
