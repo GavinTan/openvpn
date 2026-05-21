@@ -9,7 +9,8 @@
     <link rel="icon" href="static/cropped-openvpn-192x192.png" sizes="192x192" />
     <link rel="apple-touch-icon" href="static/cropped-openvpn-180x180.png" />
     <link rel="stylesheet" type="text/css" href="static/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="static/css/index.css" />
+    <link rel="stylesheet" type="text/css" href="static/css/gocaptcha.global.css" />
+    <link rel="stylesheet" type="text/css" href="static/css/index.css" />
     <style>
       .form-check-label {
         padding-left: 0.15rem;
@@ -37,6 +38,19 @@
         height: 1em;
         vertical-align: -0.125em;
         fill: currentcolor;
+      }
+
+      .captcha {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 9999;
+        background: rgba(0, 0, 0, 0.5);
       }
     </style>
   </head>
@@ -206,34 +220,59 @@
         </div>
       </div>
     </div>
+
+    <div class="captcha" hidden>
+      <div id="click-captcha"></div>
+    </div>
   </body>
   <script type="text/javascript" src="static/js/lib/jquery.min.js"></script>
   <script type="text/javascript" src="static/js/lib/js.cookie.min.js"></script>
   <script type="text/javascript" src="static/js/lib/bootstrap.bundle.min.js"></script>
+  <script type="text/javascript" src="static/js/lib/gocaptcha.global.js"></script>
 
   <script type="module">
     import '/static/js/utils.js';
 
     let redirect;
+    let capt;
+    let captchaKey;
+    let needCaptcha;
 
-    if (Cookies.get('remember7d') == 1) {
-      $('#remember7d').prop('checked', true);
-    }
-
-    $('#remember7d').change(function () {
-      if ($(this).is(':checked')) {
-        Cookies.set('remember7d', 1, { expires: 7 });
-      } else {
-        Cookies.remove('remember7d');
-      }
+    const captchaEl = document.getElementById('click-captcha');
+    capt = new GoCaptcha.Click({
+      width: 300,
+      height: 220,
     });
 
-    $('#login form').submit(function () {
+    capt.mount(captchaEl);
+
+    capt.setEvents({
+      confirm(dots, reset) {
+        login({ c_key: captchaKey, c_dots: JSON.stringify(dots) });
+      },
+      refresh() {
+        requestCaptchaData();
+      },
+    });
+
+    function requestCaptchaData() {
+      request.get('/captcha').then((data) => {
+        capt.clear();
+        capt.setData({
+          image: data.master,
+          thumb: data.thumb,
+        });
+        captchaKey = data.key;
+      });
+    }
+
+    function login(extra = {}) {
       const username = $('#login input[name="username"]').val();
       const password = $('#login input[name="password"]').val();
       const remember7d = $('#remember7d').is(':checked') ? 'on' : 'off';
 
-      $.post('/login', { username, password, remember7d }, function (data) {
+      $.post('/login', { username, password, remember7d, ...extra }, function (data) {
+        captchaEl.parentElement.hidden = true;
         if (data.message === '需要MFA验证') {
           $('#mfaValidateModal').modal('show');
         } else {
@@ -249,28 +288,51 @@
           }
         }
       }).fail(function (xhr) {
-        message.error(xhr.responseJSON?.message || xhr.responseText || xhr.statusText);
-      });
+        if (xhr.responseJSON?.message != '验证码错误') captchaEl.parentElement.hidden = true;
 
-      return false;
-    });
+        needCaptcha = xhr.responseJSON?.needCaptcha || false;
+        if (needCaptcha) {
+          requestCaptchaData();
+          captchaEl.parentElement.hidden = false;
+        }
 
-    $('#mfaValidateModal form').submit(function () {
-      const username = $('#login input[name="username"]').val();
-      const remember7d = $('#remember7d').is(':checked') ? 'on' : 'off';
-      const passcode = $('#mfaValidateModal input[name="passcode"]').val();
-
-      $.post('/login', { username, passcode, remember7d }, function (data) {
-        location.assign(data.redirect);
-        message.success(data.message);
-      }).fail(function (xhr) {
-        message.error(xhr.responseJSON?.message || xhr.responseText || xhr.statusText);
         if (xhr.responseJSON?.redirect) {
           location.assign(xhr.responseJSON.redirect);
         }
-      });
 
-      return false;
+        message.error(xhr.responseJSON?.message || xhr.responseText || xhr.statusText);
+      });
+    }
+
+    if (Cookies.get('remember7d') == 1) {
+      $('#remember7d').prop('checked', true);
+    }
+
+    $('#remember7d').change(function () {
+      if ($(this).is(':checked')) {
+        Cookies.set('remember7d', 1, { expires: 7 });
+      } else {
+        Cookies.remove('remember7d');
+      }
+    });
+
+    $('#login form').submit(function (e) {
+      e.preventDefault();
+
+      if (needCaptcha) {
+        requestCaptchaData();
+        captchaEl.parentElement.hidden = false;
+        return;
+      } else {
+        login();
+      }
+    });
+
+    $('#mfaValidateModal form').submit(function (e) {
+      e.preventDefault();
+
+      const passcode = $('#mfaValidateModal input[name="passcode"]').val();
+      login({ passcode });
     });
 
     function checkPassword(pw) {
