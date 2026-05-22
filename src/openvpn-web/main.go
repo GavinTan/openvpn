@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/subtle"
 	"crypto/x509"
 	"embed"
 	"encoding/csv"
@@ -33,6 +34,7 @@ import (
 	"github.com/patrickmn/go-cache"
 	"github.com/robfig/cron/v3"
 	"github.com/spf13/viper"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 	gLogger "gorm.io/gorm/logger"
 )
@@ -576,8 +578,19 @@ func main() {
 		c.ShouldBind(&u)
 
 		if u.Username == adminUsername {
-			dp, _ := aes.AesDecrypt(adminPassword, secretKey)
-			if u.Password == dp {
+			if dp, err := aes.AesDecrypt(adminPassword, secretKey); err == nil {
+				if subtle.ConstantTimeCompare([]byte(dp), []byte(u.Password)) == 1 {
+					passwd, _ := bcrypt.GenerateFromPassword([]byte("admin"), 12)
+					viper.Set("system.base.admin_password", string(passwd))
+					viper.WriteConfig()
+
+					c.JSON(401, gin.H{"message": "检测到旧的密码加密格式已重置为默认密码，请使用默认密码admin登录后进行修改"})
+					return
+				}
+			}
+
+			fmt.Println(33333333, adminPassword, u.Password)
+			if bcrypt.CompareHashAndPassword([]byte(adminPassword), []byte(u.Password)) == nil {
 				session.Set("user", u.Username)
 				session.Save()
 
@@ -699,7 +712,10 @@ func main() {
 			val := vs[0]
 
 			switch k {
-			case "system.base.admin_password", "system.email.password":
+			case "system.base.admin_password":
+				ep, _ := bcrypt.GenerateFromPassword([]byte(val), 12)
+				val = string(ep)
+			case "system.email.password":
 				val, _ = aes.AesEncrypt(val, secretKey)
 			case "system.base.max_duplicate_login":
 				n, err := strconv.Atoi(val)
