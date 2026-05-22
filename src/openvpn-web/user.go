@@ -17,7 +17,7 @@ import (
 )
 
 type User struct {
-	ID           uint       `gorm:"primarykey" json:"id" form:"id"`
+	ID           uint       `gorm:"primarykey" json:"id" form:"id" uri:"id"`
 	Username     string     `gorm:"uniqueIndex;column:username" json:"username" form:"username"`
 	Password     string     `form:"password" json:"password"`
 	IsEnable     *bool      `gorm:"default:true" form:"isEnable" json:"isEnable"`

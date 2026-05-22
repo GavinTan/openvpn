@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"crypto/x509"
@@ -623,7 +622,7 @@ func main() {
 
 				resetLoginFail(cip)
 
-				c.JSON(200, gin.H{"message": "登录成功", "redirect": "/"})
+				c.JSON(200, gin.H{"message": "登录成功", "redirect": "/", "user": gin.H{"id": user.ID, "isFirstLogin": *user.IsFirstLogin}})
 				return
 			}
 		}
@@ -1554,6 +1553,15 @@ func main() {
 			var u User
 			c.ShouldBind(&u)
 
+			session := sessions.Default(c)
+			if user, ok := session.Get("user").(string); ok {
+				cu := User{Username: user}.Info()
+				if u.ID != cu.ID {
+					c.JSON(http.StatusInternalServerError, gin.H{"message": "非法请求"})
+					return
+				}
+			}
+
 			if !isValidPassword(u.Password) {
 				c.JSON(http.StatusInternalServerError, gin.H{"message": "密码不满足要求（长度12位，包含大小写字母、数字、特殊字符）"})
 				return
@@ -1616,33 +1624,22 @@ func main() {
 				configName = lu.OvpnConfig
 			}
 
-			configFile := filepath.Join(ovData, "clients", configName)
-			hasAuth := func() bool {
-				file, err := os.Open(filepath.Join(ovData, "server.conf"))
-				if err != nil {
-					return false
-				}
-				defer file.Close()
-
-				scanner := bufio.NewScanner(file)
-				for scanner.Scan() {
-					line := strings.TrimSpace(scanner.Text())
-					if strings.HasPrefix(line, "auth-user-pass-verify") {
-						return true
-					}
-				}
-				if err := scanner.Err(); err != nil {
-					return false
-				}
-				return false
-			}
-
 			if configName == "" {
 				c.JSON(http.StatusInternalServerError, gin.H{"message": "该账号未指定配置文件，请联系管理员"})
 				return
 			}
 
-			data, err := os.ReadFile(configFile)
+			clientsDir := filepath.Join(ovData, "clients")
+
+			clientsRoot, err := os.OpenRoot(clientsDir)
+			if err != nil {
+				logger.Error(context.Background(), err.Error())
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return
+			}
+			defer clientsRoot.Close()
+
+			data, err := clientsRoot.ReadFile(configName)
 			if err != nil {
 				logger.Error(context.Background(), err.Error())
 				c.JSON(http.StatusInternalServerError, gin.H{"message": "读取配置文件失败"})
@@ -1663,7 +1660,14 @@ func main() {
 				content = strings.ReplaceAll(content, challengeLine+"\n", "")
 			}
 
-			if hasAuth() {
+			cfg, err := initOvpnConfig()
+			if err != nil {
+				logger.Error(context.Background(), err.Error())
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return
+			}
+
+			if cfg.Get("auth-user-pass-verify") != "" {
 				if strings.Contains(content, "#auth-user-pass") {
 					content = strings.ReplaceAll(content, "#auth-user-pass", "auth-user-pass")
 				}
@@ -1707,6 +1711,15 @@ func main() {
 			var u User
 			c.ShouldBind(&u)
 
+			session := sessions.Default(c)
+			if user, ok := session.Get("user").(string); ok {
+				cu := User{Username: user}.Info()
+				if u.ID != cu.ID {
+					c.JSON(http.StatusInternalServerError, gin.H{"message": "非法请求"})
+					return
+				}
+			}
+
 			passcode := c.PostForm("passcode")
 
 			vaild := ValidateMfa(passcode, u.MfaSecret)
@@ -1719,8 +1732,19 @@ func main() {
 		})
 
 		client.DELETE("/mfa/:id", func(c *gin.Context) {
-			id := c.Param("id")
-			db.Model(&User{}).Where("id = ?", id).Update("mfa_secret", nil)
+			var u User
+			c.ShouldBindUri(&u)
+
+			session := sessions.Default(c)
+			if user, ok := session.Get("user").(string); ok {
+				cu := User{Username: user}.Info()
+				if u.ID != cu.ID {
+					c.JSON(http.StatusInternalServerError, gin.H{"message": "非法请求"})
+					return
+				}
+			}
+
+			db.Model(&User{}).Where("id = ?", u.ID).Update("mfa_secret", nil)
 
 			c.JSON(http.StatusOK, gin.H{"message": "MFA已停用"})
 		})
