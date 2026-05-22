@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/subtle"
 	"database/sql"
 	"encoding/base64"
 	"errors"
@@ -189,7 +190,7 @@ func (u *User) Login(clogin bool) error {
 			}
 		}
 
-		if u.Password != pass {
+		if subtle.ConstantTimeCompare([]byte(u.Password), []byte(pass)) != 1 {
 			return fmt.Errorf("密码错误")
 		}
 

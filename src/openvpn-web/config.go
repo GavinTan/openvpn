@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/gavintan/gopkg/aes"
 	"github.com/spf13/viper"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type SysBeseConfig struct {
@@ -104,7 +104,7 @@ var (
 
 func initConfig() {
 	sk := genRandomString(50)
-	dp, _ := aes.AesEncrypt("admin", sk)
+	passwd, _ := bcrypt.GenerateFromPassword([]byte("admin"), 12)
 
 	viper.SetDefault("system.base.site_url", "http://127.0.0.1:8833")
 	viper.SetDefault("system.base.web_port", "8833")
@@ -112,7 +112,7 @@ func initConfig() {
 	viper.SetDefault("system.base.server_cn", "ovpn_"+genRandomString(16))
 	viper.SetDefault("system.base.server_name", "server_"+genRandomString(16))
 	viper.SetDefault("system.base.admin_username", "admin")
-	viper.SetDefault("system.base.admin_password", dp)
+	viper.SetDefault("system.base.admin_password", string(passwd))
 	viper.SetDefault("system.base.auto_update_ovpn_config", false)
 	viper.SetDefault("system.base.max_duplicate_login", 0)
 	viper.SetDefault("system.base.validate_client_config", false)
