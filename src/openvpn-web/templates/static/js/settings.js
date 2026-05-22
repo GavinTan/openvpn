@@ -139,16 +139,24 @@ $(document).on('input', '#adminPassword', function () {
 });
 
 $(document).on('focus', '#adminPassword', function () {
+  $(this).data('oldValue', $(this).val());
   $(this).val('');
 });
 
 $(document).on('blur', '#adminPassword', function () {
   const passwordScore = $(this).data('passwordScore');
+  const oldValue = $(this).data('oldValue');
   const newValue = $(this).val();
+
+  if (newValue === '') {
+    $(this).val(oldValue);
+    return;
+  }
 
   if (passwordScore != 100) {
     message.error('密码不满足要求（长度12位，包含大小写字母、数字、特殊字符）');
     $('#settingsModal .progress-bar').width('0%');
+    $(this).val('');
     return;
   }
 
