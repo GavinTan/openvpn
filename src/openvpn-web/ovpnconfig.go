@@ -169,20 +169,33 @@ func (cfg *VPNConfig) Update(key string, val string) {
 		cfg.Set("server", val)
 
 		ipt := "iptables-nft"
-		checkCmd := exec.Command("sh", "-c", "iptables-legacy -L -n -t nat > /dev/null 2>&1")
+		checkCmd := exec.Command("iptables-legacy", "-L", "-n", "-t", "nat")
 		if err := checkCmd.Run(); err == nil {
 			ipt = "iptables-legacy"
 		}
 
-		getCmd := fmt.Sprintf("%s -t nat -C POSTROUTING -s %s -j MASQUERADE > /dev/null 2>&1", ipt, strings.ReplaceAll(oldSubnet, " ", "/"))
-		delCmd := fmt.Sprintf("%s -t nat -D POSTROUTING -s %s -j MASQUERADE", ipt, strings.ReplaceAll(oldSubnet, " ", "/"))
-		addCmd := fmt.Sprintf("%s -t nat -A POSTROUTING -s %s -j MASQUERADE", ipt, strings.ReplaceAll(val, " ", "/"))
-		cmd := exec.Command("sh", "-c", strings.Join([]string{getCmd, delCmd}, " && ")+";"+addCmd)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			if len(out) == 0 {
-				out = []byte(err.Error())
+		if oldSubnet != "" && oldSubnet != val {
+			getOldCmd := exec.Command(ipt, "-t", "nat", "-C", "POSTROUTING", "-s", strings.ReplaceAll(oldSubnet, " ", "/"), "-j", "MASQUERADE")
+			if err := getOldCmd.Run(); err == nil {
+				delOldCmd := exec.Command(ipt, "-t", "nat", "-D", "POSTROUTING", "-s", strings.ReplaceAll(oldSubnet, " ", "/"), "-j", "MASQUERADE")
+				if out, err := delOldCmd.CombinedOutput(); err != nil {
+					if len(out) == 0 {
+						out = []byte(err.Error())
+					}
+					logger.Error(context.Background(), string(out))
+				}
 			}
-			logger.Error(context.Background(), string(out))
+		}
+
+		getCmd := exec.Command(ipt, "-t", "nat", "-C", "POSTROUTING", "-s", strings.ReplaceAll(val, " ", "/"), "-j", "MASQUERADE")
+		if err := getCmd.Run(); err != nil {
+			addCmd := exec.Command(ipt, "-t", "nat", "-A", "POSTROUTING", "-s", strings.ReplaceAll(val, " ", "/"), "-j", "MASQUERADE")
+			if out, err := addCmd.CombinedOutput(); err != nil {
+				if len(out) == 0 {
+					out = []byte(err.Error())
+				}
+				logger.Error(context.Background(), string(out))
+			}
 		}
 	case "openvpn.ovpn_gateway":
 		if val == "true" {
@@ -220,7 +233,7 @@ func (cfg *VPNConfig) Update(key string, val string) {
 		cfg.Set("management", strings.ReplaceAll(val, ":", " "))
 	case "openvpn.ovpn_ipv6":
 		ipt := "ip6tables-nft"
-		checkCmd := exec.Command("sh", "-c", "ip6tables-legacy -L -n -t nat > /dev/null 2>&1")
+		checkCmd := exec.Command("ip6tables-legacy", "-L", "-n", "-t", "nat")
 		if err := checkCmd.Run(); err == nil {
 			ipt = "ip6tables-legacy"
 		}
@@ -233,28 +246,29 @@ func (cfg *VPNConfig) Update(key string, val string) {
 			cfg.Set("proto", proto)
 			cfg.Set("server-ipv6", conf.Openvpn.OvpnSubnet6)
 
-			getCmd := fmt.Sprintf("%s -t nat -C POSTROUTING -s %s -j MASQUERADE > /dev/null 2>&1", ipt, conf.Openvpn.OvpnSubnet6)
-			addCmd := fmt.Sprintf("%s -t nat -A POSTROUTING -s %s -j MASQUERADE", ipt, conf.Openvpn.OvpnSubnet6)
-			cmd := exec.Command("sh", "-c", strings.Join([]string{getCmd, addCmd}, " || "))
-			if out, err := cmd.CombinedOutput(); err != nil {
-				if len(out) == 0 {
-					out = []byte(err.Error())
+			getCmd := exec.Command(ipt, "-t", "nat", "-C", "POSTROUTING", "-s", conf.Openvpn.OvpnSubnet6, "-j", "MASQUERADE")
+			if err := getCmd.Run(); err != nil {
+				addCmd := exec.Command(ipt, "-t", "nat", "-A", "POSTROUTING", "-s", conf.Openvpn.OvpnSubnet6, "-j", "MASQUERADE")
+				if out, err := addCmd.CombinedOutput(); err != nil {
+					if len(out) == 0 {
+						out = []byte(err.Error())
+					}
+					logger.Error(context.Background(), string(out))
 				}
-				logger.Error(context.Background(), string(out))
 			}
 		} else {
 			cfg.Set("proto", conf.Openvpn.OvpnProto)
 			cfg.Delete("server-ipv6")
 
-			getCmd := fmt.Sprintf("%s -t nat -C POSTROUTING -s %s -j MASQUERADE > /dev/null 2>&1", ipt, conf.Openvpn.OvpnSubnet6)
-			delCmd := fmt.Sprintf("%s -t nat -D POSTROUTING -s %s -j MASQUERADE", ipt, conf.Openvpn.OvpnSubnet6)
-
-			cmd := exec.Command("sh", "-c", strings.Join([]string{getCmd, delCmd}, " && ")+"|| true")
-			if out, err := cmd.CombinedOutput(); err != nil {
-				if len(out) == 0 {
-					out = []byte(err.Error())
+			getCmd := exec.Command(ipt, "-t", "nat", "-C", "POSTROUTING", "-s", conf.Openvpn.OvpnSubnet6, "-j", "MASQUERADE")
+			if err := getCmd.Run(); err == nil {
+				delCmd := exec.Command(ipt, "-t", "nat", "-D", "POSTROUTING", "-s", conf.Openvpn.OvpnSubnet6, "-j", "MASQUERADE")
+				if out, err := delCmd.CombinedOutput(); err != nil {
+					if len(out) == 0 {
+						out = []byte(err.Error())
+					}
+					logger.Error(context.Background(), string(out))
 				}
-				logger.Error(context.Background(), string(out))
 			}
 		}
 	case "openvpn.ovpn_subnet6":
@@ -264,22 +278,33 @@ func (cfg *VPNConfig) Update(key string, val string) {
 			cfg.Set("server-ipv6", val)
 
 			ipt := "ip6tables-nft"
-			checkCmd := exec.Command("sh", "-c", "ip6tables-legacy -L -n -t nat > /dev/null 2>&1")
+			checkCmd := exec.Command("ip6tables-legacy", "-L", "-n", "-t", "nat")
 			if err := checkCmd.Run(); err == nil {
 				ipt = "ip6tables-legacy"
 			}
 
-			getOldCmd := fmt.Sprintf("%s -t nat -C POSTROUTING -s %s -j MASQUERADE > /dev/null 2>&1", ipt, oldSubnet6)
-			delOldCmd := fmt.Sprintf("%s -t nat -D POSTROUTING -s %s -j MASQUERADE", ipt, oldSubnet6)
-			getCmd := fmt.Sprintf("%s -t nat -C POSTROUTING -s %s -j MASQUERADE > /dev/null 2>&1", ipt, val)
-			addCmd := fmt.Sprintf("%s -t nat -A POSTROUTING -s %s -j MASQUERADE", ipt, val)
-
-			cmd := exec.Command("sh", "-c", strings.Join([]string{getOldCmd, delOldCmd}, " && ")+";"+strings.Join([]string{getCmd, addCmd}, " || "))
-			if out, err := cmd.CombinedOutput(); err != nil {
-				if len(out) == 0 {
-					out = []byte(err.Error())
+			if oldSubnet6 != "" && oldSubnet6 != val {
+				getOldCmd := exec.Command(ipt, "-t", "nat", "-C", "POSTROUTING", "-s", oldSubnet6, "-j", "MASQUERADE")
+				if err := getOldCmd.Run(); err == nil {
+					delOldCmd := exec.Command(ipt, "-t", "nat", "-D", "POSTROUTING", "-s", oldSubnet6, "-j", "MASQUERADE")
+					if out, err := delOldCmd.CombinedOutput(); err != nil {
+						if len(out) == 0 {
+							out = []byte(err.Error())
+						}
+						logger.Error(context.Background(), string(out))
+					}
 				}
-				logger.Error(context.Background(), string(out))
+			}
+
+			getCmd := exec.Command(ipt, "-t", "nat", "-C", "POSTROUTING", "-s", val, "-j", "MASQUERADE")
+			if err := getCmd.Run(); err != nil {
+				addCmd := exec.Command(ipt, "-t", "nat", "-A", "POSTROUTING", "-s", val, "-j", "MASQUERADE")
+				if out, err := addCmd.CombinedOutput(); err != nil {
+					if len(out) == 0 {
+						out = []byte(err.Error())
+					}
+					logger.Error(context.Background(), string(out))
+				}
 			}
 		}
 	case "openvpn.ovpn_push_dns1":
