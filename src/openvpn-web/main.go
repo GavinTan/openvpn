@@ -1126,9 +1126,9 @@ func main() {
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 			} else {
-				go func() {
-					sendNotifyEmail := c.PostForm("sendNotifyEmail")
-					if sendNotifyEmail == "true" {
+				sendNotifyEmail := c.PostForm("sendNotifyEmail")
+				if sendNotifyEmail == "true" {
+					go func() {
 						var tpl *template.Template
 						var buf bytes.Buffer
 
@@ -1155,8 +1155,8 @@ func main() {
 						}
 
 						sendEmail(u.Email, "用户开通通知", buf.String())
-					}
-				}()
+					}()
+				}
 
 				c.JSON(http.StatusOK, gin.H{"message": "添加用户成功"})
 			}
@@ -1182,13 +1182,13 @@ func main() {
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 			} else {
-				go func() {
-					var cu User
-					db.First(&cu, u.ID)
+				sendNotifyEmail := c.PostForm("sendNotifyEmail")
+				if sendNotifyEmail == "true" {
+					go func() {
+						var cu User
+						db.First(&cu, u.ID)
 
-					if cu.Email != "" {
-						sendNotifyEmail := c.PostForm("sendNotifyEmail")
-						if sendNotifyEmail == "true" {
+						if cu.Email != "" {
 							var tpl *template.Template
 							var buf bytes.Buffer
 
@@ -1215,11 +1215,11 @@ func main() {
 							}
 
 							sendEmail(cu.Email, "用户密码重置通知", buf.String())
+						} else {
+							logger.Error(context.Background(), "发送邮件通知失败，用户没有配置邮箱地址")
 						}
-					} else {
-						logger.Error(context.Background(), "发送邮件通知失败，用户没有配置邮箱地址")
-					}
-				}()
+					}()
+				}
 
 				c.JSON(http.StatusOK, gin.H{"message": "用户更新成功"})
 			}
