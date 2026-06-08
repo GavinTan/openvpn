@@ -566,11 +566,13 @@ func main() {
 
 		if remember7d == "on" {
 			session.Options(sessions.Options{
-				MaxAge: 3600 * 24 * 7,
+				HttpOnly: true,
+				MaxAge:   3600 * 24 * 7,
 			})
 		} else {
 			session.Options(sessions.Options{
-				MaxAge: 3600 * 1,
+				HttpOnly: true,
+				MaxAge:   3600 * 1,
 			})
 		}
 
@@ -589,7 +591,6 @@ func main() {
 				}
 			}
 
-			fmt.Println(33333333, adminPassword, u.Password)
 			if bcrypt.CompareHashAndPassword([]byte(adminPassword), []byte(u.Password)) == nil {
 				session.Set("user", u.Username)
 				session.Save()
@@ -1742,7 +1743,7 @@ func main() {
 			if !vaild {
 				c.JSON(http.StatusInternalServerError, gin.H{"message": "验证码错误"})
 			} else {
-				u.Update()
+				db.Model(&User{}).Where("id = ?", u.ID).Update("mfa_secret", u.MfaSecret)
 				c.JSON(http.StatusOK, gin.H{"message": "MFA已启用"})
 			}
 		})

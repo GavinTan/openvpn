@@ -13,17 +13,12 @@ import (
 type SysBeseConfig struct {
 	SiteUrl              string `json:"site_url" mapstructure:"site_url"`
 	WebPort              string `json:"web_port" mapstructure:"web_port"`
-	SecretKey            string `json:"secret_key" mapstructure:"secret_key"`
-	ServerCN             string `json:"server_cn" mapstructure:"server_cn"`
-	ServerName           string `json:"server_name" mapstructure:"server_name"`
 	AdminUsername        string `json:"admin_username" mapstructure:"admin_username"`
 	AdminPassword        string `json:"admin_password" mapstructure:"admin_password"`
 	AutoUpdateOvpnConfig bool   `json:"auto_update_ovpn_config" mapstructure:"auto_update_ovpn_config"`
 	MaxDuplicateLogin    int    `json:"max_duplicate_login" mapstructure:"max_duplicate_login"`
 	HistoryMaxDays       int    `json:"history_max_days" mapstructure:"history_max_days"`
 	ValidateClientConfig bool   `json:"validate_client_config" mapstructure:"validate_client_config"`
-	NftTableName         string `json:"nft_table_name" mapstructure:"nft_table_name"`
-	Token                string `json:"token" mapstructure:"token"`
 }
 
 type SysLdapConfig struct {
@@ -209,10 +204,12 @@ func upadteOvpnConfig() {
 }
 
 func loadConfig() {
+	secretKey = viper.GetString("system.base.secret_key")
+	nftTableName = viper.GetString("system.base.nft_table_name")
+
 	viper.Unmarshal(&conf)
 
 	webPort = conf.System.Base.WebPort
-	secretKey = conf.System.Base.SecretKey
 	adminUsername = conf.System.Base.AdminUsername
 	adminPassword = conf.System.Base.AdminPassword
 	ldapAuth = conf.System.Ldap.LdapAuth
@@ -225,7 +222,6 @@ func loadConfig() {
 	ldapUserAttrConfigName = conf.System.Ldap.LdapUserAttrConfigName
 	ldapBindUserDn = conf.System.Ldap.LdapBindUserDn
 	ldapBindPassword = conf.System.Ldap.LdapBindPassword
-	nftTableName = conf.System.Base.NftTableName
 
 	ovManage = conf.Openvpn.OvpnManagement
 }
