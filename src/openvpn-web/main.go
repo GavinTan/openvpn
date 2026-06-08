@@ -985,6 +985,20 @@ func main() {
 			c.JSON(http.StatusOK, u.Get(c.Param("id")))
 		})
 
+		r.GET("/user/template", func(c *gin.Context) {
+			c.Header("Content-Type", "text/csv")
+			c.Header("Content-Disposition", "attachment; filename=user_template.csv")
+
+			c.Writer.Write([]byte{0xEF, 0xBB, 0xBF})
+
+			writer := csv.NewWriter(c.Writer)
+			defer writer.Flush()
+
+			writer.Write([]string{"username", "password", "name", "email", "is_enable", "expire_date", "ip_addr", "ovpn_config"})
+			writer.Write([]string{"zhangsan", "123456", "张三", "zhangsan@example.com", "1", "2025-12-01/00:00:00", "10.8.0.222", "tt-gz.ovpn"})
+			writer.Write([]string{"lisi", "123456", "李四", "lisi@example.com", "0", "", "", "tt-sh.ovpn"})
+		})
+
 		ovpn.GET("/user/export", func(c *gin.Context) {
 			gid := c.Query("gid")
 
@@ -1082,7 +1096,7 @@ func main() {
 					return
 				}
 
-				if len(header) != 7 {
+				if len(header) != 8 {
 					c.JSON(http.StatusInternalServerError, gin.H{"message": "导入文件格式错误"})
 					return
 				}
@@ -1098,16 +1112,17 @@ func main() {
 						return
 					}
 
-					enable := record[3] == "1"
+					enable := record[4] == "1"
 					gid64, err := strconv.ParseUint(gid, 10, 64)
 					u := User{
 						Username:   record[0],
 						Password:   record[1],
 						Name:       record[2],
+						Email:      record[3],
 						IsEnable:   &enable,
-						ExpireDate: strings.Replace(record[4], "/", " ", 1),
-						IpAddr:     record[5],
-						OvpnConfig: record[6],
+						ExpireDate: strings.Replace(record[5], "/", " ", 1),
+						IpAddr:     record[6],
+						OvpnConfig: record[7],
 						Gid:        uint(gid64),
 					}
 
