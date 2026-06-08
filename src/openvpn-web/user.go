@@ -9,10 +9,12 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"reflect"
 	"strings"
 	"time"
 
 	"github.com/gavintan/gopkg/aes"
+	"github.com/microcosm-cc/bluemonday"
 	"github.com/spf13/viper"
 	"gorm.io/gorm"
 )
@@ -36,12 +38,23 @@ type User struct {
 }
 
 func (u *User) BeforeSave(tx *gorm.DB) (err error) {
+	p := bluemonday.UGCPolicy()
+
+	val := reflect.ValueOf(u).Elem()
+	for i := 0; i < val.NumField(); i++ {
+		fieldVal := val.Field(i)
+		if fieldVal.Kind() == reflect.String && fieldVal.CanSet() {
+			rawStr := val.Field(i).String()
+			val.Field(i).SetString(p.Sanitize(rawStr))
+		}
+	}
+
 	if u.Password != "" {
 		ep, _ := aes.AesEncrypt(u.Password, secretKey)
 		tx.Statement.SetColumn("Password", ep)
 	}
 
-	return
+	return nil
 }
 
 func (u *User) AfterFind(tx *gorm.DB) (err error) {
