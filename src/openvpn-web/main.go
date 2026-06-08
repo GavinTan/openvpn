@@ -1280,6 +1280,8 @@ func main() {
 			name := c.Param("name")
 			ccdDir := filepath.Join(ovData, "ccd")
 
+			os.MkdirAll(ccdDir, 0755)
+
 			ccdRoot, err := os.OpenRoot(ccdDir)
 			if err != nil {
 				logger.Error(context.Background(), err.Error())
@@ -1367,8 +1369,6 @@ func main() {
 			content := c.PostForm("content")
 			clientsDir := filepath.Join(ovData, "clients")
 
-			os.MkdirAll(clientsDir, 0755)
-
 			clientsRoot, err := os.OpenRoot(clientsDir)
 			if err != nil {
 				logger.Error(context.Background(), err.Error())
@@ -1395,6 +1395,9 @@ func main() {
 			mfa := c.PostForm("mfa")
 
 			clientsDir := filepath.Join(ovData, "clients")
+
+			os.MkdirAll(clientsDir, 0755)
+
 			clientsRoot, err := os.OpenRoot(clientsDir)
 			if err != nil {
 				logger.Error(context.Background(), err.Error())
