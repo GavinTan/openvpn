@@ -39,3 +39,21 @@ checksum:
   algorithm: sha256
 upx:
   - enabled: true
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+  groups:
+    - title: '🚀 Features'
+      regexp: '^feat(\(.*\))??:|^perf(\(.*\))??:'
+      order: 1
+    - title: '🐛 Fixes'
+      regexp: '^fix(\(.*\))??:'
+      order: 2
+    - title: '🔄 Changes'
+      regexp: '^refactor(\(.*\))??:|^chore(\(.*\))??:'
+      order: 3
+    - title: '💼 Others'
+      order: 999
