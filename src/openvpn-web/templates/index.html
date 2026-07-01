@@ -676,11 +676,23 @@
                 <input type="text" class="form-control form-control-sm float-end w-75" name="ipAddr" />
                 <div class="form-text d-none mt-2" style="left: 27%; position: absolute"></div>
               </div>
+
+              <div class="form-group">
+                <div style="margin-left: 25%">
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="sendNotifyEmail" />
+                    <label class="form-check-label" for="sendNotifyEmail">发送通知邮件</label>
+                  </div>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="isFirstLogin" />
+                    <label class="form-check-label" for="isFirstLogin">首次登录修改密码</label>
+                  </div>
+                </div>
+              </div>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
               <button type="submit" class="btn btn-primary">保存</button>
-              <button type="submit" class="btn btn-primary">保存&发送邮件</button>
             </div>
           </form>
         </div>
