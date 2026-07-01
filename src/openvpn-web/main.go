@@ -1137,6 +1137,11 @@ func main() {
 				return
 			}
 
+			if isFirstLogin, ok := c.Request.PostForm["isFirstLogin"]; ok {
+				val := isFirstLogin[0] == "true"
+				u.IsFirstLogin = &val
+			}
+
 			err = u.Create()
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})

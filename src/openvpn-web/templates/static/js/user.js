@@ -371,16 +371,17 @@ $('#addUserModal form').submit(function (e) {
   const expireDate = $('#addUserModal input[name="expireDate"]').val();
   const ovpnConfig = $('#addUserModal select[name="ovpnConfig"]').val() || '';
 
-  let sendNotifyEmail = false;
-  if ($(document.activeElement).text() === '保存&发送邮件') {
+  const sendNotifyEmail = $('#sendNotifyEmail').is(':checked');
+  const isFirstLogin = $('#isFirstLogin').is(':checked');
+
+  $('#addUserModal input[name="email"]').removeClass('border border-danger');
+
+  if (sendNotifyEmail) {
     if (!$.trim(email)) {
       $('#addUserModal input[name="email"]').addClass('border border-danger');
       return;
     }
-    sendNotifyEmail = true;
   }
-
-  $('#addUserModal input[name="email"]').removeClass('border border-danger');
 
   request
     .post('/ovpn/user', {
@@ -393,6 +394,7 @@ $('#addUserModal form').submit(function (e) {
       ovpnConfig,
       gid: cgid,
       sendNotifyEmail,
+      isFirstLogin,
     })
     .then((data) => {
       message.success(data.message);
@@ -417,6 +419,12 @@ $(document).on('keyup', '#addUserModal input[name="ipAddr"]', function () {
     $('#addUserModal input[name="ipAddr"]').addClass('border border-danger');
     $('#addUserModal .form-text').removeClass('d-none');
     $('#addUserModal :submit').attr('disabled', true);
+  }
+});
+
+$('#sendNotifyEmail').change(function () {
+  if (!$(this).is(':checked')) {
+    $('#addUserModal input[name="email"]').removeClass('border border-danger');
   }
 });
 
