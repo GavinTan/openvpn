@@ -1773,7 +1773,7 @@ func main() {
 			session := sessions.Default(c)
 			if user, ok := session.Get("user").(string); ok {
 				cu := User{Username: user}.Info()
-				if u.ID != cu.ID {
+				if !(u.ID == cu.ID || cu.Username == adminUsername) {
 					c.JSON(http.StatusInternalServerError, gin.H{"message": "非法请求"})
 					return
 				}
