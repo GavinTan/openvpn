@@ -1,0 +1,58 @@
+# 本地编译构建（含飞书同步改动）。不影响上游 build/Dockerfile（那个从 GitHub Release 拉二进制）。
+#
+# 构建（在项目根目录执行）：
+#   docker build -f build/Dockerfile.local -t openvpn-web:local .
+# 或直接用 docker-compose.local.yml：
+#   docker compose -f docker-compose.local.yml up -d --build
+
+# ── 构建阶段：编译 openvpn-web（纯 Go，CGO_ENABLED=0）──
+FROM golang:1.26-alpine AS builder
+
+# 国内构建走 cn 代理，避免 go mod download 超时
+ENV GOPROXY=https://goproxy.cn,direct \
+    GOSUMDB=off \
+    CGO_ENABLED=0
+
+WORKDIR /build
+
+# 先拷依赖清单利用层缓存
+COPY src/openvpn-web/go.mod src/openvpn-web/go.sum ./
+RUN go mod download
+
+COPY src/openvpn-web/ ./
+RUN go build -trimpath -o /out/openvpn-web .
+
+# ── 运行阶段 ──
+FROM alpine:3.23.4
+
+RUN apk add --no-cache openssl openvpn iptables iptables-legacy bash supervisor curl sqlite grep mailcap coreutils jq nftables
+
+# easy-rsa 用宿主机预下载的包（构建容器内无法直连 github），COPY 进来本地解压
+COPY build/EasyRSA-3.2.6.tgz /tmp/EasyRSA-3.2.6.tgz
+RUN tar -ozxf /tmp/EasyRSA-3.2.6.tgz -C /usr/share && mv /usr/share/EasyRSA-3.2.6 /usr/share/easy-rsa && rm -f /tmp/EasyRSA-3.2.6.tgz
+
+COPY build/docker-entrypoint.sh /usr/bin
+COPY build/openvpn-auth /usr/lib/openvpn/plugins/openvpn-auth
+COPY build/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Windows 工作区脚本多为 CRLF，linux 下 shebang #!/bin/bash\r 会报 no such file or directory
+RUN sed -i 's/\r$//' /usr/bin/docker-entrypoint.sh /etc/supervisor/conf.d/supervisord.conf
+
+COPY --from=builder /out/openvpn-web /usr/local/bin/openvpn-web
+RUN chmod +x /usr/local/bin/openvpn-web /usr/bin/docker-entrypoint.sh /usr/lib/openvpn/plugins/openvpn-auth
+RUN ln -s /usr/share/easy-rsa/easyrsa /usr/local/bin
+
+VOLUME ["/data"]
+
+ENV GIN_MODE=release
+ENV OVPN_DATA=/data
+
+EXPOSE 1194/udp 8833
+
+USER root
+
+WORKDIR /data
+
+ENTRYPOINT  ["docker-entrypoint.sh"]
+
+CMD ["/usr/bin/supervisord"]

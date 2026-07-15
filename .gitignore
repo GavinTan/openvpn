@@ -7,4 +7,6 @@ ovpn.db
 /src/openvpn-web/openvpn-web
 /src/openvpn-web/openvpn-web.exe
 config.json
+/build/EasyRSA-*.tgz
+/feishu-smoke
 

@@ -1,0 +1,20 @@
+# 本地编译版（含飞书同步）。使用 build/Dockerfile.local 从源码构建。
+#   docker compose -f docker-compose.local.yml up -d --build
+services:
+  openvpn:
+    image: openvpn-web:local
+    build:
+      context: .
+      dockerfile: build/Dockerfile.local
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "1194:1194/udp"
+      - "8833:8833"
+    environment:
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=admin
+      - OVPN_GATEWAY=false
+    volumes:
+      - ./data:/data
+      - /etc/localtime:/etc/localtime:ro
