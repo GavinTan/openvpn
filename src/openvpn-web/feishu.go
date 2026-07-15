@@ -577,6 +577,7 @@ func (s *FeishuSyncer) reconcileUser(ctx context.Context, fu FeishuUser, deptGro
 			Name:         fu.Name,
 			Email:        notifyTo, // 个人邮箱优先，否则企业邮箱
 			Phone:        normalizePhone(fu.Mobile),
+			OvpnConfig:   username + ".ovpn", // 绑定同名客户端证书/配置文件，供登录校验与用户页下载
 			Gid:          gid,
 			IsFirstLogin: &firstLogin,
 			FeishuUserID: fu.OpenID,
@@ -616,6 +617,11 @@ func (s *FeishuSyncer) reconcileUser(ctx context.Context, fu FeishuUser, deptGro
 		"is_enable":      true,
 		"last_sync_at":   now,
 		"feishu_user_id": fu.OpenID,
+	}
+
+	// 回填：早期同步创建的用户 OvpnConfig 为空，仅当为空时补同名配置，绝不覆盖管理员已设值
+	if existing.OvpnConfig == "" {
+		updates["ovpn_config"] = existing.Username + ".ovpn"
 	}
 
 	if isRejoin {
