@@ -88,6 +88,7 @@ tables.user = {
           <ul class="dropdown-menu">
             <li><a class="dropdown-item" id="resetPass">重置密码</a></li>
             <li><a class="dropdown-item" id="resetMfa">重置MFA</a></li>
+            <li><a class="dropdown-item" id="sendEmail">发送邮件</a></li>
           </ul>
         </div>
         `;
@@ -591,6 +592,18 @@ $(document).on('click', '#resetPass', function () {
   $('#resetPassModal input[name="username"]').val(username);
 
   $('#resetPassModal').modal('show');
+});
+
+// 发送欢迎邮件（含 .ovpn 附件 + 登录链接）
+$(document).on('click', '#sendEmail', function () {
+  const id = vtable.row($(this).parents('tr')).data().id;
+  const username = vtable.row($(this).parents('tr')).data().username;
+  if (!confirm(`确认向 ${username} 发送 VPN 账号开通邮件（含配置文件附件）吗？`)) return;
+  request.post('/ovpn/feishu/resend-email', { userId: id }).then((data) => {
+    message.success(data.message || '邮件发送成功');
+  }).catch((e) => {
+    message.error(e.message || '发送失败');
+  });
 });
 
 $(document).on('keyup', '#resetPassModal input[name="newPassAgain"]', function () {

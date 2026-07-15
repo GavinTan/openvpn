@@ -1675,6 +1675,105 @@
                     </div>
                   </div>
                 </div>
+                <div class="mx-5 my-3">
+                  <h6 class="mb-3 fw-bold">飞书同步配置</h6>
+                  <div class="ms-5">
+                    <div class="row mb-1 align-items-baseline">
+                      <label class="col-sm-3 col-form-label">启用飞书同步</label>
+                      <div class="col-sm-9">
+                        <input class="form-check-input" type="checkbox" id="feishuEnabled" />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">App ID</label>
+                      <div class="col-sm-9">
+                        <input type="text" class="form-control form-control-sm border-0 border-bottom" id="feishuAppId" />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">App Secret</label>
+                      <div class="col-sm-9">
+                        <input type="password" class="form-control form-control-sm border-0 border-bottom" id="feishuAppSecret" autocomplete="new-password" />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">
+                        根部门 ID
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-question-circle" viewBox="0 0 16 16" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="飞书根部门为 0，一般无需修改">
+                          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"></path>
+                        </svg>
+                      </label>
+                      <div class="col-sm-9">
+                        <input type="text" class="form-control form-control-sm border-0 border-bottom" id="feishuRootDeptId" value="0" />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">
+                        同步计划
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-question-circle" viewBox="0 0 16 16" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="cron 表达式，默认每天凌晨 2 点。例：0 2 * * *">
+                          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"></path>
+                        </svg>
+                      </label>
+                      <div class="col-sm-9">
+                        <input type="text" class="form-control form-control-sm border-0 border-bottom" id="feishuSyncCron" value="0 2 * * *" />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">
+                        默认分组 ID
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-question-circle" viewBox="0 0 16 16" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="根部门成员归入的 VPN 分组 ID，1 为 Default">
+                          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"></path>
+                        </svg>
+                      </label>
+                      <div class="col-sm-9">
+                        <input type="number" class="form-control form-control-sm border-0 border-bottom" id="feishuDefaultGroupId" value="1" />
+                      </div>
+                    </div>
+                    <div class="row mb-1 align-items-baseline">
+                      <label class="col-sm-3 col-form-label">离职自动禁用</label>
+                      <div class="col-sm-9">
+                        <input class="form-check-input" type="checkbox" id="feishuDisableOnLeave" checked />
+                      </div>
+                    </div>
+                    <div class="row mb-1 align-items-baseline">
+                      <label class="col-sm-3 col-form-label">新建发送欢迎邮件</label>
+                      <div class="col-sm-9">
+                        <input class="form-check-input" type="checkbox" id="feishuNotifyOnCreate" checked />
+                      </div>
+                    </div>
+                    <div class="row mt-2">
+                      <div class="col-sm-12 d-flex gap-2 align-items-center">
+                        <button class="btn btn-sm btn-outline-primary" id="feishuTest" type="button">测试连接</button>
+                        <button class="btn btn-sm btn-primary" id="feishuSyncNow" type="button">
+                          <span id="feishuSyncSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                          <span id="feishuSyncBtnText">立即同步</span>
+                        </button>
+                        <span class="ms-2 text-muted small" id="feishuSyncStatus"></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="mx-5 my-3">
+                  <h6 class="mb-3 fw-bold">飞书同步日志</h6>
+                  <div class="ms-0">
+                    <table class="table table-sm table-bordered">
+                      <thead>
+                        <tr>
+                          <th>时间</th>
+                          <th>类型</th>
+                          <th>状态</th>
+                          <th>总数</th>
+                          <th>新增</th>
+                          <th>更新</th>
+                          <th>禁用</th>
+                          <th>触发者</th>
+                          <th>错误</th>
+                        </tr>
+                      </thead>
+                      <tbody id="feishuLogTableBody"></tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
               <div
                 class="tab-pane fade"

@@ -1214,17 +1214,19 @@ func main() {
 						tpl, err = template.ParseFS(FS, "templates/email.html")
 						if err == nil {
 							err = tpl.Execute(&buf, struct {
-								Type     string
-								Name     string
-								Username string
-								Password string
-								SiteUrl  string
+								Type          string
+								Name          string
+								Username      string
+								Password      string
+								SiteUrl       string
+								HasAttachment bool
 							}{
-								Type:     "addUser",
-								Name:     u.Name,
-								Username: u.Username,
-								Password: c.PostForm("password"),
-								SiteUrl:  viper.GetString("system.base.site_url"),
+								Type:          "addUser",
+								Name:          u.Name,
+								Username:      u.Username,
+								Password:      c.PostForm("password"),
+								SiteUrl:       viper.GetString("system.base.site_url"),
+								HasAttachment: false,
 							})
 						}
 
@@ -1274,17 +1276,19 @@ func main() {
 							tpl, err = template.ParseFS(FS, "templates/email.html")
 							if err == nil {
 								err = tpl.Execute(&buf, struct {
-									Type     string
-									Name     string
-									Username string
-									Password string
-									SiteUrl  string
+									Type          string
+									Name          string
+									Username      string
+									Password      string
+									SiteUrl       string
+									HasAttachment bool
 								}{
-									Type:     "resetPass",
-									Name:     cu.Name,
-									Username: cu.Username,
-									Password: c.PostForm("password"),
-									SiteUrl:  viper.GetString("system.base.site_url"),
+									Type:          "resetPass",
+									Name:          cu.Name,
+									Username:      cu.Username,
+									Password:      c.PostForm("password"),
+									SiteUrl:       viper.GetString("system.base.site_url"),
+									HasAttachment: false,
 								})
 							}
 

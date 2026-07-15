@@ -46,6 +46,17 @@ $(document).on('click', '#settings', function () {
     $('#ovpnPushDns1').val(data.openvpn.ovpn_push_dns1);
     $('#ovpnPushDns2').val(data.openvpn.ovpn_push_dns2);
 
+    $('#feishuEnabled').prop('checked', data.system.feishu?.feishu_enabled);
+    $('#feishuAppId').val(data.system.feishu?.feishu_app_id);
+    $('#feishuAppSecret').val(''); // 密文不入框，留空表示不修改
+    $('#feishuRootDeptId').val(data.system.feishu?.feishu_root_dept_id ?? '0');
+    $('#feishuSyncCron').val(data.system.feishu?.feishu_sync_cron ?? '0 2 * * *');
+    $('#feishuDefaultGroupId').val(data.system.feishu?.feishu_default_group_id ?? 1);
+    $('#feishuDisableOnLeave').prop('checked', data.system.feishu?.feishu_disable_on_leave ?? true);
+    $('#feishuNotifyOnCreate').prop('checked', data.system.feishu?.feishu_notify_on_create ?? true);
+
+    loadFeishuLog();
+
     $('#settingsModal').modal('show');
   });
 });
@@ -704,3 +715,114 @@ $(document).on('blur', '#ovpnPushDns2', function () {
     message.success(data.message);
   });
 });
+
+// ── 飞书同步 ────────────────────────────────────────────────
+
+// 文本/数字字段：focus 记录旧值，blur 变更则提交
+function bindFeishuText(selector, key, isNumber) {
+  $(document).on('mousedown', selector, function () {
+    if (!$(this).is(':focus')) {
+      $(this).data('oldValue', $(this).val());
+    }
+  });
+  $(document).on('blur', selector, function () {
+    const oldValue = $(this).data('oldValue');
+    const newValue = $(this).val();
+    if (oldValue === newValue) return;
+    request.post('/settings', { [key]: newValue }).then((data) => {
+      message.success(data.message);
+    });
+  });
+}
+
+bindFeishuText('#feishuAppId', 'system.feishu.feishu_app_id');
+bindFeishuText('#feishuRootDeptId', 'system.feishu.feishu_root_dept_id');
+bindFeishuText('#feishuSyncCron', 'system.feishu.feishu_sync_cron');
+bindFeishuText('#feishuDefaultGroupId', 'system.feishu.feishu_default_group_id');
+
+// App Secret：留空表示不修改，仅在填了值时提交（提交时由后端加密）
+$(document).on('blur', '#feishuAppSecret', function () {
+  const newValue = $(this).val();
+  if (newValue === '') return; // 留空不修改
+  request.post('/settings', { 'system.feishu.feishu_app_secret': newValue }).then((data) => {
+    message.success(data.message);
+    $(this).val(''); // 提交后清空，避免明文残留
+  });
+});
+
+// 复选框：change 即提交
+function bindFeishuCheckbox(selector, key) {
+  $(document).on('change', selector, function () {
+    request.post('/settings', { [key]: $(this).prop('checked') }).then((data) => {
+      message.success(data.message);
+    });
+  });
+}
+
+bindFeishuCheckbox('#feishuEnabled', 'system.feishu.feishu_enabled');
+bindFeishuCheckbox('#feishuDisableOnLeave', 'system.feishu.feishu_disable_on_leave');
+bindFeishuCheckbox('#feishuNotifyOnCreate', 'system.feishu.feishu_notify_on_create');
+
+// 测试连接
+$(document).on('click', '#feishuTest', function () {
+  request.post('/ovpn/feishu/test').then((data) => {
+    message.success(data.message);
+  }).catch((e) => {
+    message.error(e.message || '连接失败');
+  });
+});
+
+// 立即同步
+$(document).on('click', '#feishuSyncNow', function () {
+  const $btn = $(this);
+  $('#feishuSyncSpinner').removeClass('d-none');
+  $('#feishuSyncBtnText').text('同步中...');
+  $('#feishuSyncStatus').text('');
+  request.post('/ovpn/feishu/sync?type=full').then((data) => {
+    const msg = `同步完成：新增 ${data.created}，更新 ${data.updated}，禁用 ${data.disabled}，错误 ${JSON.parse(data.errors || '[]').length}`;
+    message.success(msg);
+    $('#feishuSyncStatus').text(msg);
+    loadFeishuLog();
+  }).catch((e) => {
+    message.error(e.message || '同步失败');
+    $('#feishuSyncStatus').text(e.message || '同步失败');
+  }).finally(() => {
+    $('#feishuSyncSpinner').addClass('d-none');
+    $('#feishuSyncBtnText').text('立即同步');
+  });
+});
+
+// 加载同步日志
+function loadFeishuLog() {
+  request.get('/ovpn/feishu/log').then((data) => {
+    const $body = $('#feishuLogTableBody');
+    $body.empty();
+    (data || []).forEach((row) => {
+      let errs = '';
+      try {
+        errs = JSON.parse(row.errors || '[]').join('; ');
+      } catch (e) {
+        errs = '';
+      }
+      const statusBadge = row.status === 'success'
+        ? '<span class="badge bg-success">成功</span>'
+        : row.status === 'failed'
+          ? '<span class="badge bg-danger">失败</span>'
+          : '<span class="badge bg-warning text-dark">运行中</span>';
+      const typeBadge = row.syncType === 'incremental' ? '增量' : '全量';
+      $body.append(
+        `<tr>
+          <td>${row.startedAt || ''}</td>
+          <td>${typeBadge}</td>
+          <td>${statusBadge}</td>
+          <td>${row.totalEmployees ?? 0}</td>
+          <td>${row.created ?? 0}</td>
+          <td>${row.updated ?? 0}</td>
+          <td>${row.disabled ?? 0}</td>
+          <td>${row.triggeredBy || ''}</td>
+          <td class="small text-danger" title="${errs}">${errs.length > 30 ? errs.slice(0, 30) + '...' : errs}</td>
+        </tr>`
+      );
+    });
+  });
+}
