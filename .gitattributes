@@ -1,0 +1,14 @@
+# 默认让 Git 自动处理文本/二进制判定
+* text=auto
+
+# 这些脚本/配置会被 COPY 进 Linux 镜像并由解释器直接执行，
+# 必须在 checkout 时保持 LF 行尾；Windows 工作区的 CRLF 会搞坏 shebang
+# （#!/bin/bash\r → bad interpreter），典型症状是 openvpn-auth 认证脚本静默失败、
+# 所有 VPN 账号登录失败。
+*.sh text eol=lf
+build/openvpn-auth text eol=lf
+build/docker-entrypoint.sh text eol=lf
+build/supervisord.conf text eol=lf
+build/Dockerfile text eol=lf
+build/Dockerfile.local text eol=lf
+.gitattributes text eol=lf

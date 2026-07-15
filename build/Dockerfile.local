@@ -36,7 +36,9 @@ COPY build/openvpn-auth /usr/lib/openvpn/plugins/openvpn-auth
 COPY build/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Windows 工作区脚本多为 CRLF，linux 下 shebang #!/bin/bash\r 会报 no such file or directory
-RUN sed -i 's/\r$//' /usr/bin/docker-entrypoint.sh /etc/supervisor/conf.d/supervisord.conf
+# 注意：openvpn-auth 是 OpenVPN auth-user-pass-verify 调用的认证脚本，必须一起去 CRLF，
+# 否则脚本 shebang 失效、所有 VPN 账号登录都会失败（且 /ovpn/login 接口本身正常，web 登录不受影响）
+RUN sed -i 's/\r$//' /usr/bin/docker-entrypoint.sh /etc/supervisor/conf.d/supervisord.conf /usr/lib/openvpn/plugins/openvpn-auth
 
 COPY --from=builder /out/openvpn-web /usr/local/bin/openvpn-web
 RUN chmod +x /usr/local/bin/openvpn-web /usr/bin/docker-entrypoint.sh /usr/lib/openvpn/plugins/openvpn-auth
