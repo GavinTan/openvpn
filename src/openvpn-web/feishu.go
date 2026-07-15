@@ -1,18 +1,14 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"strings"
-	"sync"
 	"time"
 
-	"golang.org/x/time/rate"
+	lark "github.com/larksuite/oapi-sdk-go/v3"
+	larkcontact "github.com/larksuite/oapi-sdk-go/v3/service/contact/v3"
 	"gorm.io/gorm"
 )
 
@@ -39,7 +35,7 @@ type FeishuSyncLog struct {
 // TableName 显式指定表名，避免 GORM 默认按结构体名加复数。
 func (FeishuSyncLog) TableName() string { return "feishu_sync_log" }
 
-// BeforeCreate 在新行落地前设置 StartedAt 兜底值。
+// BeforeCreate 在新行落地前设置兜底默认值。
 func (l *FeishuSyncLog) BeforeCreate(tx *gorm.DB) (err error) {
 	if l.StartedAt.IsZero() {
 		l.StartedAt = time.Now()
@@ -53,326 +49,242 @@ func (l *FeishuSyncLog) BeforeCreate(tx *gorm.DB) (err error) {
 	return nil
 }
 
-// FeishuDept 是飞书 contact-v3 department 接口返回的部门对象。
+// ─────────────────────────────────────────────────────────────────────────────
+// 值类型（把 SDK 的指针模型拍平成普通结构体，让同步引擎不接触 SDK 细节）
+// ─────────────────────────────────────────────────────────────────────────────
+
+// FeishuDept 是飞书部门在本系统的本地投影。字段已从 SDK 的 *string/*int 解引用。
 type FeishuDept struct {
-	OpenDeptID   string `json:"open_department_id"`
-	Name         string `json:"name"`
-	ParentOpenID string `json:"parent_department_id"`
-	LeaderOpenID string `json:"leader_user_id,omitempty"`
-	MemberCount  int    `json:"member_count,omitempty"`
-	Status       int    `json:"status"` // 0=active；其他值由飞书定义
+	OpenDeptID   string // open_department_id
+	Name         string
+	ParentOpenID string // parent_department_id，根部门为 "0"
+	LeaderOpenID string
+	MemberCount  int
 }
 
-// FeishuUser 是飞书 contact-v3 user 接口返回的用户对象。
-// 仅包含同步需要的最少字段；其他字段如 avatar、custom_data 等不使用。
+// FeishuUser 是飞书用户在本系统的本地投影。
 type FeishuUser struct {
-	OpenID        string   `json:"open_id"`
-	UnionID       string   `json:"union_id,omitempty"`
-	UserID        string   `json:"user_id,omitempty"`
-	EmployeeID    string   `json:"employee_id,omitempty"`
-	Name          string   `json:"name"`
-	EnName        string   `json:"en_name,omitempty"`
-	Email         string   `json:"email,omitempty"`
-	Mobile        string   `json:"mobile,omitempty"`
-	DepartmentIDs []string `json:"department_ids,omitempty"`
-	Status        int      `json:"status"` // 1=active, 2=inactive, 4=resigned, 5=未激活
+	OpenID        string
+	UserID        string // 飞书租户内 user_id
+	EmployeeNo    string // 工号
+	Name          string
+	Email         string
+	Mobile        string
+	DepartmentIDs []string
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HTTP 客户端
+// 客户端（薄封装 larksuite/oapi-sdk-go）
 // ─────────────────────────────────────────────────────────────────────────────
 
-const (
-	feishuBaseURL = "https://open.feishu.cn"
-	tokenTTL      = 2 * time.Hour // tenant_access_token 官方 TTL
-	tokenRefresh  = 5 * time.Minute
-	maxRetries    = 3
-)
-
-// FeishuClient 是飞书 API 的轻量客户端。仅依赖 stdlib + x/time/rate。
+// FeishuClient 是飞书 API 的薄封装。token 缓存、重试、错误码处理由官方 SDK 负责。
 //
-// 设计要点：
-//   - 单一 http.Client，超时 30s
-//   - tenant_access_token 内存缓存，sync.Mutex 保护
-//   - 限流器 100 req/min 平均速率（rate.Every(600ms)，burst 10）
-//   - 退避重试：HTTP 429 或 code>=500 时指数退避（1s, 2s, 4s），最多 3 次
-//   - HTTPS 强制：NewFeishuClient 拒绝任何非 https:// 的 baseURL
+// 只暴露同步需要的三个能力：
+//   - WalkDepartments：DFS 遍历部门树
+//   - ListUsersInDept：拉取某部门成员（不含子部门）
+//   - GetUser：单个用户详情（含 mobile/email）
+//   - TestConnection：仅校验 AppID/AppSecret 能换到 token
 type FeishuClient struct {
-	baseURL   string
-	httpClient *http.Client
-	appID     string
-	appSecret string
-
-	limiter *rate.Limiter
-
-	tokenMu     sync.Mutex
-	token       string
-	tokenExpiry time.Time
+	client *lark.Client
 }
 
-// NewFeishuClient 构造客户端。baseURL 为空时使用默认 https://open.feishu.cn。
-// 强制 https 协议；appID/appSecret 不能为空。
+// NewFeishuClient 构造客户端。appID/appSecret 不能为空；baseURL 为空走默认飞书域名。
+// 强制 https（与安全设计一致）。
 func NewFeishuClient(appID, appSecret, baseURL string) (*FeishuClient, error) {
 	if appID == "" || appSecret == "" {
 		return nil, errors.New("飞书 AppID 和 AppSecret 不能为空")
 	}
-	if baseURL == "" {
-		baseURL = feishuBaseURL
-	}
-	if !strings.HasPrefix(baseURL, "https://") {
+	if baseURL != "" && !strings.HasPrefix(baseURL, "https://") {
 		return nil, errors.New("飞书 baseURL 必须使用 https://")
 	}
-	return &FeishuClient{
-		baseURL:    baseURL,
-		appID:      appID,
-		appSecret:  appSecret,
-		httpClient: &http.Client{Timeout: 30 * time.Second},
-		limiter:    rate.NewLimiter(rate.Every(600*time.Millisecond), 10),
+
+	opts := []lark.ClientOptionFunc{
+		lark.WithEnableTokenCache(true),
+	}
+	if baseURL != "" {
+		opts = append(opts, lark.WithOpenBaseUrl(baseURL))
+	}
+
+	c := lark.NewClient(appID, appSecret, opts...)
+	return &FeishuClient{client: c}, nil
+}
+
+// TestConnection 用获取 access_token 的方式校验凭证是否有效。
+// 这里用 Get 部门根节点 "0" 的子部门做一次最小调用：成功即凭证有效。
+func (c *FeishuClient) TestConnection(ctx context.Context) error {
+	req := larkcontact.NewChildrenDepartmentReqBuilder().
+		DepartmentId("0").
+		DepartmentIdType("open_department_id").
+		UserIdType("open_id").
+		PageSize(1).
+		Build()
+	resp, err := c.client.Contact.Department.Children(ctx, req)
+	if err != nil {
+		return fmt.Errorf("调用飞书失败: %w", err)
+	}
+	if !resp.Success() {
+		return fmt.Errorf("飞书返回错误 code=%d msg=%s", resp.Code, resp.Msg)
+	}
+	return nil
+}
+
+// WalkDepartments 以 rootDeptID 为根，递归 DFS 遍历整棵部门树。
+// 返回值：扁平化后的所有部门（含 rootDeptID 的直接子部门，不含 rootDeptID 自身）。
+//
+// 注意：根部门 "0" 不映射为 VPN Group（见 plan：根部门成员归默认组），
+// 因此这里不返回 "0" 自身，只返回它下面的真实部门。
+func (c *FeishuClient) WalkDepartments(ctx context.Context, rootDeptID string) ([]FeishuDept, error) {
+	if rootDeptID == "" {
+		rootDeptID = "0"
+	}
+	var result []FeishuDept
+	if err := c.walkDept(ctx, rootDeptID, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (c *FeishuClient) walkDept(ctx context.Context, deptID string, acc *[]FeishuDept) error {
+	var pageToken *string
+	for {
+		reqBuilder := larkcontact.NewChildrenDepartmentReqBuilder().
+			DepartmentId(deptID).
+			DepartmentIdType("open_department_id").
+			UserIdType("open_id").
+			PageSize(50)
+		if pageToken != nil {
+			reqBuilder = reqBuilder.PageToken(*pageToken)
+		}
+
+		resp, err := c.client.Contact.Department.Children(ctx, reqBuilder.Build())
+		if err != nil {
+			return fmt.Errorf("拉取部门 %s 子级失败: %w", deptID, err)
+		}
+		if !resp.Success() {
+			return fmt.Errorf("拉取部门 %s 子级失败 code=%d msg=%s", deptID, resp.Code, resp.Msg)
+		}
+
+		if resp.Data == nil {
+			break
+		}
+		for _, d := range resp.Data.Items {
+			dept := FeishuDept{
+				OpenDeptID:   ptrStr(d.OpenDepartmentId),
+				Name:         ptrStr(d.Name),
+				ParentOpenID: ptrStr(d.ParentDepartmentId),
+				LeaderOpenID: ptrStr(d.LeaderUserId),
+				MemberCount:  ptrInt(d.MemberCount),
+			}
+			*acc = append(*acc, dept)
+			// 递归下一层
+			if dept.OpenDeptID != "" {
+				if err := c.walkDept(ctx, dept.OpenDeptID, acc); err != nil {
+					return err
+				}
+			}
+		}
+
+		if resp.Data.HasMore == nil || !*resp.Data.HasMore || resp.Data.PageToken == nil {
+			break
+		}
+		pageToken = resp.Data.PageToken
+	}
+	return nil
+}
+
+// ListUsersInDept 拉取指定部门的直接成员（不含子部门成员），自动分页。
+func (c *FeishuClient) ListUsersInDept(ctx context.Context, deptID string) ([]FeishuUser, error) {
+	var pageToken *string
+	var users []FeishuUser
+	for {
+		reqBuilder := larkcontact.NewFindByDepartmentUserReqBuilder().
+			DepartmentId(deptID).
+			DepartmentIdType("open_department_id").
+			UserIdType("open_id").
+			PageSize(50)
+		if pageToken != nil {
+			reqBuilder = reqBuilder.PageToken(*pageToken)
+		}
+
+		resp, err := c.client.Contact.User.FindByDepartment(ctx, reqBuilder.Build())
+		if err != nil {
+			return nil, fmt.Errorf("拉取部门 %s 成员失败: %w", deptID, err)
+		}
+		if !resp.Success() {
+			return nil, fmt.Errorf("拉取部门 %s 成员失败 code=%d msg=%s", deptID, resp.Code, resp.Msg)
+		}
+		if resp.Data == nil {
+			break
+		}
+		for _, u := range resp.Data.Items {
+			users = append(users, FeishuUser{
+				OpenID:        ptrStr(u.OpenId),
+				UserID:        ptrStr(u.UserId),
+				EmployeeNo:    ptrStr(u.EmployeeNo),
+				Name:          ptrStr(u.Name),
+				Email:         ptrStr(u.Email),
+				Mobile:        ptrStr(u.Mobile),
+				DepartmentIDs: u.DepartmentIds,
+			})
+		}
+
+		if resp.Data.HasMore == nil || !*resp.Data.HasMore || resp.Data.PageToken == nil {
+			break
+		}
+		pageToken = resp.Data.PageToken
+	}
+	return users, nil
+}
+
+// GetUser 拉取单个用户详情（含 mobile/email）。给"补全资料"场景用。
+func (c *FeishuClient) GetUser(ctx context.Context, openID string) (*FeishuUser, error) {
+	req := larkcontact.NewGetUserReqBuilder().
+		UserId(openID).
+		UserIdType("open_id").
+		DepartmentIdType("open_department_id").
+		Build()
+	resp, err := c.client.Contact.User.Get(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("拉取用户 %s 失败: %w", openID, err)
+	}
+	if !resp.Success() {
+		return nil, fmt.Errorf("拉取用户 %s 失败 code=%d msg=%s", openID, resp.Code, resp.Msg)
+	}
+	if resp.Data == nil || resp.Data.User == nil {
+		return nil, errors.New("用户数据为空")
+	}
+	u := resp.Data.User
+	return &FeishuUser{
+		OpenID:        ptrStr(u.OpenId),
+		UserID:        ptrStr(u.UserId),
+		EmployeeNo:    ptrStr(u.EmployeeNo),
+		Name:          ptrStr(u.Name),
+		Email:         ptrStr(u.Email),
+		Mobile:        ptrStr(u.Mobile),
+		DepartmentIDs: u.DepartmentIds,
 	}, nil
 }
 
-// ── token 管理 ──────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// 小工具：SDK 字段解引用
+// ─────────────────────────────────────────────────────────────────────────────
 
-type feishuTokenResp struct {
-	Code              int    `json:"code"`
-	Msg               string `json:"msg"`
-	TenantAccessToken string `json:"tenant_access_token"`
-	Expire            int    `json:"expire"` // 秒
+func ptrStr(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
 }
 
-// ensureToken 取出一个有效的 tenant_access_token。线程安全。
-func (c *FeishuClient) ensureToken(ctx context.Context) (string, error) {
-	c.tokenMu.Lock()
-	defer c.tokenMu.Unlock()
-
-	if c.token != "" && time.Now().Add(tokenRefresh).Before(c.tokenExpiry) {
-		return c.token, nil
+func ptrInt(p *int) int {
+	if p == nil {
+		return 0
 	}
-
-	body, _ := json.Marshal(map[string]string{
-		"app_id":     c.appID,
-		"app_secret": c.appSecret,
-	})
-	req, err := http.NewRequestWithContext(ctx, "POST",
-		c.baseURL+"/open-apis/auth/v3/tenant_access_token/internal", bytes.NewReader(body))
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("请求 tenant_access_token 失败: %w", err)
-	}
-	defer resp.Body.Close()
-
-	var tr feishuTokenResp
-	if err := json.NewDecoder(resp.Body).Decode(&tr); err != nil {
-		return "", fmt.Errorf("解析 tenant_access_token 响应失败: %w", err)
-	}
-	if tr.Code != 0 || tr.TenantAccessToken == "" {
-		return "", fmt.Errorf("飞书 token 获取失败 code=%d msg=%s", tr.Code, tr.Msg)
-	}
-
-	c.token = tr.TenantAccessToken
-	ttl := time.Duration(tr.Expire) * time.Second
-	if ttl <= 0 {
-		ttl = tokenTTL
-	}
-	c.tokenExpiry = time.Now().Add(ttl)
-	return c.token, nil
-}
-
-// ── 通用请求 ────────────────────────────────────────────────────────────────
-
-// feishuAPIResp 飞书 v3 接口的统一信封：code=0 表示成功。
-type feishuAPIResp struct {
-	Code int             `json:"code"`
-	Msg  string          `json:"msg"`
-	Data json.RawMessage `json:"data,omitempty"`
-}
-
-// doAPI 执行一次带鉴权、带限流、带重试的飞书 API 请求，并把响应 data 字段
-// 解码到 out。method 是 GET 或 POST；body 在 method=POST 时序列化。
-//
-// 重试策略：HTTP 429、或 HTTP 2xx 但 code>=500、或网络错误，指数退避 1s/2s/4s 最多 3 次。
-func (c *FeishuClient) doAPI(ctx context.Context, method, path string, body any, out any) error {
-	if err := c.limiter.Wait(ctx); err != nil {
-		return fmt.Errorf("飞书限流等待被取消: %w", err)
-	}
-
-	var bodyReader io.Reader
-	if body != nil {
-		buf, err := json.Marshal(body)
-		if err != nil {
-			return err
-		}
-		bodyReader = bytes.NewReader(buf)
-	}
-
-	var lastErr error
-	backoff := time.Second
-	for attempt := 0; attempt < maxRetries; attempt++ {
-		if attempt > 0 {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(backoff):
-			}
-			backoff *= 2
-		}
-
-		token, err := c.ensureToken(ctx)
-		if err != nil {
-			return err
-		}
-
-		req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, bodyReader)
-		if err != nil {
-			return err
-		}
-		req.Header.Set("Authorization", "Bearer "+token)
-		if body != nil {
-			req.Header.Set("Content-Type", "application/json")
-		}
-
-		resp, err := c.httpClient.Do(req)
-		if err != nil {
-			lastErr = fmt.Errorf("HTTP 调用失败: %w", err)
-			continue
-		}
-
-		// HTTP 429 触发重试
-		if resp.StatusCode == http.StatusTooManyRequests {
-			resp.Body.Close()
-			lastErr = errors.New("HTTP 429 rate limited")
-			continue
-		}
-
-		raw, readErr := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		if readErr != nil {
-			lastErr = fmt.Errorf("读取响应失败: %w", readErr)
-			continue
-		}
-
-		var ar feishuAPIResp
-		if err := json.Unmarshal(raw, &ar); err != nil {
-			lastErr = fmt.Errorf("解析响应失败: %w (body=%s)", err, truncateForLog(raw))
-			continue
-		}
-
-		// 业务错误：code>=500 重试，其他视为终态失败
-		if ar.Code != 0 {
-			if ar.Code >= 500 {
-				lastErr = fmt.Errorf("飞书服务端错误 code=%d msg=%s", ar.Code, ar.Msg)
-				continue
-			}
-			return fmt.Errorf("飞书 API 错误 code=%d msg=%s path=%s", ar.Code, ar.Msg, path)
-		}
-
-		if out != nil && len(ar.Data) > 0 {
-			if err := json.Unmarshal(ar.Data, out); err != nil {
-				return fmt.Errorf("解码 data 字段失败: %w", err)
-			}
-		}
-		return nil
-	}
-
-	if lastErr == nil {
-		lastErr = errors.New("飞书 API 调用超过最大重试次数")
-	}
-	return lastErr
-}
-
-// truncateForLog 防止错误信息里塞进巨大的响应体。
-func truncateForLog(b []byte) string {
-	const max = 200
-	if len(b) <= max {
-		return string(b)
-	}
-	return string(b[:max]) + "..."
-}
-
-// ── 业务接口 ────────────────────────────────────────────────────────────────
-
-// listChildDepartmentsResp 是分页接口的通用 data 形状。
-type feishuPagedResp struct {
-	HasMore   bool            `json:"has_more"`
-	PageToken string          `json:"page_token"`
-	Items     json.RawMessage `json:"items"`
-}
-
-// ListChildDepartments 拉取指定部门下一层子部门（不含递归）。
-// 返回值：部门列表、下一页 token（空字符串表示已读完）。
-func (c *FeishuClient) ListChildDepartments(ctx context.Context, parentDeptID string, pageSize int, pageToken string) ([]FeishuDept, string, error) {
-	if pageSize <= 0 || pageSize > 50 {
-		pageSize = 50
-	}
-	path := fmt.Sprintf("/open-apis/contact/v3/departments/%s/children?page_size=%d&fetch_child=false&user_id_type=open_id",
-		parentDeptID, pageSize)
-	if pageToken != "" {
-		path += "&page_token=" + pageToken
-	}
-
-	var p feishuPagedResp
-	if err := c.doAPI(ctx, "GET", path, nil, &p); err != nil {
-		return nil, "", err
-	}
-	var depts []FeishuDept
-	if len(p.Items) > 0 {
-		if err := json.Unmarshal(p.Items, &depts); err != nil {
-			return nil, "", fmt.Errorf("解析 departments items 失败: %w", err)
-		}
-	}
-	return depts, p.PageToken, nil
-}
-
-// ListUsersInDept 拉取指定部门成员列表（不含子部门成员）。
-// 返回值：用户列表、下一页 token。
-func (c *FeishuClient) ListUsersInDept(ctx context.Context, deptID string, pageSize int, pageToken string) ([]FeishuUser, string, error) {
-	if pageSize <= 0 || pageSize > 50 {
-		pageSize = 50
-	}
-	path := fmt.Sprintf("/open-apis/contact/v3/users/find_by_department?department_id=%s&page_size=%d&user_id_type=open_id",
-		deptID, pageSize)
-	if pageToken != "" {
-		path += "&page_token=" + pageToken
-	}
-
-	var p feishuPagedResp
-	if err := c.doAPI(ctx, "GET", path, nil, &p); err != nil {
-		return nil, "", err
-	}
-	var users []FeishuUser
-	if len(p.Items) > 0 {
-		if err := json.Unmarshal(p.Items, &users); err != nil {
-			return nil, "", fmt.Errorf("解析 users items 失败: %w", err)
-		}
-	}
-	return users, p.PageToken, nil
-}
-
-// GetUser 拉取单个用户的完整资料（含 mobile、email 等字段）。
-func (c *FeishuClient) GetUser(ctx context.Context, openID string) (*FeishuUser, error) {
-	path := fmt.Sprintf("/open-apis/contact/v3/users/%s?user_id_type=open_id&department_id_type=open_department_id", openID)
-	var user FeishuUser
-	if err := c.doAPI(ctx, "GET", path, nil, &user); err != nil {
-		return nil, err
-	}
-	return &user, nil
-}
-
-// TestConnection 仅校验 AppID/AppSecret 是否能拿到 token。
-// 给"测试连接"按钮用：失败时给出明确的错误信息。
-func (c *FeishuClient) TestConnection(ctx context.Context) error {
-	_, err := c.ensureToken(ctx)
-	return err
+	return *p
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 同步编排（Step 3 占位）
+// 同步编排（Step 3 实现）
 // ─────────────────────────────────────────────────────────────────────────────
 // FeishuSyncer 与 RunSync / ReconcileGroups / ReconcileUser / DetectLeavers
 // 将在 Step 3 实现。
-
