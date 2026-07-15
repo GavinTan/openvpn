@@ -152,6 +152,19 @@ genclient() {
 	OVPN_PORT=$(jq -r '.openvpn.ovpn_port // "1194"' $SYSTEM_CONFIG)
 	OVPN_IPV6=$(jq -r '.openvpn.ovpn_ipv6 // "false"' $SYSTEM_CONFIG)
 
+	# remote 外显地址/端口优先级：显式参数 $2/$3 > 环境变量 OVPN_REMOTE_ADDR/OVPN_REMOTE_PORT > 自动探测本机出网IP / config端口
+	# 用于 NAT/端口映射等外网暴露场景，让生成的 .ovpn 指向真实外网可达地址
+	if [ -n "$2" ]; then
+		REMOTE_ADDR="$2"
+	elif [ -n "$OVPN_REMOTE_ADDR" ]; then
+		REMOTE_ADDR="$OVPN_REMOTE_ADDR"
+	elif [ "$OVPN_IPV6" == "true" ]; then
+		REMOTE_ADDR=$(ip -6 route get 2001:4860:4860::8888 | grep -oP 'src \K\S+')
+	else
+		REMOTE_ADDR=$(ip -4 route get 8.8.8.8 | grep -oP 'src \K\S+')
+	fi
+	REMOTE_PORT="${3:-${OVPN_REMOTE_PORT:-$OVPN_PORT}}"
+
 	if [ ! -f "$EASYRSA_PKI/private/$1.key" ]; then
 		/usr/share/easy-rsa/easyrsa --batch build-client-full $1 nopass >/dev/null
 	fi
@@ -159,7 +172,7 @@ genclient() {
 	cat <<EOF >$OVPN_DATA/clients/$1.ovpn
 client
 proto $([[ "$OVPN_IPV6" == "true" ]] && [[ ! "$OVPN_PROTO" =~ 6 ]] && echo "${OVPN_PROTO}6" || echo $OVPN_PROTO)
-remote ${2:-$([[ "$OVPN_IPV6" == "true" ]] && ip -6 route get 2001:4860:4860::8888 | grep -oP 'src \K\S+' || ip -4 route get 8.8.8.8 | grep -oP 'src \K\S+')} ${3:-$OVPN_PORT}
+remote $REMOTE_ADDR $REMOTE_PORT
 dev tun
 resolv-retry infinite
 nobind
