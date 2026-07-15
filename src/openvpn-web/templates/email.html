@@ -76,15 +76,25 @@
                 </p>
                 {{ end }}
 
+                {{ if .LoginLinkEnabled }}
                 <p style="margin: 28px 0 0 0; text-align: center">
                   <a href="{{.SiteUrl}}" target="_blank" style="color: #2f80ed; text-decoration: none">
                     下载客户端&配置文件
                   </a>
                 </p>
+                {{ end }}
 
                 {{ if .HasAttachment }}
                 <p style="margin: 14px 0 0 0; color: #666; font-size: 12px">
-                  OpenVPN 配置文件已作为附件一并发送，可直接导入客户端使用；也可点击上方链接登录后下载。
+                  OpenVPN 配置文件已作为附件一并发送，可直接导入客户端使用{{ if .LoginLinkEnabled }}；也可点击上方链接登录后下载{{ end }}。
+                </p>
+                {{ end }}
+
+                {{ if .HelpUrl }}
+                <p style="margin: 18px 0 0 0; text-align: center; font-size: 13px">
+                  <a href="{{.HelpUrl}}" target="_blank" style="color: #2f80ed; text-decoration: none">
+                    使用说明
+                  </a>
                 </p>
                 {{ end }}
               </td>

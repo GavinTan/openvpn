@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -36,13 +37,15 @@ type SysLdapConfig struct {
 }
 
 type SysEmailConfig struct {
-	SendSubjectPrefix string  `json:"send_subject_prefix" mapstructure:"send_subject_prefix"`
-	SendFrom          string  `json:"send_from" mapstructure:"send_from"`
-	Host              string  `json:"host" mapstructure:"host"`
-	Port              int     `json:"port" mapstructure:"port"`
-	Username          string  `json:"username" mapstructure:"username"`
-	Password          string  `json:"password" mapstructure:"password"`
-	Security          *string `json:"security" mapstructure:"security"`
+	SendSubjectPrefix  string  `json:"send_subject_prefix" mapstructure:"send_subject_prefix"`
+	SendFrom           string  `json:"send_from" mapstructure:"send_from"`
+	Host               string  `json:"host" mapstructure:"host"`
+	Port               int     `json:"port" mapstructure:"port"`
+	Username           string  `json:"username" mapstructure:"username"`
+	Password           string  `json:"password" mapstructure:"password"`
+	Security           *string `json:"security" mapstructure:"security"`
+	LoginLinkEnabled   bool    `json:"login_link_enabled" mapstructure:"login_link_enabled"` // 邮件是否带登录链接
+	HelpURL            string  `json:"help_url" mapstructure:"help_url"`                     // 使用说明外链，附在所有邮件模板
 }
 
 // SysFeishuConfig 是飞书组织架构同步的配置。AppSecret 在落盘时 AES 加密，
@@ -78,6 +81,8 @@ type OvpnConfig struct {
 	OvpnSubnet6    string `json:"ovpn_subnet6" mapstructure:"ovpn_subnet6"`
 	OvpnPushDns1   string `json:"ovpn_push_dns1" mapstructure:"ovpn_push_dns1"`
 	OvpnPushDns2   string `json:"ovpn_push_dns2" mapstructure:"ovpn_push_dns2"`
+	OvpnRemoteAddr string `json:"ovpn_remote_addr" mapstructure:"ovpn_remote_addr"` // 外显外网 IP（NAT 场景），生成 ovpn 用
+	OvpnRemotePort string `json:"ovpn_remote_port" mapstructure:"ovpn_remote_port"` // 外显外网端口
 }
 
 type config struct {
@@ -128,7 +133,7 @@ func initConfig() {
 	sk := genRandomString(50)
 	passwd, _ := bcrypt.GenerateFromPassword([]byte("admin"), 12)
 
-	viper.SetDefault("system.base.site_url", "http://127.0.0.1:8833")
+	viper.SetDefault("system.base.site_url", envOr("OVPN_SITE_URL", "http://127.0.0.1:8833"))
 	viper.SetDefault("system.base.web_port", "8833")
 	viper.SetDefault("system.base.secret_key", sk)
 	viper.SetDefault("system.base.server_cn", "ovpn_"+genRandomString(16))
@@ -157,6 +162,8 @@ func initConfig() {
 	viper.SetDefault("system.email.username", "")
 	viper.SetDefault("system.email.password", "")
 	viper.SetDefault("system.email.security", nil)
+	viper.SetDefault("system.email.login_link_enabled", envOrBool("OVPN_EMAIL_LOGIN_LINK", true))
+	viper.SetDefault("system.email.help_url", envOr("OVPN_HELP_URL", ""))
 
 	// 飞书组织架构同步
 	viper.SetDefault("system.feishu.feishu_enabled", false)
@@ -185,6 +192,8 @@ func initConfig() {
 	viper.SetDefault("openvpn.ovpn_subnet6", "fdaf:f178:e916:6dd0::/64")
 	viper.SetDefault("openvpn.ovpn_push_dns1", "8.8.8.8")
 	viper.SetDefault("openvpn.ovpn_push_dns2", "2001:4860:4860::8888")
+	viper.SetDefault("openvpn.ovpn_remote_addr", envOr("OVPN_REMOTE_ADDR", ""))
+	viper.SetDefault("openvpn.ovpn_remote_port", envOr("OVPN_REMOTE_PORT", ""))
 
 	viper.SetConfigName("config")
 	viper.SetConfigType("json")
@@ -292,5 +301,25 @@ func currentFeishuConfig() FeishuSyncConfig {
 		DefaultGroupID: feishuDefaultGroupID,
 		DisableOnLeave: feishuDisableOnLeave,
 		NotifyOnCreate: feishuNotifyOnCreate,
+	}
+}
+
+// envOr 取环境变量，空则返回默认值。供 initConfig 把部署期环境变量注入为 viper 默认值。
+func envOr(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
+}
+
+// envOrBool 取布尔环境变量（"true"/"1" 为真），未设则返回默认值。
+func envOrBool(key string, def bool) bool {
+	switch os.Getenv(key) {
+	case "true", "1":
+		return true
+	case "false", "0":
+		return false
+	default:
+		return def
 	}
 }

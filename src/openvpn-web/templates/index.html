@@ -1632,6 +1632,30 @@
                     </div>
                     <div class="row mb-1 align-items-baseline">
                       <label class="col-sm-3 col-form-label">
+                        邮件带登录链接
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-question-circle" viewBox="0 0 16 16" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="开启后通知邮件正文带登录链接（外显站点地址），关闭则不带">
+                          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"></path>
+                          <path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286m1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94"></path>
+                        </svg>
+                      </label>
+                      <div class="col-sm-9">
+                        <input class="form-check-input" type="checkbox" id="emailLoginLinkEnabled" checked />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">
+                        使用说明链接
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-question-circle" viewBox="0 0 16 16" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="附在所有通知邮件底部的外链，留空则不显示">
+                          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"></path>
+                          <path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286m1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94"></path>
+                        </svg>
+                      </label>
+                      <div class="col-sm-9">
+                        <input type="text" class="form-control form-control-sm border-0 border-bottom" id="emailHelpUrl" placeholder="https://example.com/vpn-guide" />
+                      </div>
+                    </div>
+                    <div class="row mb-1 align-items-baseline">
+                      <label class="col-sm-3 col-form-label">
                         收件人
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -1998,6 +2022,40 @@
                           class="form-control form-control-sm border-0 border-bottom"
                           id="ovpnPushDns2"
                           value="2001:4860:4860::8888"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">
+                        外显IP
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-question-circle" viewBox="0 0 16 16" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="NAT/外网暴露场景，生成客户端 .ovpn 的 remote 地址；留空则自动探测本机出网IP">
+                          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"></path>
+                          <path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286m1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94"></path>
+                        </svg>
+                      </label>
+                      <div class="col-sm-9">
+                        <input
+                          type="text"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="ovpnRemoteAddr"
+                          placeholder="留空自动探测"
+                        />
+                      </div>
+                    </div>
+                    <div class="row mb-1">
+                      <label class="col-sm-3 col-form-label">
+                        外显端口
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-question-circle" viewBox="0 0 16 16" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="外网连接使用的真实端口；留空则用上方端口配置">
+                          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"></path>
+                          <path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286m1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94"></path>
+                        </svg>
+                      </label>
+                      <div class="col-sm-9">
+                        <input
+                          type="text"
+                          class="form-control form-control-sm border-0 border-bottom"
+                          id="ovpnRemotePort"
+                          placeholder="留空用配置端口"
                         />
                       </div>
                     </div>

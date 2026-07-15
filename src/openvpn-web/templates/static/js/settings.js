@@ -28,6 +28,8 @@ $(document).on('click', '#settings', function () {
     $('#emailSmtpPassword').val(data.system.email?.password);
     $('#emailSecurityTls').prop('checked', data.system.email?.security === 'tls');
     $('#emailSecuritySsl').prop('checked', data.system.email?.security === 'ssl');
+    $('#emailLoginLinkEnabled').prop('checked', data.system.email?.login_link_enabled ?? true);
+    $('#emailHelpUrl').val(data.system.email?.help_url ?? '');
 
     $('#windowsClientUrl').val(data.client.client_url.windows);
     $('#macosClientUrl').val(data.client.client_url.macos);
@@ -45,6 +47,8 @@ $(document).on('click', '#settings', function () {
     $('#ovpnSubnet6').val(data.openvpn.ovpn_subnet6);
     $('#ovpnPushDns1').val(data.openvpn.ovpn_push_dns1);
     $('#ovpnPushDns2').val(data.openvpn.ovpn_push_dns2);
+    $('#ovpnRemoteAddr').val(data.openvpn.ovpn_remote_addr ?? '');
+    $('#ovpnRemotePort').val(data.openvpn.ovpn_remote_port ?? '');
 
     $('#feishuEnabled').prop('checked', data.system.feishu?.feishu_enabled);
     $('#feishuAppId').val(data.system.feishu?.feishu_app_id);
@@ -712,6 +716,50 @@ $(document).on('blur', '#ovpnPushDns2', function () {
   if (oldValue === newValue) return;
 
   request.post('/settings', { 'openvpn.ovpn_push_dns2': newValue }).then((data) => {
+    message.success(data.message);
+  });
+});
+
+// ── 外显 IP/端口（openvpn 段）──
+$(document).on('mousedown', '#ovpnRemoteAddr', function () {
+  if (!$(this).is(':focus')) $(this).data('oldValue', $(this).val());
+});
+$(document).on('blur', '#ovpnRemoteAddr', function () {
+  const oldValue = $(this).data('oldValue');
+  const newValue = $(this).val();
+  if (oldValue === newValue) return;
+  request.post('/settings', { 'openvpn.ovpn_remote_addr': newValue }).then((data) => {
+    message.success(data.message);
+  });
+});
+
+$(document).on('mousedown', '#ovpnRemotePort', function () {
+  if (!$(this).is(':focus')) $(this).data('oldValue', $(this).val());
+});
+$(document).on('blur', '#ovpnRemotePort', function () {
+  const oldValue = $(this).data('oldValue');
+  const newValue = $(this).val();
+  if (oldValue === newValue) return;
+  request.post('/settings', { 'openvpn.ovpn_remote_port': newValue }).then((data) => {
+    message.success(data.message);
+  });
+});
+
+// ── 邮件：登录链接开关 + 使用说明链接 ──
+$(document).on('change', '#emailLoginLinkEnabled', function () {
+  request.post('/settings', { 'system.email.login_link_enabled': $(this).prop('checked') }).then((data) => {
+    message.success(data.message);
+  });
+});
+
+$(document).on('mousedown', '#emailHelpUrl', function () {
+  if (!$(this).is(':focus')) $(this).data('oldValue', $(this).val());
+});
+$(document).on('blur', '#emailHelpUrl', function () {
+  const oldValue = $(this).data('oldValue');
+  const newValue = $(this).val();
+  if (oldValue === newValue) return;
+  request.post('/settings', { 'system.email.help_url': newValue }).then((data) => {
     message.success(data.message);
   });
 });

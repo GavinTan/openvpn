@@ -151,19 +151,22 @@ genclient() {
 	OVPN_PROTO=$(jq -r '.openvpn.ovpn_proto // "udp"' $SYSTEM_CONFIG)
 	OVPN_PORT=$(jq -r '.openvpn.ovpn_port // "1194"' $SYSTEM_CONFIG)
 	OVPN_IPV6=$(jq -r '.openvpn.ovpn_ipv6 // "false"' $SYSTEM_CONFIG)
+	# 外显 remote 地址/端口：来自 config.json（Web 菜单可配，或首次启动由 OVPN_REMOTE_ADDR/OVPN_REMOTE_PORT 环境变量注入）
+	OVPN_REMOTE_ADDR_CFG=$(jq -r '.openvpn.ovpn_remote_addr // ""' $SYSTEM_CONFIG)
+	OVPN_REMOTE_PORT_CFG=$(jq -r '.openvpn.ovpn_remote_port // ""' $SYSTEM_CONFIG)
 
-	# remote 外显地址/端口优先级：显式参数 $2/$3 > 环境变量 OVPN_REMOTE_ADDR/OVPN_REMOTE_PORT > 自动探测本机出网IP / config端口
+	# remote 优先级：显式参数 $2/$3 > config 外显地址 > 自动探测本机出网IP / config端口
 	# 用于 NAT/端口映射等外网暴露场景，让生成的 .ovpn 指向真实外网可达地址
 	if [ -n "$2" ]; then
 		REMOTE_ADDR="$2"
-	elif [ -n "$OVPN_REMOTE_ADDR" ]; then
-		REMOTE_ADDR="$OVPN_REMOTE_ADDR"
+	elif [ -n "$OVPN_REMOTE_ADDR_CFG" ]; then
+		REMOTE_ADDR="$OVPN_REMOTE_ADDR_CFG"
 	elif [ "$OVPN_IPV6" == "true" ]; then
 		REMOTE_ADDR=$(ip -6 route get 2001:4860:4860::8888 | grep -oP 'src \K\S+')
 	else
 		REMOTE_ADDR=$(ip -4 route get 8.8.8.8 | grep -oP 'src \K\S+')
 	fi
-	REMOTE_PORT="${3:-${OVPN_REMOTE_PORT:-$OVPN_PORT}}"
+	REMOTE_PORT="${3:-${OVPN_REMOTE_PORT_CFG:-$OVPN_PORT}}"
 
 	if [ ! -f "$EASYRSA_PKI/private/$1.key" ]; then
 		/usr/share/easy-rsa/easyrsa --batch build-client-full $1 nopass >/dev/null

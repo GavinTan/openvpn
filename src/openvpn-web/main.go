@@ -1214,19 +1214,23 @@ func main() {
 						tpl, err = template.ParseFS(FS, "templates/email.html")
 						if err == nil {
 							err = tpl.Execute(&buf, struct {
-								Type          string
-								Name          string
-								Username      string
-								Password      string
-								SiteUrl       string
-								HasAttachment bool
+								Type             string
+								Name             string
+								Username         string
+								Password         string
+								SiteUrl          string
+								HasAttachment    bool
+								LoginLinkEnabled bool
+								HelpUrl          string
 							}{
-								Type:          "addUser",
-								Name:          u.Name,
-								Username:      u.Username,
-								Password:      c.PostForm("password"),
-								SiteUrl:       viper.GetString("system.base.site_url"),
-								HasAttachment: false,
+								Type:             "addUser",
+								Name:             u.Name,
+								Username:         u.Username,
+								Password:         c.PostForm("password"),
+								SiteUrl:          viper.GetString("system.base.site_url"),
+								HasAttachment:    false,
+								LoginLinkEnabled: viper.GetBool("system.email.login_link_enabled"),
+								HelpUrl:          viper.GetString("system.email.help_url"),
 							})
 						}
 
@@ -1276,19 +1280,23 @@ func main() {
 							tpl, err = template.ParseFS(FS, "templates/email.html")
 							if err == nil {
 								err = tpl.Execute(&buf, struct {
-									Type          string
-									Name          string
-									Username      string
-									Password      string
-									SiteUrl       string
-									HasAttachment bool
+									Type             string
+									Name             string
+									Username         string
+									Password         string
+									SiteUrl          string
+									HasAttachment    bool
+									LoginLinkEnabled bool
+									HelpUrl          string
 								}{
-									Type:          "resetPass",
-									Name:          cu.Name,
-									Username:      cu.Username,
-									Password:      c.PostForm("password"),
-									SiteUrl:       viper.GetString("system.base.site_url"),
-									HasAttachment: false,
+									Type:             "resetPass",
+									Name:             cu.Name,
+									Username:         cu.Username,
+									Password:         c.PostForm("password"),
+									SiteUrl:          viper.GetString("system.base.site_url"),
+									HasAttachment:    false,
+									LoginLinkEnabled: viper.GetBool("system.email.login_link_enabled"),
+									HelpUrl:          viper.GetString("system.email.help_url"),
 								})
 							}
 

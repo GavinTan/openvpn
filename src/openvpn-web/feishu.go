@@ -847,12 +847,14 @@ func sendWelcomeEmail(name, username, password, email string) error {
 		return fmt.Errorf("解析邮件模板失败: %w", err)
 	}
 	if err := tpl.Execute(&buf, map[string]interface{}{
-		"Type":         "addUser",
-		"Name":         name,
-		"Username":     username,
-		"Password":     password,
-		"SiteUrl":      viper.GetString("system.base.site_url"),
-		"HasAttachment": true,
+		"Type":             "addUser",
+		"Name":             name,
+		"Username":         username,
+		"Password":         password,
+		"SiteUrl":          viper.GetString("system.base.site_url"),
+		"HasAttachment":    true,
+		"LoginLinkEnabled": viper.GetBool("system.email.login_link_enabled"),
+		"HelpUrl":          viper.GetString("system.email.help_url"),
 	}); err != nil {
 		return fmt.Errorf("渲染邮件失败: %w", err)
 	}
