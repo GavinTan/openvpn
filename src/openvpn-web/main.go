@@ -8,6 +8,7 @@ import (
 	"embed"
 	"encoding/csv"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -774,6 +775,8 @@ func main() {
 				val = string(ep)
 			case "system.email.password":
 				val, _ = aes.AesEncrypt(val, secretKey)
+			case "system.feishu.feishu_app_secret":
+				val, _ = aes.AesEncrypt(val, secretKey)
 			case "system.base.max_duplicate_login":
 				n, err := strconv.Atoi(val)
 				if err != nil {
@@ -1311,6 +1314,75 @@ func main() {
 			} else {
 				c.JSON(http.StatusOK, gin.H{"message": "删除用户成功"})
 			}
+		})
+
+		// ── 飞书同步 ───────────────────────────────────────────────
+		// 立即同步（手动触发）。type=full|incremental
+		ovpn.POST("/feishu/sync", func(c *gin.Context) {
+			if !feishuEnabled {
+				c.JSON(http.StatusBadRequest, gin.H{"message": "飞书同步未启用"})
+				return
+			}
+			kind := c.DefaultQuery("type", "full")
+			if kind != "incremental" {
+				kind = "full"
+			}
+			syncer, err := NewFeishuSyncer(currentFeishuConfig())
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return
+			}
+			log, err := syncer.RunSync(c.Request.Context(), kind, "admin:"+adminUsername)
+			if err != nil {
+				if errors.Is(err, ErrSyncAlreadyRunning) {
+					c.JSON(http.StatusConflict, gin.H{"message": err.Error()})
+					return
+				}
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, log)
+		})
+
+		// 测试连接：仅校验 AppID/AppSecret 能换到 token
+		ovpn.POST("/feishu/test", func(c *gin.Context) {
+			if !feishuEnabled {
+				c.JSON(http.StatusBadRequest, gin.H{"message": "飞书同步未启用"})
+				return
+			}
+			client, err := NewFeishuClient(feishuAppID, feishuAppSecret, feishuBaseURL)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return
+			}
+			if err := client.TestConnection(c.Request.Context()); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"message": "连接成功"})
+		})
+
+		// 同步日志（最近 50 条）
+		ovpn.GET("/feishu/log", func(c *gin.Context) {
+			c.JSON(http.StatusOK, FeishuSyncLogRecent(50))
+		})
+
+		// 重发欢迎邮件（含 .ovpn 附件）。不依赖飞书启用状态。
+		ovpn.POST("/feishu/resend-email", func(c *gin.Context) {
+			userIDStr := c.Query("userId")
+			if userIDStr == "" {
+				userIDStr = c.PostForm("userId")
+			}
+			userID, err := strconv.ParseUint(userIDStr, 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"message": "缺少或非法的 userId"})
+				return
+			}
+			if err := ResendWelcomeEmail(uint(userID)); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"message": "邮件发送成功"})
 		})
 
 		ovpn.GET("/client", func(c *gin.Context) {

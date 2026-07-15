@@ -589,7 +589,7 @@ func (s *FeishuSyncer) reconcileUser(ctx context.Context, fu FeishuUser, deptGro
 
 		// 发欢迎邮件（best-effort，失败只记日志）
 		if s.cfg.NotifyOnCreate && fu.Email != "" {
-			if err := s.sendWelcomeEmail(fu.Name, username, plainPwd, fu.Email); err != nil {
+			if err := sendWelcomeEmail(fu.Name, username, plainPwd, fu.Email); err != nil {
 				logger.Error(ctx, "发送欢迎邮件失败: "+err.Error())
 			}
 		}
@@ -625,7 +625,7 @@ func (s *FeishuSyncer) reconcileUser(ctx context.Context, fu FeishuUser, deptGro
 		// 确保证书在（可能历史上被删）
 		_ = ensureClientCert(existing.Username)
 		if s.cfg.NotifyOnCreate && fu.Email != "" {
-			if err := s.sendWelcomeEmail(fu.Name, existing.Username, plainPwd, fu.Email); err != nil {
+			if err := sendWelcomeEmail(fu.Name, existing.Username, plainPwd, fu.Email); err != nil {
 				logger.Error(ctx, "复职发送邮件失败: "+err.Error())
 			}
 		}
@@ -663,9 +663,9 @@ func (s *FeishuSyncer) detectLeavers(ctx context.Context, activeOpenIDs map[stri
 	return disabled, errs
 }
 
-// ResendWelcome 给指定本地用户重新生成/复用密码、确保证书、补发欢迎邮件（含 .ovpn 附件）。
-// 供 admin UI 的"发送邮件"按钮调用。
-func (s *FeishuSyncer) ResendWelcome(ctx context.Context, userID uint) error {
+// ResendWelcomeEmail 给指定本地用户重新生成/复用密码、确保证书、补发欢迎邮件（含 .ovpn 附件）。
+// 供 admin UI 的"发送邮件"按钮调用。不依赖飞书配置——手工创建的账号也可重发。
+func ResendWelcomeEmail(userID uint) error {
 	var u User
 	if err := db.First(&u, userID).Error; err != nil {
 		return fmt.Errorf("用户不存在: %w", err)
@@ -682,8 +682,8 @@ func (s *FeishuSyncer) ResendWelcome(ctx context.Context, userID uint) error {
 		plainPwd = generateDefaultPassword(u.Phone, u.FeishuUserID)
 		firstLogin := true
 		if err := db.Model(&User{}).Where("id = ?", u.ID).Updates(map[string]interface{}{
-			"password":        plainPwd,
-			"is_first_login":  firstLogin,
+			"password":       plainPwd,
+			"is_first_login": firstLogin,
 		}).Error; err != nil {
 			return fmt.Errorf("重置密码失败: %w", err)
 		}
@@ -692,7 +692,7 @@ func (s *FeishuSyncer) ResendWelcome(ctx context.Context, userID uint) error {
 	if err := ensureClientCert(u.Username); err != nil {
 		return fmt.Errorf("签发证书失败: %w", err)
 	}
-	return s.sendWelcomeEmail(u.Name, u.Username, plainPwd, u.Email)
+	return sendWelcomeEmail(u.Name, u.Username, plainPwd, u.Email)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -817,7 +817,7 @@ func ensureClientCert(username string) error {
 }
 
 // sendWelcomeEmail 渲染 email.html 并附上 .ovpn 附件发送。subject 为固定标题。
-func (s *FeishuSyncer) sendWelcomeEmail(name, username, password, email string) error {
+func sendWelcomeEmail(name, username, password, email string) error {
 	var buf bytes.Buffer
 	tpl, err := template.ParseFS(FS, "templates/email.html")
 	if err != nil {
