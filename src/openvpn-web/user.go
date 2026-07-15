@@ -33,6 +33,9 @@ type User struct {
 	MfaSecret    string     `json:"mfaSecret" form:"mfaSecret"`
 	IsFirstLogin *bool      `gorm:"default:true" form:"isFirstLogin" json:"isFirstLogin"`
 	LastLoginAt  *time.Time `json:"lastLoginAt,omitempty" form:"lastLoginAt,omitempty"`
+	Phone        string     `gorm:"default:NULL" json:"phone" form:"phone"`
+	FeishuUserID string     `gorm:"index;default:NULL" json:"feishuUserId" form:"feishuUserId"`
+	LastSyncAt   *time.Time `json:"lastSyncAt,omitempty" form:"lastSyncAt,omitempty"`
 	CreatedAt    time.Time  `json:"createdAt,omitempty" form:"createdAt,omitempty"`
 	UpdatedAt    time.Time  `json:"updatedAt,omitempty" form:"updatedAt,omitempty"`
 }
