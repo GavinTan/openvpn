@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/gavintan/gopkg/aes"
 	"github.com/spf13/viper"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -44,6 +45,20 @@ type SysEmailConfig struct {
 	Security          *string `json:"security" mapstructure:"security"`
 }
 
+// SysFeishuConfig 是飞书组织架构同步的配置。AppSecret 在落盘时 AES 加密，
+// loadConfig 时解密到包级变量 feishuAppSecret。
+type SysFeishuConfig struct {
+	Enabled        bool   `json:"feishu_enabled" mapstructure:"feishu_enabled"`
+	AppID          string `json:"feishu_app_id" mapstructure:"feishu_app_id"`
+	AppSecret      string `json:"feishu_app_secret" mapstructure:"feishu_app_secret"` // AES 密文
+	BaseURL        string `json:"feishu_base_url" mapstructure:"feishu_base_url"`     // 空则用默认 https://open.feishu.cn
+	RootDeptID     string `json:"feishu_root_dept_id" mapstructure:"feishu_root_dept_id"`
+	SyncCron       string `json:"feishu_sync_cron" mapstructure:"feishu_sync_cron"`
+	DisableOnLeave bool   `json:"feishu_disable_on_leave" mapstructure:"feishu_disable_on_leave"`
+	DefaultGroupID uint   `json:"feishu_default_group_id" mapstructure:"feishu_default_group_id"`
+	NotifyOnCreate bool   `json:"feishu_notify_on_create" mapstructure:"feishu_notify_on_create"`
+}
+
 type ClientUrlConfig struct {
 	Windows string `json:"windows" mapstructure:"windows"`
 	Linux   string `json:"linux" mapstructure:"linux"`
@@ -67,9 +82,10 @@ type OvpnConfig struct {
 
 type config struct {
 	System struct {
-		Base  SysBeseConfig  `json:"base" mapstructure:"base"`
-		Ldap  SysLdapConfig  `json:"ldap" mapstructure:"ldap"`
-		Email SysEmailConfig `json:"email" mapstructure:"email"`
+		Base   SysBeseConfig  `json:"base" mapstructure:"base"`
+		Ldap   SysLdapConfig  `json:"ldap" mapstructure:"ldap"`
+		Email  SysEmailConfig `json:"email" mapstructure:"email"`
+		Feishu SysFeishuConfig `json:"feishu" mapstructure:"feishu"`
 	} `json:"system" mapstructure:"system"`
 	Client struct {
 		ClientUrl ClientUrlConfig `json:"client_url" mapstructure:"client_url"`
@@ -93,6 +109,17 @@ var (
 	ldapBindUserDn         string
 	ldapBindPassword       string
 	nftTableName           string
+
+	// 飞书同步运行时配置（app_secret 在 loadConfig 中解密）
+	feishuEnabled        bool
+	feishuAppID          string
+	feishuAppSecret      string
+	feishuBaseURL        string
+	feishuRootDeptID     string
+	feishuSyncCron       string
+	feishuDisableOnLeave bool
+	feishuDefaultGroupID uint
+	feishuNotifyOnCreate bool
 
 	ovManage string
 )
@@ -130,6 +157,17 @@ func initConfig() {
 	viper.SetDefault("system.email.username", "")
 	viper.SetDefault("system.email.password", "")
 	viper.SetDefault("system.email.security", nil)
+
+	// 飞书组织架构同步
+	viper.SetDefault("system.feishu.feishu_enabled", false)
+	viper.SetDefault("system.feishu.feishu_app_id", "")
+	viper.SetDefault("system.feishu.feishu_app_secret", "")
+	viper.SetDefault("system.feishu.feishu_base_url", "")
+	viper.SetDefault("system.feishu.feishu_root_dept_id", "0")
+	viper.SetDefault("system.feishu.feishu_sync_cron", "0 2 * * *")
+	viper.SetDefault("system.feishu.feishu_disable_on_leave", true)
+	viper.SetDefault("system.feishu.feishu_default_group_id", 1)
+	viper.SetDefault("system.feishu.feishu_notify_on_create", true)
 
 	viper.SetDefault("client.client_url.windows", "https://openvpn.net/downloads/openvpn-connect-v3-windows.msi")
 	viper.SetDefault("client.client_url.macos", "https://openvpn.net/downloads/openvpn-connect-v3-macos.dmg")
@@ -175,6 +213,7 @@ func initConfig() {
 
 		loadConfig()
 		upadteOvpnConfig()
+		restartFeishuCron()
 	})
 
 	viper.WatchConfig()
@@ -223,5 +262,35 @@ func loadConfig() {
 	ldapBindUserDn = conf.System.Ldap.LdapBindUserDn
 	ldapBindPassword = conf.System.Ldap.LdapBindPassword
 
+	// 飞书同步配置；app_secret 落盘为 AES 密文，这里解密到明文供运行时使用。
+	// 解密失败（如默认空串）当作空处理，与 email.password 同样的容忍策略。
+	feishuEnabled = conf.System.Feishu.Enabled
+	feishuAppID = conf.System.Feishu.AppID
+	if plain, err := aes.AesDecrypt(conf.System.Feishu.AppSecret, secretKey); err == nil {
+		feishuAppSecret = plain
+	} else {
+		feishuAppSecret = ""
+	}
+	feishuBaseURL = conf.System.Feishu.BaseURL
+	feishuRootDeptID = conf.System.Feishu.RootDeptID
+	feishuSyncCron = conf.System.Feishu.SyncCron
+	feishuDisableOnLeave = conf.System.Feishu.DisableOnLeave
+	feishuDefaultGroupID = conf.System.Feishu.DefaultGroupID
+	feishuNotifyOnCreate = conf.System.Feishu.NotifyOnCreate
+
 	ovManage = conf.Openvpn.OvpnManagement
+}
+
+// currentFeishuConfig 把包级运行时变量组装成 FeishuSyncConfig，
+// 供 cron 任务与 admin 手动触发复用。
+func currentFeishuConfig() FeishuSyncConfig {
+	return FeishuSyncConfig{
+		AppID:          feishuAppID,
+		AppSecret:      feishuAppSecret,
+		BaseURL:        feishuBaseURL,
+		RootDeptID:     feishuRootDeptID,
+		DefaultGroupID: feishuDefaultGroupID,
+		DisableOnLeave: feishuDisableOnLeave,
+		NotifyOnCreate: feishuNotifyOnCreate,
+	}
 }

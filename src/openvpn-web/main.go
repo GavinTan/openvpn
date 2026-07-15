@@ -23,6 +23,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gavintan/gopkg/aes"
@@ -116,6 +117,12 @@ var (
 	)
 	ovData = os.Getenv("OVPN_DATA")
 	conf   config
+)
+
+var (
+	cronScheduler      *cron.Cron
+	feishuCronEntryID  cron.EntryID
+	feishuCronMu       sync.Mutex
 )
 
 func (ov *ovpn) sendCommand(command string) (string, error) {
@@ -474,6 +481,52 @@ func init() {
 	loadConfig()
 }
 
+// restartFeishuCron 根据当前飞书配置（重新）注册或移除飞书同步定时任务。
+// 在 main() 启动后首次注册，之后每次配置文件变更（OnConfigChange）也会调用，
+// 从而改 feishu_sync_cron 或开关 enabled 无需重启即生效。
+//
+// cronScheduler 为 nil 时（init 阶段、单元测试）直接返回，保证安全。
+func restartFeishuCron() {
+	feishuCronMu.Lock()
+	defer feishuCronMu.Unlock()
+
+	if cronScheduler == nil {
+		return
+	}
+
+	// 先移除旧任务
+	if feishuCronEntryID != 0 {
+		cronScheduler.Remove(feishuCronEntryID)
+		feishuCronEntryID = 0
+	}
+
+	if !feishuEnabled || feishuAppID == "" || feishuAppSecret == "" {
+		return
+	}
+
+	spec := feishuSyncCron
+	if spec == "" {
+		spec = "0 2 * * *"
+	}
+
+	id, err := cronScheduler.AddFunc(spec, func() {
+		syncer, err := NewFeishuSyncer(currentFeishuConfig())
+		if err != nil {
+			logger.Error(context.Background(), "feishu cron 建立同步器失败: "+err.Error())
+			return
+		}
+		if _, err := syncer.RunSync(context.Background(), "incremental", "cron"); err != nil {
+			logger.Error(context.Background(), "feishu cron 同步失败: "+err.Error())
+		}
+	})
+	if err != nil {
+		logger.Error(context.Background(), "feishu cron 注册失败 spec="+spec+": "+err.Error())
+		return
+	}
+	feishuCronEntryID = id
+	logger.Info(context.Background(), "feishu cron 已注册 spec="+spec)
+}
+
 func main() {
 	ov := ovpn{
 		address: ovManage,
@@ -488,20 +541,23 @@ func main() {
 		panic(err)
 	}
 
-	c := cron.New()
-	c.AddFunc("@daily", func() {
+	cronScheduler = cron.New()
+	cronScheduler.AddFunc("@daily", func() {
 		err := History{}.Clear()
 		if err != nil {
 			logger.Error(context.Background(), err.Error())
 		}
 	})
-	c.Start()
+	cronScheduler.Start()
+
+	// 飞书同步定时任务（首次注册；之后由配置热更新回调 restartFeishuCron 维护）
+	restartFeishuCron()
 
 	store := gormsessions.NewStore(db, true, []byte(secretKey))
 
 	db.AutoMigrate(&Group{})
 	db.FirstOrCreate(&Group{Name: "Default", ParentID: nil})
-	db.AutoMigrate(&User{}, &History{}, &Firewall{})
+	db.AutoMigrate(&User{}, &History{}, &Firewall{}, &FeishuSyncLog{})
 
 	r := gin.New()
 	r.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
