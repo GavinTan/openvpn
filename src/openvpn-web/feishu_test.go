@@ -79,15 +79,23 @@ func TestNormalizePhone(t *testing.T) {
 }
 
 func TestDeriveUsername(t *testing.T) {
-	// 优先 email
+	// 优先个人 email
 	if got := deriveUsername(FeishuUser{Email: "alice@example.com", Mobile: "13800001111", OpenID: "ou_1"}); got != "alice@example.com" {
 		t.Errorf("应优先用 email got=%q", got)
 	}
-	// 无 email 用手机后 6 位
-	if got := deriveUsername(FeishuUser{Mobile: "+86 138 0000 1111", OpenID: "ou_1"}); got != "001111" {
-		t.Errorf("无 email 应取手机后6位 got=%q want=001111", got)
+	// 个人邮箱空 → 用企业邮箱
+	if got := deriveUsername(FeishuUser{EnterpriseEmail: "bob@corp.cn", Mobile: "13800001111", OpenID: "ou_1"}); got != "bob@corp.cn" {
+		t.Errorf("个人邮箱空应取企业邮箱 got=%q want=bob@corp.cn", got)
 	}
-	// 无 email 无手机用 user_id
+	// 个人邮箱优先于企业邮箱
+	if got := deriveUsername(FeishuUser{Email: "a@x.com", EnterpriseEmail: "b@corp.cn"}); got != "a@x.com" {
+		t.Errorf("个人邮箱应优先于企业邮箱 got=%q", got)
+	}
+	// 无邮箱用手机后 6 位
+	if got := deriveUsername(FeishuUser{Mobile: "+86 138 0000 1111", OpenID: "ou_1"}); got != "001111" {
+		t.Errorf("无邮箱应取手机后6位 got=%q want=001111", got)
+	}
+	// 无邮箱无手机用 user_id
 	if got := deriveUsername(FeishuUser{UserID: "u_abc123", OpenID: "ou_1"}); got != "u_abc123" {
 		t.Errorf("应回退 user_id got=%q", got)
 	}

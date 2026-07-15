@@ -74,13 +74,14 @@ type FeishuDept struct {
 
 // FeishuUser 是飞书用户在本系统的本地投影。
 type FeishuUser struct {
-	OpenID        string
-	UserID        string // 飞书租户内 user_id
-	EmployeeNo    string // 工号
-	Name          string
-	Email         string
-	Mobile        string
-	DepartmentIDs []string
+	OpenID          string
+	UserID          string // 飞书租户内 user_id
+	EmployeeNo      string // 工号
+	Name            string
+	Email           string // 个人邮箱（常为空）
+	EnterpriseEmail string // 企业邮箱（多数企业员工用这个）
+	Mobile          string
+	DepartmentIDs   []string
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -228,13 +229,14 @@ func (c *FeishuClient) ListUsersInDept(ctx context.Context, deptID string) ([]Fe
 		}
 		for _, u := range resp.Data.Items {
 			users = append(users, FeishuUser{
-				OpenID:        ptrStr(u.OpenId),
-				UserID:        ptrStr(u.UserId),
-				EmployeeNo:    ptrStr(u.EmployeeNo),
-				Name:          ptrStr(u.Name),
-				Email:         ptrStr(u.Email),
-				Mobile:        ptrStr(u.Mobile),
-				DepartmentIDs: u.DepartmentIds,
+				OpenID:          ptrStr(u.OpenId),
+				UserID:          ptrStr(u.UserId),
+				EmployeeNo:      ptrStr(u.EmployeeNo),
+				Name:            ptrStr(u.Name),
+				Email:           ptrStr(u.Email),
+				EnterpriseEmail: ptrStr(u.EnterpriseEmail),
+				Mobile:          ptrStr(u.Mobile),
+				DepartmentIDs:   u.DepartmentIds,
 			})
 		}
 
@@ -265,13 +267,14 @@ func (c *FeishuClient) GetUser(ctx context.Context, openID string) (*FeishuUser,
 	}
 	u := resp.Data.User
 	return &FeishuUser{
-		OpenID:        ptrStr(u.OpenId),
-		UserID:        ptrStr(u.UserId),
-		EmployeeNo:    ptrStr(u.EmployeeNo),
-		Name:          ptrStr(u.Name),
-		Email:         ptrStr(u.Email),
-		Mobile:        ptrStr(u.Mobile),
-		DepartmentIDs: u.DepartmentIds,
+		OpenID:          ptrStr(u.OpenId),
+		UserID:          ptrStr(u.UserId),
+		EmployeeNo:      ptrStr(u.EmployeeNo),
+		Name:            ptrStr(u.Name),
+		Email:           ptrStr(u.Email),
+		EnterpriseEmail: ptrStr(u.EnterpriseEmail),
+		Mobile:          ptrStr(u.Mobile),
+		DepartmentIDs:   u.DepartmentIds,
 	}, nil
 }
 
@@ -566,12 +569,13 @@ func (s *FeishuSyncer) reconcileUser(ctx context.Context, fu FeishuUser, deptGro
 		enable := true
 		firstLogin := true
 		plainPwd := generateDefaultPassword(fu.Mobile, fu.OpenID)
+		notifyTo := primaryEmail(fu)
 		u := User{
 			Username:     username,
 			Password:     plainPwd,
 			IsEnable:     &enable,
 			Name:         fu.Name,
-			Email:        fu.Email,
+			Email:        notifyTo, // 个人邮箱优先，否则企业邮箱
 			Phone:        normalizePhone(fu.Mobile),
 			Gid:          gid,
 			IsFirstLogin: &firstLogin,
@@ -588,8 +592,8 @@ func (s *FeishuSyncer) reconcileUser(ctx context.Context, fu FeishuUser, deptGro
 		}
 
 		// 发欢迎邮件（best-effort，失败只记日志）
-		if s.cfg.NotifyOnCreate && fu.Email != "" {
-			if err := sendWelcomeEmail(fu.Name, username, plainPwd, fu.Email); err != nil {
+		if s.cfg.NotifyOnCreate && notifyTo != "" {
+			if err := sendWelcomeEmail(fu.Name, username, plainPwd, notifyTo); err != nil {
 				logger.Error(ctx, "发送欢迎邮件失败: "+err.Error())
 			}
 		}
@@ -606,7 +610,7 @@ func (s *FeishuSyncer) reconcileUser(ctx context.Context, fu FeishuUser, deptGro
 	// 飞书拥有的字段用显式 allowlist 更新，绝不触碰管理员字段
 	updates := map[string]interface{}{
 		"name":           fu.Name,
-		"email":          fu.Email,
+		"email":          primaryEmail(fu),
 		"phone":          normalizePhone(fu.Mobile),
 		"gid":            gid,
 		"is_enable":      true,
@@ -617,15 +621,19 @@ func (s *FeishuSyncer) reconcileUser(ctx context.Context, fu FeishuUser, deptGro
 	if isRejoin {
 		// 复职：重新生成密码、强制改密、补发邮件
 		plainPwd := generateDefaultPassword(fu.Mobile, fu.OpenID)
+		notifyTo := primaryEmail(fu)
 		updates["password"] = plainPwd
 		updates["is_first_login"] = true
+		if notifyTo != "" {
+			updates["email"] = notifyTo
+		}
 		if err := db.Model(&User{}).Where("id = ?", existing.ID).Updates(updates).Error; err != nil {
 			return "", fmt.Errorf("复职更新失败: %w", err)
 		}
 		// 确保证书在（可能历史上被删）
 		_ = ensureClientCert(existing.Username)
-		if s.cfg.NotifyOnCreate && fu.Email != "" {
-			if err := sendWelcomeEmail(fu.Name, existing.Username, plainPwd, fu.Email); err != nil {
+		if s.cfg.NotifyOnCreate && notifyTo != "" {
+			if err := sendWelcomeEmail(fu.Name, existing.Username, plainPwd, notifyTo); err != nil {
 				logger.Error(ctx, "复职发送邮件失败: "+err.Error())
 			}
 		}
@@ -699,10 +707,10 @@ func ResendWelcomeEmail(userID uint) error {
 // 辅助：用户名 / 密码 / 证书 / 邮件
 // ─────────────────────────────────────────────────────────────────────────────
 
-// deriveUsername 按优先级 email → mobile 后 6 位 → open_id 末段 生成登录用户名。
+// deriveUsername 按优先级 email → 企业邮箱 → mobile 后 6 位 → user_id → open_id 末段 生成登录用户名。
 func deriveUsername(fu FeishuUser) string {
-	if fu.Email != "" {
-		return fu.Email
+	if e := primaryEmail(fu); e != "" {
+		return e
 	}
 	digits := stripNonDigits(fu.Mobile)
 	if len(digits) >= 6 {
@@ -720,6 +728,15 @@ func deriveUsername(fu FeishuUser) string {
 		return s
 	}
 	return ""
+}
+
+// primaryEmail 取可用于通信/登录的邮箱：个人邮箱优先，否则企业邮箱。
+// 飞书多数员工 email 为空、enterprise_email 有值。
+func primaryEmail(fu FeishuUser) string {
+	if fu.Email != "" {
+		return fu.Email
+	}
+	return fu.EnterpriseEmail
 }
 
 // generateDefaultPassword 生成默认密码：mobile 后 6 位（仅数字）+ 4 位随机大小写字母。
