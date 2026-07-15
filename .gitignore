@@ -9,4 +9,5 @@ ovpn.db
 config.json
 /build/EasyRSA-*.tgz
 /feishu-smoke
+/data/
 
