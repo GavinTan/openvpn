@@ -482,8 +482,12 @@ func init() {
 	// time.Now().Format(...) 输出都是东八区，与宿主机 /etc/localtime 解耦。
 	// 必须在 initConfig/loadConfig 之前；package-level var（如 logger prefix）
 	// 的初始化在 init 之前完成，那里取到的时间戳是 UTC 的一次性前缀，无影响。
+	// 注意：Alpine 镜像必须安装 tzdata 包才有 /usr/share/zoneinfo/Asia/Shanghai，
+	// 否则 LoadLocation 报错、time.Local 退回 UTC，所有时间显示慢 8 小时。
 	if loc, err := time.LoadLocation("Asia/Shanghai"); err == nil {
 		time.Local = loc
+	} else {
+		fmt.Fprintf(os.Stderr, "[OPENVPN-WEB] WARNING: load Asia/Shanghai timezone failed: %v; time.Local stays at %s. Check Dockerfile installs tzdata.\n", err, time.Local.String())
 	}
 
 	initConfig()

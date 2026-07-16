@@ -25,7 +25,7 @@ RUN go build -trimpath -o /out/openvpn-web .
 # ── 运行阶段 ──
 FROM alpine:3.23.4
 
-RUN apk add --no-cache openssl openvpn iptables iptables-legacy bash supervisor curl sqlite grep mailcap coreutils jq nftables
+RUN apk add --no-cache openssl openvpn iptables iptables-legacy bash supervisor curl sqlite grep mailcap coreutils jq nftables tzdata
 
 # easy-rsa 用宿主机预下载的包（构建容器内无法直连 github），COPY 进来本地解压
 COPY build/EasyRSA-3.2.6.tgz /tmp/EasyRSA-3.2.6.tgz
