@@ -15,6 +15,9 @@ services:
       - ADMIN_USERNAME=admin
       - ADMIN_PASSWORD=admin
       - OVPN_GATEWAY=false
+      # 容器内非 Go 进程（openvpn/easyrsa/supervisord 等）使用的时区。
+      # Go 进程时间显示由 main.go init() 中 time.Local = Asia/Shanghai 强制固定。
+      - TZ=Asia/Shanghai
       # NAT/外网暴露场景：生成的 .ovpn 指向真实外网可达地址（留空则自动探测本机出网 IP/端口）
       # - OVPN_REMOTE_ADDR=203.0.113.10
       # - OVPN_REMOTE_PORT=1194

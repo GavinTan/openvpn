@@ -478,6 +478,14 @@ func AuthMiddleWare() gin.HandlerFunc {
 }
 
 func init() {
+	// 强制把进程时区固定到 Asia/Shanghai，确保 Web/CSV/日志中所有
+	// time.Now().Format(...) 输出都是东八区，与宿主机 /etc/localtime 解耦。
+	// 必须在 initConfig/loadConfig 之前；package-level var（如 logger prefix）
+	// 的初始化在 init 之前完成，那里取到的时间戳是 UTC 的一次性前缀，无影响。
+	if loc, err := time.LoadLocation("Asia/Shanghai"); err == nil {
+		time.Local = loc
+	}
+
 	initConfig()
 	loadConfig()
 }
