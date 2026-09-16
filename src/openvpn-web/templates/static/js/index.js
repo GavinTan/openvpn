@@ -219,27 +219,37 @@ $('#vtable').on('shown.bs.popover', '.btn-delete', function () {
     .find('.btn-popover-confirm')
     .off('click')
     .on('click', function () {
+      $(this).prop('disabled', true);
       switch (delType) {
         case 'user':
-          request.delete(`/ovpn/user/${row.id}`).then((data) => {
-            popoverInstance.hide();
-            message.success(data.message);
-            vtable.ajax.reload(null, false);
-          });
+          request
+            .delete(`/ovpn/user/${row.id}`)
+            .then((data) => {
+              popoverInstance.hide();
+              message.success(data.message);
+              vtable.ajax.reload(null, false);
+            })
+            .finally(() => $(this).prop('disabled', false));
           break;
         case 'client':
-          request.delete(`/ovpn/client/${row.name}`).then((data) => {
-            popoverInstance.hide();
-            message.success(data.message);
-            vtable.ajax.reload(null, false);
-          });
+          request
+            .delete(`/ovpn/client/${row.name}`)
+            .then((data) => {
+              popoverInstance.hide();
+              message.success(data.message);
+              vtable.ajax.reload(null, false);
+            })
+            .finally(() => $(this).prop('disabled', false));
           break;
         case 'firewall':
-          request.delete(`/ovpn/firewall/${row.id}`).then((data) => {
-            popoverInstance.hide();
-            message.success(data.message);
-            vtable.ajax.reload(null, false);
-          });
+          request
+            .delete(`/ovpn/firewall/${row.id}`)
+            .then((data) => {
+              popoverInstance.hide();
+              message.success(data.message);
+              vtable.ajax.reload(null, false);
+            })
+            .finally(() => $(this).prop('disabled', false));
           break;
       }
     });
