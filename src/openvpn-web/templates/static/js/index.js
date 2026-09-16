@@ -277,11 +277,14 @@ $(document).on('click', function (e) {
 $('#showUser').click(function () {
   window.history.pushState(null, '', '?tab=user');
   initTable('user');
-  if ('{{.ldapAuth}}' == 'true') {
-    const toast = $('#alertToast');
-    toast.find('.toast-body').text('已启用LDAP认证，本地VPN账号将不在工作！');
-    bootstrap.Toast.getOrCreateInstance(toast).show();
-  }
+
+  request.get('/settings').then((data) => {
+    if (data.system.ldap.ldap_auth) {
+      const toast = $('#alertToast');
+      toast.find('.toast-body').text('已启用LDAP认证，本地VPN账号将不在工作！');
+      bootstrap.Toast.getOrCreateInstance(toast).show();
+    }
+  });
 });
 
 $('#showHistory').click(function () {

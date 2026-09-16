@@ -366,7 +366,7 @@ client-disconnect)
 	exit 0
 	;;
 learn-address)
-	[ "$1" == "add" ] && set_firewall "$@"
+	[ "$1" != "delete" ] && set_firewall "$@"
 	exit 0
 	;;
 esac

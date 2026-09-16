@@ -131,7 +131,7 @@ func (ov *ovpn) sendCommand(command string) (string, error) {
 	defer conn.Close()
 
 	conn.SetDeadline(time.Now().Add(time.Second * 3))
-	conn.Write([]byte(fmt.Sprintf("%s\n", command)))
+	fmt.Fprintf(conn, "%s\n", command)
 
 	for {
 		buf := make([]byte, 1024)
@@ -174,17 +174,21 @@ func (ov *ovpn) getClient() []ClientData {
 			}
 
 			cd := ClientData{
-				Rip:            rip,
-				Vip:            cdSlice[3],
-				Vip6:           cdSlice[4],
-				RecvBytes:      recv,
-				SendBytes:      send,
-				ConnDate:       cdSlice[7],
-				Username:       cdSlice[9],
-				CommonName:     cdSlice[1],
-				ID:             cdSlice[10],
-				OnlineTime:     (time.Duration(time.Now().Unix()-connDate.Unix()) * time.Second).String(),
-				IsNftBlacklist: getNftTableSetElement("blacklist", cdSlice[3]) || getNftTableSetElement("blacklist", cdSlice[4]),
+				Rip:        rip,
+				Vip:        cdSlice[3],
+				Vip6:       cdSlice[4],
+				RecvBytes:  recv,
+				SendBytes:  send,
+				ConnDate:   cdSlice[7],
+				Username:   cdSlice[9],
+				CommonName: cdSlice[1],
+				ID:         cdSlice[10],
+				OnlineTime: (time.Duration(time.Now().Unix()-connDate.Unix()) * time.Second).String(),
+				IsNftBlacklist: func() bool {
+					existV4, _ := getNftTableSetElement("blacklist", cdSlice[3])
+					existV6, _ := getNftTableSetElement("blacklist", cdSlice[4])
+					return existV4 || existV6
+				}(),
 			}
 
 			clients = append(clients, cd)
@@ -693,10 +697,9 @@ func main() {
 		}
 
 		c.HTML(http.StatusOK, "index.html", gin.H{
-			"server":   ov.getServer(),
-			"sysUser":  adminUsername,
-			"ldapAuth": ldapAuth,
-			"version":  "v" + version,
+			"server":  ov.getServer(),
+			"sysUser": adminUsername,
+			"version": "v" + version,
 		})
 	})
 

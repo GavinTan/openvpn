@@ -384,6 +384,14 @@ function openFirewallModal(m, data) {
       renderTree(m, i, false);
     });
 
+    request.get('/settings').then((data) => {
+      if (data.system.ldap.ldap_auth) {
+        $('.firewall-tree[data-name="sug"]').addClass('disabled');
+      } else {
+        $('.firewall-tree[data-name="sug"]').removeClass('disabled');
+      }
+    });
+
     $(m).modal('show');
   });
 }

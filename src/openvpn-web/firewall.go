@@ -349,7 +349,7 @@ func getNftTableSet(name string) bool {
 	return exec.Command("nft", "list", "set", "inet", nftTableName, name).Run() == nil
 }
 
-func getNftTableSetElement(name, ip string) bool {
+func getNftTableSetElement(name, ip string) (exist, isRange bool) {
 	setName := name + "_v4"
 	if strings.Contains(ip, ":") {
 		setName = name + "_v6"
@@ -364,13 +364,17 @@ func getNftTableSetElement(name, ip string) bool {
 	if out, err := cmd.Output(); err == nil {
 		lines := strings.Split(string(out), "\n")
 		for _, line := range lines {
-			if strings.Contains(line, ip) {
-				return true
+			if strings.Contains(strings.TrimSpace(line), "elements") {
+				if strings.ContainsAny(line, "-/") {
+					return true, true
+				}
 			}
 		}
+
+		return true, false
 	}
 
-	return false
+	return false, false
 }
 
 func addNftTableSetElement(name, ips string) error {
@@ -386,7 +390,7 @@ func addNftTableSetElement(name, ips string) error {
 			continue
 		}
 
-		if getNftTableSetElement(name, ip) {
+		if exist, _ := getNftTableSetElement(name, ip); exist {
 			continue
 		}
 
@@ -434,7 +438,8 @@ func deleteNftTableSetElement(name, ips string) error {
 			setName = name + "_v6"
 		}
 
-		if getNftTableSetElement(name, ip) {
+		exist, isRange := getNftTableSetElement(name, ip)
+		if exist && !isRange {
 			cmd := exec.Command(
 				"nft", "delete", "element", "inet",
 				nftTableName,
@@ -456,6 +461,10 @@ func deleteNftTableSetElement(name, ips string) error {
 }
 
 func setOnlineClinetNft(f Firewall) error {
+	if len(f.SGroup) == 0 {
+		return nil
+	}
+
 	updateSetElement := func(exist bool, setName string, ips string) error {
 		if exist {
 			return addNftTableSetElement(setName, ips)
@@ -480,7 +489,7 @@ func setOnlineClinetNft(f Firewall) error {
 		dexist := false
 
 		if client.Username == "UNDEF" {
-			return nil
+			continue
 		}
 
 		u := User{Username: client.Username}
